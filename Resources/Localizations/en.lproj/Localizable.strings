@@ -20,6 +20,8 @@
 "menu.reinstall_client" = "Reinstall Game Client…";
 "menu.client_url" = "Client URL…";
 "menu.metal_hud" = "Show Metal Frame-Rate Overlay";
+"menu.wine_debug" = "Wine Debug Channels (WINEDEBUG)…";
+"menu.environment" = "Additional Environment Variables…";
 "menu.winecfg" = "Open Wine Configuration (winecfg)";
 "menu.command_prompt" = "Open Command Prompt (cmd.exe)";
 "menu.copy_log" = "Copy Log";
@@ -38,11 +40,17 @@
 "dialog.clear.message" = "Everything in %1$@ (%2$@) goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
 "dialog.clear.message_no_size" = "Everything in %@ goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
 
-/* Client URL sheet */
+/* Sheets */
 "sheet.client_url.title" = "Client download URL";
 "sheet.client_url.explanation" = "Point this at another build to install it instead. Use Reinstall Game Client afterwards.";
 "sheet.client_url.field" = "URL";
-"sheet.client_url.reset" = "Reset to Default";
+"sheet.wine_debug.title" = "Wine debug channels";
+"sheet.wine_debug.explanation" = "What WINEDEBUG is set to when the game starts. The default, -all, keeps Wine quiet; try +seh,+tid or warn+all when chasing a crash. Takes effect on the next launch.";
+"sheet.wine_debug.field" = "WINEDEBUG";
+"sheet.environment.title" = "Additional environment variables";
+"sheet.environment.explanation" = "NAME=value pairs separated by ; — for example DXVK_HUD=fps;WINEESYNC=1. They are set last, so they override the launcher's own. Takes effect on the next launch.";
+"sheet.environment.field" = "Variables";
+"sheet.reset" = "Reset to Default";
 "sheet.done" = "Done";
 
 /* Checklist */
@@ -108,6 +116,8 @@
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
 "log.metal_hud" = "Metal frame-rate overlay on.";
+"log.wine_debug" = "WINEDEBUG=%@";
+"log.extra_environment" = "Extra environment: %@";
 "log.opening_tool" = "Opening %@…";
 "log.tool_exited" = "%1$@ exited with status %2$d.";
 "log.exited_normally" = "The game exited normally.";

@@ -25,10 +25,25 @@ final class LauncherModel: ObservableObject {
     @Published var metalHUD = UserDefaults.standard.bool(forKey: LauncherModel.metalHUDKey) {
         didSet { UserDefaults.standard.set(metalHUD, forKey: Self.metalHUDKey) }
     }
+    /// Wine's debug channels, as typed. Remembered between launches like the
+    /// overlay is: someone chasing a crash keeps their channels across
+    /// restarts of the launcher.
+    @Published var wineDebugText = UserDefaults.standard.string(
+        forKey: LauncherModel.wineDebugKey) ?? LaunchOptions.defaultWineDebug {
+        didSet { UserDefaults.standard.set(wineDebugText, forKey: Self.wineDebugKey) }
+    }
+    /// Extra `NAME=value` pairs separated by `;`, applied on top of everything
+    /// the launcher sets itself.
+    @Published var extraEnvironmentText = UserDefaults.standard.string(
+        forKey: LauncherModel.extraEnvironmentKey) ?? "" {
+        didSet { UserDefaults.standard.set(extraEnvironmentText, forKey: Self.extraEnvironmentKey) }
+    }
 
     private var job: Task<Void, Never>?
     private static let logLimit = 5_000
     private static let metalHUDKey = "metalHUD"
+    private static let wineDebugKey = "wineDebug"
+    private static let extraEnvironmentKey = "extraEnvironment"
 
     struct LogLine: Identifiable, Sendable {
         /// What the line is, so the view can colour it without matching on
@@ -60,6 +75,12 @@ final class LauncherModel: ObservableObject {
 
     var canPlay: Bool { status.canPlay && !phase.isBusy }
     var needsInstall: Bool { !status.canPlay }
+
+    /// What the ⌥ menu's environment settings come to, read at the moment a
+    /// process is started so an edit made mid-session lands on the next one.
+    var launchOptions: LaunchOptions {
+        LaunchOptions(wineDebug: wineDebugText, extraEnvironment: extraEnvironmentText)
+    }
 
     var statusLine: String {
         switch phase {
@@ -118,8 +139,11 @@ final class LauncherModel: ObservableObject {
         guard canPlay else { return }
         let paths = self.paths
         let hud = metalHUD
+        let options = launchOptions
         start(.running) { [reporter] in
-            try await GameRunner(paths: paths, reporter: reporter, metalHUD: hud).play()
+            try await GameRunner(
+                paths: paths, reporter: reporter, metalHUD: hud, options: options
+            ).play()
         }
     }
 
@@ -133,9 +157,11 @@ final class LauncherModel: ObservableObject {
         guard canOpenWineTools else { return }
         let paths = self.paths
         let reporter = self.reporter
+        let options = launchOptions
         Task {
             do {
-                try await GameRunner(paths: paths, reporter: reporter).open(tool)
+                try await GameRunner(paths: paths, reporter: reporter, options: options)
+                    .open(tool)
             } catch {
                 append(Strings.errorPrefix + error.localizedDescription, kind: .failure)
             }

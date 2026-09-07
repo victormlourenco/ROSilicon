@@ -80,7 +80,10 @@ through `steam.exe`, which is what the client expects to find running.
 
 The `…` menu holds the rest: show the installation or game folder, reinstall the
 client, change the client URL, copy the log, and clear the installation (to the
-Trash, after a confirmation).
+Trash, after a confirmation). Holding ⌥ also reveals `WINEDEBUG` (`-all` by
+default, so Wine stays quiet) and a field for extra `NAME=value` variables
+separated by `;`. Both are remembered, applied after everything the launcher
+sets itself — so they can override it — and take effect on the next launch.
 
 ## The wintrust patch
 
@@ -139,6 +142,7 @@ Sources/ROSilicon/
   WintrustPatch.swift    the signature-check workaround
   Installer.swift        the install stages
   GameRunner.swift       the launch path
+  LaunchOptions.swift    WINEDEBUG and the extra variables, as typed
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window
   ContentView.swift      the window
@@ -154,7 +158,10 @@ it. Both are useful when running outside an app bundle.
 ## Credits
 
 - **WoWSilicon** — [WoWSilicon/WoWSilicon](https://github.com/WoWSilicon/WoWSilicon)
-  — the Wine runtime, `x87sidecar`, and the Rosetta work behind both.
-- **x87sidecar / rosettax87_jit** — [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit)
+  — the Wine runtime and the Rosetta work behind it.
+- **x87sidecar** — [athei/x87sidecar](https://github.com/athei/x87sidecar) — the
+  x87 hook the runtime re-execs into; the bundled binary is that project's
+  release, tracked in `Packaging/X87Sidecar/x87sidecar-lock.json`. Built on
+  [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit).
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
 - **D9VK** — [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk)

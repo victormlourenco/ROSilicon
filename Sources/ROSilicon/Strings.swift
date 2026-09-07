@@ -35,6 +35,8 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuWineDebug: String { t("menu.wine_debug") }
+    static var menuEnvironment: String { t("menu.environment") }
     static var menuWinecfg: String { t("menu.winecfg") }
     static var menuCommandPrompt: String { t("menu.command_prompt") }
     static var menuCopyLog: String { t("menu.copy_log") }
@@ -58,12 +60,18 @@ enum Strings {
         t("dialog.clear.message_no_size", folder)
     }
 
-    // MARK: - Client URL sheet
+    // MARK: - Sheets
 
     static var clientURLTitle: String { t("sheet.client_url.title") }
     static var clientURLExplanation: String { t("sheet.client_url.explanation") }
     static var clientURLField: String { t("sheet.client_url.field") }
-    static var clientURLReset: String { t("sheet.client_url.reset") }
+    static var wineDebugTitle: String { t("sheet.wine_debug.title") }
+    static var wineDebugExplanation: String { t("sheet.wine_debug.explanation") }
+    static var wineDebugField: String { t("sheet.wine_debug.field") }
+    static var environmentTitle: String { t("sheet.environment.title") }
+    static var environmentExplanation: String { t("sheet.environment.explanation") }
+    static var environmentField: String { t("sheet.environment.field") }
+    static var resetToDefault: String { t("sheet.reset") }
     static var done: String { t("sheet.done") }
 
     // MARK: - Checklist
@@ -142,6 +150,10 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static func logWineDebug(_ channels: String) -> String { t("log.wine_debug", channels) }
+    static func logExtraEnvironment(_ variables: String) -> String {
+        t("log.extra_environment", variables)
+    }
     static func logOpeningTool(_ name: String) -> String { t("log.opening_tool", name) }
     static func logToolExited(_ name: String, _ status: Int32) -> String {
         t("log.tool_exited", name, status)
