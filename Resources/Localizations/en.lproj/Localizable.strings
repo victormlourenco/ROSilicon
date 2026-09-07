@@ -46,6 +46,7 @@
 "sheet.done" = "Done";
 
 /* Checklist */
+"item.rosetta" = "Rosetta 2";
 "item.wine" = "Wine build";
 "item.prefix" = "Wine prefix";
 "item.patch" = "Signature check";
@@ -53,6 +54,8 @@
 "detail.wine_version" = "WoWSilicon %@";
 "detail.wine_outdated" = "WoWSilicon %1$@ — %2$@ available";
 "detail.not_installed" = "not installed";
+"detail.rosetta_installed" = "installed";
+"detail.rosetta_needs_apple_silicon" = "needs an Apple Silicon Mac";
 "detail.incomplete_install_again" = "incomplete — install again";
 "detail.not_created" = "not created";
 "detail.incomplete" = "incomplete";
@@ -73,6 +76,7 @@
 "step.tools" = "Installing Direct3D 9 and the Steam stub";
 "step.downloading_wine" = "Downloading WoWSilicon %@";
 "step.installing_wine" = "Installing WoWSilicon %@";
+"step.checking_rosetta" = "Checking Rosetta 2";
 "step.checking_sidecar" = "Checking x87sidecar";
 "step.creating_prefix" = "Creating the Wine prefix";
 "step.patching" = "Patching wintrust.dll";
@@ -100,6 +104,7 @@
 "log.copying_app" = "Copying WoWSilicon.app to %@";
 "log.using_wine" = "Using %@";
 "log.unknown_wine_version" = "an unknown Wine version";
+"log.rosetta_ok" = "Rosetta 2 is installed";
 "log.sidecar_ok" = "x87sidecar supports the installed Rosetta";
 "log.sidecar_unsupported" = "Warning: x87sidecar reports this Rosetta build is unsupported; the game may run slowly";
 "log.prefix_exists" = "Wine prefix already at %@";
@@ -136,6 +141,8 @@
 "error.wine_running" = "Wine is still running — quit the game and try again";
 "error.missing_in_dmg" = "WoWSilicon.app not found inside %@";
 "error.sidecar_missing" = "x87sidecar not found under %@ — install again";
+"error.rosetta_missing" = "Rosetta 2 is not installed — the game client is x86 code and cannot run without it. Install it in the Terminal with: %@";
+"error.not_apple_silicon" = "This is not an Apple Silicon Mac — the launcher needs Apple Silicon and Rosetta 2";
 "error.bundled_tool_missing" = "%1$@ is missing from %2$@ — rebuild the app with build.sh";
 "error.missing_wine" = "Wine not found at %@ — install first";
 "error.missing_file" = "%1$@ not found at %2$@";

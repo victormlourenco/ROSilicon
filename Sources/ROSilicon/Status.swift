@@ -28,6 +28,25 @@ struct Status: Sendable {
         let fm = FileManager.default
         var status = Status()
 
+        // 0. Rosetta 2, which every x86 instruction below the launcher needs.
+        //    It gates installing, not playing: the check reads paths Apple owns
+        //    and could move, and a wrong answer must not be able to lock
+        //    someone out of a game that is already installed and working.
+        let rosetta = Rosetta.state
+        let rosettaDetail: String = switch rosetta {
+        case .ready: Strings.rosettaInstalled
+        case .missing: Strings.notInstalled
+        case .notAppleSilicon: Strings.rosettaNeedsAppleSilicon
+        }
+        let rosettaState: State = switch rosetta {
+        case .ready: .ok
+        case .missing: .missing
+        case .notAppleSilicon: .warning
+        }
+        status.items.append(Item(
+            id: "rosetta", title: Strings.itemRosetta,
+            detail: rosettaDetail, state: rosettaState))
+
         // 1. The Wine build
         let installedVersion = paths.installedWineVersion
         let wineUsable = fm.isExecutableFile(atPath: paths.wine.path) && paths.x87Sidecar != nil

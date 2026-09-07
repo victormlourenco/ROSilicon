@@ -38,7 +38,9 @@ tools/             d3d9.dll and steam_stub.exe, copied out of the app
 downloads/         in-progress downloads, removed when they finish
 ```
 
-**Install** runs four stages, each skipped when it is already done:
+**Install** starts by checking Rosetta 2 — everything below the launcher is x86
+code, so a Mac without it is told in a second rather than after several
+gigabytes — and then runs four stages, each skipped when it is already done:
 
 1. **The Wine build** — downloads the pinned WoWSilicon disk image, mounts it,
    copies the app out, clears the quarantine flag, and checks `x87sidecar`
@@ -96,6 +98,7 @@ Resources/
 Sources/ROSilicon/
   Paths.swift            pinned versions, URLs, paths, the Wine environment
   Shell.swift            subprocesses with streamed output and cancellation
+  Rosetta.swift          whether Rosetta 2 is installed on this Mac
   Downloader.swift       resumable ranged downloads, retries, md5
   WintrustPatch.swift    the signature-check workaround
   Installer.swift        the install stages

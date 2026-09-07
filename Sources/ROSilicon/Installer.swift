@@ -15,6 +15,8 @@ enum InstallError: LocalizedError {
     case wineRunning
     case missingInDMG(URL)
     case sidecarMissing(URL)
+    case rosettaMissing
+    case notAppleSilicon
 
     var errorDescription: String? {
         switch self {
@@ -22,6 +24,8 @@ enum InstallError: LocalizedError {
         case .wineRunning: Strings.errorWineRunning
         case .missingInDMG(let url): Strings.errorMissingInDMG(url.lastPathComponent)
         case .sidecarMissing(let url): Strings.errorSidecarMissing(url.path)
+        case .rosettaMissing: Strings.errorRosettaMissing(Rosetta.installCommand)
+        case .notAppleSilicon: Strings.errorNotAppleSilicon
         }
     }
 }
@@ -45,6 +49,7 @@ struct Installer: Sendable {
             throw InstallError.wineRunning
         }
 
+        try await verifyRosetta()
         try await installTools()
         try await installWine()
         try await probeSidecar()
@@ -55,6 +60,19 @@ struct Installer: Sendable {
         await reporter.step(Strings.readyToPlay)
         await reporter.log("")
         await reporter.log(Strings.logReady)
+    }
+
+    // MARK: - Prerequisites
+
+    /// Checks Rosetta before a byte is downloaded, so a Mac without it hears
+    /// about it in a second rather than after several gigabytes.
+    func verifyRosetta() async throws {
+        await reporter.step(Strings.stepCheckingRosetta)
+        switch await Rosetta.verify() {
+        case .ready: await reporter.log(Strings.logRosettaOK)
+        case .missing: throw InstallError.rosettaMissing
+        case .notAppleSilicon: throw InstallError.notAppleSilicon
+        }
     }
 
     // MARK: - 0. The bundled Windows binaries

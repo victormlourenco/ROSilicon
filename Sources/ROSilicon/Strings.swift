@@ -68,6 +68,7 @@ enum Strings {
 
     // MARK: - Checklist
 
+    static var itemRosetta: String { t("item.rosetta") }
     static var itemWine: String { t("item.wine") }
     static var itemPrefix: String { t("item.prefix") }
     static var itemPatch: String { t("item.patch") }
@@ -78,6 +79,8 @@ enum Strings {
         t("detail.wine_outdated", installed, available)
     }
     static var notInstalled: String { t("detail.not_installed") }
+    static var rosettaInstalled: String { t("detail.rosetta_installed") }
+    static var rosettaNeedsAppleSilicon: String { t("detail.rosetta_needs_apple_silicon") }
     static var incompleteInstallAgain: String { t("detail.incomplete_install_again") }
     static var notCreated: String { t("detail.not_created") }
     static var incomplete: String { t("detail.incomplete") }
@@ -106,6 +109,7 @@ enum Strings {
     static func stepInstallingWine(_ version: String) -> String {
         t("step.installing_wine", version)
     }
+    static var stepCheckingRosetta: String { t("step.checking_rosetta") }
     static var stepCheckingSidecar: String { t("step.checking_sidecar") }
     static var stepCreatingPrefix: String { t("step.creating_prefix") }
     static var stepPatching: String { t("step.patching") }
@@ -140,6 +144,7 @@ enum Strings {
     static func logCopyingApp(_ destination: String) -> String { t("log.copying_app", destination) }
     static func logUsingWine(_ version: String) -> String { t("log.using_wine", version) }
     static var logUnknownWineVersion: String { t("log.unknown_wine_version") }
+    static var logRosettaOK: String { t("log.rosetta_ok") }
     static var logSidecarOK: String { t("log.sidecar_ok") }
     static var logSidecarUnsupported: String { t("log.sidecar_unsupported") }
     static func logPrefixExists(_ path: String) -> String { t("log.prefix_exists", path) }
@@ -184,6 +189,10 @@ enum Strings {
     static var errorWineRunning: String { t("error.wine_running") }
     static func errorMissingInDMG(_ name: String) -> String { t("error.missing_in_dmg", name) }
     static func errorSidecarMissing(_ path: String) -> String { t("error.sidecar_missing", path) }
+    static func errorRosettaMissing(_ command: String) -> String {
+        t("error.rosetta_missing", command)
+    }
+    static var errorNotAppleSilicon: String { t("error.not_apple_silicon") }
     static func errorBundledToolMissing(_ name: String, _ folder: String) -> String {
         t("error.bundled_tool_missing", name, folder)
     }

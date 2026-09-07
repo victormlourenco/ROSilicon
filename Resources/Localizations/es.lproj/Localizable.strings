@@ -43,6 +43,7 @@
 "sheet.done" = "Listo";
 
 /* Lista de comprobación */
+"item.rosetta" = "Rosetta 2";
 "item.wine" = "Compilación de Wine";
 "item.prefix" = "Prefijo de Wine";
 "item.patch" = "Verificación de firma";
@@ -50,6 +51,8 @@
 "detail.wine_version" = "WoWSilicon %@";
 "detail.wine_outdated" = "WoWSilicon %1$@ — %2$@ disponible";
 "detail.not_installed" = "sin instalar";
+"detail.rosetta_installed" = "instalado";
+"detail.rosetta_needs_apple_silicon" = "requiere un Mac con Apple Silicon";
 "detail.incomplete_install_again" = "incompleto — instala de nuevo";
 "detail.not_created" = "sin crear";
 "detail.incomplete" = "incompleto";
@@ -70,6 +73,7 @@
 "step.tools" = "Instalando Direct3D 9 y el stub de Steam";
 "step.downloading_wine" = "Descargando WoWSilicon %@";
 "step.installing_wine" = "Instalando WoWSilicon %@";
+"step.checking_rosetta" = "Comprobando Rosetta 2";
 "step.checking_sidecar" = "Comprobando x87sidecar";
 "step.creating_prefix" = "Creando el prefijo de Wine";
 "step.patching" = "Parcheando wintrust.dll";
@@ -97,6 +101,7 @@
 "log.copying_app" = "Copiando WoWSilicon.app en %@";
 "log.using_wine" = "Usando %@";
 "log.unknown_wine_version" = "una versión desconocida de Wine";
+"log.rosetta_ok" = "Rosetta 2 está instalado";
 "log.sidecar_ok" = "x87sidecar es compatible con el Rosetta instalado";
 "log.sidecar_unsupported" = "Aviso: x87sidecar indica que esta versión de Rosetta no es compatible; el juego puede ir lento";
 "log.prefix_exists" = "El prefijo de Wine ya está en %@";
@@ -133,6 +138,8 @@
 "error.wine_running" = "Wine sigue en ejecución — cierra el juego y vuelve a intentarlo";
 "error.missing_in_dmg" = "No se encontró WoWSilicon.app dentro de %@";
 "error.sidecar_missing" = "No se encontró x87sidecar en %@ — instala de nuevo";
+"error.rosetta_missing" = "Rosetta 2 no está instalado — el cliente del juego es código x86 y no funciona sin él. Instálalo en el Terminal con: %@";
+"error.not_apple_silicon" = "Este Mac no es de Apple Silicon — el launcher necesita Apple Silicon y Rosetta 2";
 "error.bundled_tool_missing" = "%1$@ no está en %2$@ — vuelve a compilar la app con build.sh";
 "error.missing_wine" = "No se encontró Wine en %@ — instala primero";
 "error.missing_file" = "No se encontró %1$@ en %2$@";
