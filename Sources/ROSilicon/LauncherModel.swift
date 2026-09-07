@@ -20,9 +20,15 @@ final class LauncherModel: ObservableObject {
     @Published private(set) var log: [LogLine] = []
     @Published var failure: String?
     @Published var clientURLText = Paths.defaultClientURL.absoluteString
+    /// Metal's frame-rate overlay, remembered between launches so someone
+    /// chasing a stutter does not have to switch it on every time.
+    @Published var metalHUD = UserDefaults.standard.bool(forKey: LauncherModel.metalHUDKey) {
+        didSet { UserDefaults.standard.set(metalHUD, forKey: Self.metalHUDKey) }
+    }
 
     private var job: Task<Void, Never>?
     private static let logLimit = 5_000
+    private static let metalHUDKey = "metalHUD"
 
     struct LogLine: Identifiable, Sendable {
         /// What the line is, so the view can colour it without matching on
@@ -112,8 +118,9 @@ final class LauncherModel: ObservableObject {
     func play() {
         guard canPlay else { return }
         let paths = self.paths
+        let hud = metalHUD
         start(.running) { [reporter] in
-            try await GameRunner(paths: paths, reporter: reporter).play()
+            try await GameRunner(paths: paths, reporter: reporter, metalHUD: hud).play()
         }
     }
 

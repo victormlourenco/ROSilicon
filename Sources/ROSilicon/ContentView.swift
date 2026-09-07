@@ -92,6 +92,8 @@ struct ContentView: View {
                 Button(Strings.menuRestoreWintrust) { model.restoreWintrust() }
                     .disabled(!model.status.wineReady || model.phase.isBusy)
                 Divider()
+                Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                Divider()
                 Button(Strings.menuCopyLog) { model.copyLog() }
                     .disabled(model.log.isEmpty)
             }

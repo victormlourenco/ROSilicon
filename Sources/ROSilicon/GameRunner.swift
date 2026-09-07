@@ -20,6 +20,9 @@ enum RunError: LocalizedError {
 struct GameRunner: Sendable {
     let paths: Paths
     let reporter: Reporter
+    /// Draws Metal's frame-rate overlay on top of the client. Off unless
+    /// someone turned it on in the menu; quitting never needs it.
+    var metalHUD = false
 
     /// Shuts down everything in the prefix. Wine's own way of doing it, so a
     /// hung client goes down with it rather than being orphaned.
@@ -37,6 +40,12 @@ struct GameRunner: Sendable {
         environment["MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS"] = "1"
         environment["DXVK_ASYNC"] = "1"
         environment["WINEDEBUG"] = "-all"
+        // DXVK renders through MoltenVK, so the overlay Metal itself draws is
+        // the one that shows the frame rate of the client.
+        if metalHUD {
+            environment["MTL_HUD_ENABLED"] = "1"
+            await reporter.log(Strings.logMetalHUD)
+        }
 
         await reporter.step(Strings.stepRunning)
         await reporter.log(Strings.logLaunching)

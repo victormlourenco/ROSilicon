@@ -18,6 +18,7 @@
 "menu.client_url" = "URL del cliente…";
 "menu.reapply_patch" = "Volver a aplicar el parche de verificación de firma";
 "menu.restore_wintrust" = "Restaurar el wintrust.dll original";
+"menu.metal_hud" = "Mostrar el medidor de FPS de Metal";
 "menu.copy_log" = "Copiar el registro";
 "menu.clear_install" = "Vaciar la carpeta de instalación…";
 
@@ -116,6 +117,7 @@
 "log.in_trash" = "En la Papelera: %@";
 "log.removed" = "(eliminado)";
 "log.launching" = "Iniciando el cliente…";
+"log.metal_hud" = "Medidor de FPS de Metal activado.";
 "log.exited_normally" = "El juego se cerró con normalidad.";
 "log.unknown_size" = "tamaño desconocido";
 

@@ -21,6 +21,7 @@
 "menu.client_url" = "Client URL…";
 "menu.reapply_patch" = "Re-apply Signature Check Workaround";
 "menu.restore_wintrust" = "Restore Original wintrust.dll";
+"menu.metal_hud" = "Show Metal Frame-Rate Overlay";
 "menu.copy_log" = "Copy Log";
 "menu.clear_install" = "Clear Installation Folder…";
 
@@ -119,6 +120,7 @@
 "log.in_trash" = "In the Trash: %@";
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
+"log.metal_hud" = "Metal frame-rate overlay on.";
 "log.exited_normally" = "The game exited normally.";
 "log.unknown_size" = "unknown size";
 
