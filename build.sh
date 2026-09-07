@@ -1,9 +1,11 @@
 #!/bin/bash
-# Builds ROSilicon.app from the Swift package. The app installs into
-# ~/Library/Application Support/RO LATAM and carries everything it needs, so it
+# Builds ROSilicon.app from the Swift package, and a .dmg holding it beside a
+# shortcut to /Applications to drag it onto. The app installs into
+# ~/Library/Application Support/ROSilicon and carries everything it needs, so it
 # can be moved anywhere once built.
 #
-# Set APP_OUT to build somewhere other than this folder.
+# Set APP_OUT to build somewhere other than this folder, and pass --no-dmg to
+# build only the .app.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -12,7 +14,20 @@ PKG="$(pwd)"
 APP_NAME="ROSilicon"
 APP="${APP_OUT:-$PKG}/$APP_NAME.app"
 EXECUTABLE="ROSilicon"
-VERSION="1.0"
+
+# The one place the version is written down; the bundle and the .dmg name both
+# come from here.
+[[ -f "$PKG/VERSION" ]] || { echo "error: no VERSION file in $PKG" >&2; exit 1; }
+VERSION="$(tr -d '[:space:]' < "$PKG/VERSION")"
+[[ -n "$VERSION" ]] || { echo "error: $PKG/VERSION is empty" >&2; exit 1; }
+
+MAKE_DMG=1
+for arg in "$@"; do
+    case "$arg" in
+        --no-dmg) MAKE_DMG=0 ;;
+        *) echo "usage: $(basename "$0") [--no-dmg]" >&2; exit 2 ;;
+    esac
+done
 
 command -v swift >/dev/null 2>&1 || {
     echo "error: swift not found — install Xcode or the command line tools" >&2
@@ -87,3 +102,76 @@ touch "$APP"
 
 echo
 echo "Built $APP"
+
+if [[ "$MAKE_DMG" == 1 ]]; then
+    DMG="${APP_OUT:-$PKG}/$APP_NAME-$VERSION.dmg"
+    echo "==> packing $(basename "$DMG")"
+
+    STAGE="$(mktemp -d)"
+    SCRATCH="$(mktemp -d)"
+    RW_DMG="$SCRATCH/rw.dmg"
+    MOUNT=""
+    cleanup() {
+        if [[ -n "$MOUNT" ]]; then
+            hdiutil detach "$MOUNT" -force -quiet 2>/dev/null || true
+        fi
+        rm -rf "$STAGE" "$SCRATCH"
+    }
+    trap cleanup EXIT
+
+    # What the window holds: the app, and the drop target next to it. ditto
+    # rather than cp, so the signature and extended attributes survive.
+    ditto "$APP" "$STAGE/$APP_NAME.app"
+    ln -s /Applications "$STAGE/Applications"
+
+    # Room for the Finder to write its .DS_Store into the image.
+    SIZE_MB=$(( $(du -sm "$STAGE" | cut -f1) + 32 ))
+    hdiutil create -quiet -srcfolder "$STAGE" -volname "$APP_NAME" -fs HFS+ \
+        -format UDRW -size "${SIZE_MB}m" -ov "$RW_DMG"
+
+    # Mounted wherever hdiutil puts it: a stale ROSilicon volume from an
+    # earlier run would otherwise be detached out from under someone.
+    ATTACHED="$(hdiutil attach "$RW_DMG" -readwrite -noverify -noautoopen)"
+    MOUNT="$(printf '%s\n' "$ATTACHED" | sed -n 's|.*\(/Volumes/.*\)$|\1|p' | tail -1)"
+    [[ -n "$MOUNT" ]] || { echo "error: could not mount $RW_DMG" >&2; exit 1; }
+    VOLUME="$(basename "$MOUNT")"
+
+    # Icon positions live in the volume's .DS_Store, which only the Finder
+    # writes. It needs permission to be driven by this terminal, so a refusal
+    # leaves the layout at the Finder's default rather than failing the build.
+    osascript <<APPLESCRIPT >/dev/null || echo "    (skipped the window layout — the Finder said no)"
+tell application "Finder"
+    tell disk "$VOLUME"
+        open
+        set current view of container window to icon view
+        set toolbar visible of container window to false
+        set statusbar visible of container window to false
+        set bounds of container window to {200, 150, 800, 570}
+        set viewOptions to icon view options of container window
+        set arrangement of viewOptions to not arranged
+        set icon size of viewOptions to 128
+        set text size of viewOptions to 13
+        set position of item "$APP_NAME.app" of container window to {150, 180}
+        set position of item "Applications" of container window to {450, 180}
+        close
+        open
+        update without registering applications
+        delay 1
+    end tell
+end tell
+APPLESCRIPT
+
+    # The icon the volume wears on the desktop and in the sidebar. It goes on
+    # after the Finder is done: refreshing the window with the custom-icon flag
+    # already set makes the Finder delete the .icns and clear the flag again.
+    cp "$APP/Contents/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
+    if command -v SetFile >/dev/null 2>&1; then SetFile -a C "$MOUNT"; fi
+
+    sync
+    hdiutil detach "$MOUNT" -quiet || hdiutil detach "$MOUNT" -force -quiet
+    MOUNT=""
+
+    rm -f "$DMG"
+    hdiutil convert "$RW_DMG" -quiet -format UDZO -imagekey zlib-level=9 -o "$DMG"
+    echo "Built $DMG"
+fi

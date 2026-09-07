@@ -10,13 +10,21 @@ client's legacy x87 floating-point code, and DXVK for Direct3D 9.
 ## Build
 
 ```sh
-./build.sh          # -> ROSilicon.app in this folder
+./build.sh          # -> ROSilicon.app and ROSilicon-0.0.1.dmg in this folder
+./build.sh --no-dmg # -> just the app
 ```
 
 Needs Xcode (or the Swift toolchain); macOS 14+, Apple Silicon, Rosetta 2. The
 script builds the package, assembles the bundle, draws the icon and ad-hoc signs
 it — without the hardened runtime, so the launcher can pass
-`DYLD_LIBRARY_PATH` down to Wine. Set `APP_OUT` to build elsewhere.
+`DYLD_LIBRARY_PATH` down to Wine. Set `APP_OUT` to build elsewhere. The version
+is read from the `VERSION` file, and names both the bundle and the disk image.
+
+The disk image is the one to hand to someone else: it opens on a window holding
+the app beside a shortcut to `/Applications` to drag it onto, and wears the app's
+own icon. Laying that window out is the Finder's job, so the first build asks for
+permission to control it; refusing costs only the icon positions, and the image
+is built either way.
 
 ## What it does
 
@@ -77,8 +85,9 @@ build — `build.sh` picks up every `.lproj` it finds and lists them in the bund
 ## Layout
 
 ```
+VERSION                  the version the build stamps into the app and the .dmg
 Package.swift            SwiftPM manifest (macOS 14+, Swift 6)
-build.sh                 builds, assembles and signs the .app
+build.sh                 builds, assembles and signs the .app, packs the .dmg
 makeicon.swift           draws AppIcon.icns, no asset files needed
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
