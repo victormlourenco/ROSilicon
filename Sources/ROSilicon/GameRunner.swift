@@ -54,6 +54,9 @@ struct GameRunner: Sendable {
     /// Draws Metal's frame-rate overlay on top of the client. Off unless
     /// someone turned it on in the menu; quitting never needs it.
     var metalHUD = false
+    /// Wine's debug channels and any extra variables set from the menu.
+    /// Untouched by default, which is the launcher's own quiet environment.
+    var options = LaunchOptions()
 
     /// Shuts down everything in the prefix. Wine's own way of doing it, so a
     /// hung client goes down with it rather than being orphaned.
@@ -79,7 +82,7 @@ struct GameRunner: Sendable {
         }
 
         var environment = paths.wineEnvironment()
-        environment["WINEDEBUG"] = "-all"
+        await applyOptions(to: &environment)
         await reporter.log(Strings.logOpeningTool(tool.label))
         // Nothing is logged on success: winecfg blocks until its window is
         // closed, while wineconsole returns the moment it has handed the
@@ -99,13 +102,13 @@ struct GameRunner: Sendable {
         environment["WINEDLLOVERRIDES"] = "d3d9=n,b"        // DXVK instead of Wine's D3D9
         environment["MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS"] = "1"
         environment["DXVK_ASYNC"] = "1"
-        environment["WINEDEBUG"] = "-all"
         // DXVK renders through MoltenVK, so the overlay Metal itself draws is
         // the one that shows the frame rate of the client.
         if metalHUD {
             environment["MTL_HUD_ENABLED"] = "1"
             await reporter.log(Strings.logMetalHUD)
         }
+        await applyOptions(to: &environment)
 
         await reporter.step(Strings.stepRunning)
         await reporter.log(Strings.logLaunching)
@@ -118,6 +121,19 @@ struct GameRunner: Sendable {
         if Task.isCancelled { throw CancellationError() }
         guard status == 0 else { throw RunError.exited(status) }
         await reporter.log(Strings.logExitedNormally)
+    }
+
+    /// Sets Wine's debug channels and the extra variables, last so they take
+    /// precedence over everything the launcher chose itself. What is not the
+    /// default gets logged, so a run started with unusual settings says so.
+    private func applyOptions(to environment: inout [String: String]) async {
+        let extras = options.apply(to: &environment)
+        if options.wineDebugValue != LaunchOptions.defaultWineDebug {
+            await reporter.log(Strings.logWineDebug(options.wineDebugValue))
+        }
+        if !extras.isEmpty {
+            await reporter.log(Strings.logExtraEnvironment(extras.joined(separator: ", ")))
+        }
     }
 
     /// Checks the pieces are in place and links DXVK and the Steam stub, both

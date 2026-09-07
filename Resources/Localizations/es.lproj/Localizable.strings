@@ -17,6 +17,8 @@
 "menu.reinstall_client" = "Reinstalar el cliente del juego…";
 "menu.client_url" = "URL del cliente…";
 "menu.metal_hud" = "Mostrar el medidor de FPS de Metal";
+"menu.wine_debug" = "Canales de depuración de Wine (WINEDEBUG)…";
+"menu.environment" = "Variables de entorno adicionales…";
 "menu.winecfg" = "Abrir la configuración de Wine (winecfg)";
 "menu.command_prompt" = "Abrir el símbolo del sistema (cmd.exe)";
 "menu.copy_log" = "Copiar el registro";
@@ -35,11 +37,17 @@
 "dialog.clear.message" = "Todo lo que hay en %1$@ (%2$@) va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
 "dialog.clear.message_no_size" = "Todo lo que hay en %@ va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
 
-/* Panel de la URL del cliente */
+/* Paneles */
 "sheet.client_url.title" = "URL de descarga del cliente";
 "sheet.client_url.explanation" = "Apunta a otra compilación para instalarla en su lugar. Después usa Reinstalar el cliente del juego.";
 "sheet.client_url.field" = "URL";
-"sheet.client_url.reset" = "Restablecer";
+"sheet.wine_debug.title" = "Canales de depuración de Wine";
+"sheet.wine_debug.explanation" = "El valor de WINEDEBUG al iniciar el juego. El valor por omisión, -all, mantiene a Wine en silencio; prueba +seh,+tid o warn+all para investigar un fallo. Se aplica en el próximo inicio.";
+"sheet.wine_debug.field" = "WINEDEBUG";
+"sheet.environment.title" = "Variables de entorno adicionales";
+"sheet.environment.explanation" = "Pares NOMBRE=valor separados por ; — por ejemplo DXVK_HUD=fps;WINEESYNC=1. Se aplican al final, así que tienen prioridad sobre las del lanzador. Se aplican en el próximo inicio.";
+"sheet.environment.field" = "Variables";
+"sheet.reset" = "Restablecer";
 "sheet.done" = "Listo";
 
 /* Lista de comprobación */
@@ -105,6 +113,8 @@
 "log.removed" = "(eliminado)";
 "log.launching" = "Iniciando el cliente…";
 "log.metal_hud" = "Medidor de FPS de Metal activado.";
+"log.wine_debug" = "WINEDEBUG=%@";
+"log.extra_environment" = "Entorno adicional: %@";
 "log.opening_tool" = "Abriendo %@…";
 "log.tool_exited" = "%1$@ terminó con el estado %2$d.";
 "log.exited_normally" = "El juego se cerró con normalidad.";

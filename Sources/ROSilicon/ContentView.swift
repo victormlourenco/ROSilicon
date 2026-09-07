@@ -7,7 +7,14 @@ struct ContentView: View {
     @State private var confirmReinstall = false
     @State private var confirmQuit = false
     @State private var confirmClear = false
-    @State private var editingClientURL = false
+    @State private var editor: Editor?
+
+    /// The text settings behind ⌥, each shown in a sheet of the same shape.
+    private enum Editor: String, Identifiable {
+        case clientURL, wineDebug, environment
+
+        var id: String { rawValue }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -49,7 +56,7 @@ struct ContentView: View {
         } message: {
             Text(clearMessage)
         }
-        .sheet(isPresented: $editingClientURL) { clientURLSheet }
+        .sheet(item: $editor) { sheet(for: $0) }
         .onAppear {
             model.refresh()
             modifiers.watch()
@@ -83,9 +90,11 @@ struct ContentView: View {
             Button(Strings.menuReinstallClient) { confirmReinstall = true }
                 .disabled(model.phase.isBusy)
             if modifiers.optionHeld {
-                Button(Strings.menuClientURL) { editingClientURL = true }
+                Button(Strings.menuClientURL) { editor = .clientURL }
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                Button(Strings.menuWineDebug) { editor = .wineDebug }
+                Button(Strings.menuEnvironment) { editor = .environment }
                 Divider()
                 Button(Strings.menuWinecfg) { model.openWineTool(.winecfg) }
                     .disabled(!model.canOpenWineTools)
@@ -302,23 +311,51 @@ struct ContentView: View {
 
     // MARK: - Sheets
 
-    private var clientURLSheet: some View {
+    @ViewBuilder
+    private func sheet(for editor: Editor) -> some View {
+        switch editor {
+        case .clientURL:
+            editorSheet(
+                title: Strings.clientURLTitle, explanation: Strings.clientURLExplanation,
+                field: Strings.clientURLField, text: $model.clientURLText,
+                default: Paths.defaultClientURL.absoluteString)
+        case .wineDebug:
+            editorSheet(
+                title: Strings.wineDebugTitle, explanation: Strings.wineDebugExplanation,
+                field: Strings.wineDebugField, text: $model.wineDebugText,
+                default: LaunchOptions.defaultWineDebug)
+        case .environment:
+            editorSheet(
+                title: Strings.environmentTitle, explanation: Strings.environmentExplanation,
+                field: Strings.environmentField, text: $model.extraEnvironmentText,
+                default: "")
+        }
+    }
+
+    /// One shape for all three: a line of explanation, the field itself, and a
+    /// way back to the default for anyone who has typed themselves into a
+    /// corner. Nothing needs confirming — the model writes every keystroke
+    /// through to defaults, and none of these take effect before the next
+    /// launch.
+    private func editorSheet(
+        title: String, explanation: String, field: String,
+        text: Binding<String>, default defaultValue: String
+    ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(Strings.clientURLTitle)
+            Text(title)
                 .font(.headline)
-            Text(Strings.clientURLExplanation)
+            Text(explanation)
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            TextField(Strings.clientURLField, text: $model.clientURLText, axis: .vertical)
+            TextField(field, text: text, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
                 .font(.system(size: 11, design: .monospaced))
             HStack {
-                Button(Strings.clientURLReset) {
-                    model.clientURLText = Paths.defaultClientURL.absoluteString
-                }
+                Button(Strings.resetToDefault) { text.wrappedValue = defaultValue }
+                    .disabled(text.wrappedValue == defaultValue)
                 Spacer()
-                Button(Strings.done) { editingClientURL = false }
+                Button(Strings.done) { editor = nil }
                     .keyboardShortcut(.defaultAction)
             }
         }

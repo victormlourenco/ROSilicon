@@ -17,6 +17,8 @@
 "menu.reinstall_client" = "Reinstalar cliente do jogo…";
 "menu.client_url" = "URL do cliente…";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
+"menu.wine_debug" = "Canais de depuração do Wine (WINEDEBUG)…";
+"menu.environment" = "Variáveis de ambiente adicionais…";
 "menu.winecfg" = "Abrir a configuração do Wine (winecfg)";
 "menu.command_prompt" = "Abrir o prompt de comando (cmd.exe)";
 "menu.copy_log" = "Copiar registro";
@@ -35,11 +37,17 @@
 "dialog.clear.message" = "Tudo em %1$@ (%2$@) vai para o Lixo: a build do Wine, o prefixo, o cliente do jogo e as configurações. Instalar de novo baixa tudo outra vez.";
 "dialog.clear.message_no_size" = "Tudo em %@ vai para o Lixo: a build do Wine, o prefixo, o cliente do jogo e as configurações. Instalar de novo baixa tudo outra vez.";
 
-/* Painel da URL do cliente */
+/* Painéis */
 "sheet.client_url.title" = "URL de download do cliente";
 "sheet.client_url.explanation" = "Aponte para outra build para instalá-la no lugar desta. Depois use Reinstalar cliente do jogo.";
 "sheet.client_url.field" = "URL";
-"sheet.client_url.reset" = "Restaurar padrão";
+"sheet.wine_debug.title" = "Canais de depuração do Wine";
+"sheet.wine_debug.explanation" = "O valor de WINEDEBUG ao iniciar o jogo. O padrão, -all, mantém o Wine em silêncio; use +seh,+tid ou warn+all para investigar uma falha. Vale a partir do próximo início.";
+"sheet.wine_debug.field" = "WINEDEBUG";
+"sheet.environment.title" = "Variáveis de ambiente adicionais";
+"sheet.environment.explanation" = "Pares NOME=valor separados por ; — por exemplo DXVK_HUD=fps;WINEESYNC=1. São aplicadas por último, então têm prioridade sobre as do launcher. Valem a partir do próximo início.";
+"sheet.environment.field" = "Variáveis";
+"sheet.reset" = "Restaurar padrão";
 "sheet.done" = "Concluído";
 
 /* Lista de verificação */
@@ -105,6 +113,8 @@
 "log.removed" = "(removido)";
 "log.launching" = "Iniciando o cliente…";
 "log.metal_hud" = "Medidor de FPS do Metal ligado.";
+"log.wine_debug" = "WINEDEBUG=%@";
+"log.extra_environment" = "Ambiente adicional: %@";
 "log.opening_tool" = "Abrindo %@…";
 "log.tool_exited" = "%1$@ terminou com o status %2$d.";
 "log.exited_normally" = "O jogo foi encerrado normalmente.";
