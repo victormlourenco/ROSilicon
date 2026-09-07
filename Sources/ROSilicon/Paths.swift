@@ -39,6 +39,9 @@ struct Paths: Sendable {
     var wineserver: URL { wineRoot.appending(path: "bin/wineserver") }
     var wineExternalLibs: URL { wineRoot.appending(path: "lib/external") }
 
+    /// One of Wine's own tools beside `wine` itself, e.g. winecfg.
+    func wineTool(_ name: String) -> URL { wineRoot.appending(path: "bin/" + name) }
+
     var prefix: URL { root.appending(path: "wine") }
     var driveC: URL { prefix.appending(path: "drive_c") }
     var gameDir: URL { driveC.appending(path: "Gravity/Ragnarok") }

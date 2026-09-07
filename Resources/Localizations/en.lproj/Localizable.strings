@@ -22,6 +22,8 @@
 "menu.reapply_patch" = "Re-apply Signature Check Workaround";
 "menu.restore_wintrust" = "Restore Original wintrust.dll";
 "menu.metal_hud" = "Show Metal Frame-Rate Overlay";
+"menu.winecfg" = "Open Wine Configuration (winecfg)";
+"menu.command_prompt" = "Open Command Prompt (cmd.exe)";
 "menu.copy_log" = "Copy Log";
 "menu.clear_install" = "Clear Installation Folder…";
 
@@ -126,6 +128,8 @@
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
 "log.metal_hud" = "Metal frame-rate overlay on.";
+"log.opening_tool" = "Opening %@…";
+"log.tool_exited" = "%1$@ exited with status %2$d.";
 "log.exited_normally" = "The game exited normally.";
 "log.unknown_size" = "unknown size";
 

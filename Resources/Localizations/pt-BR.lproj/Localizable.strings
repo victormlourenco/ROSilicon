@@ -19,6 +19,8 @@
 "menu.reapply_patch" = "Reaplicar correção da verificação de assinatura";
 "menu.restore_wintrust" = "Restaurar wintrust.dll original";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
+"menu.winecfg" = "Abrir a configuração do Wine (winecfg)";
+"menu.command_prompt" = "Abrir o prompt de comando (cmd.exe)";
 "menu.copy_log" = "Copiar registro";
 "menu.clear_install" = "Limpar pasta de instalação…";
 
@@ -123,6 +125,8 @@
 "log.removed" = "(removido)";
 "log.launching" = "Iniciando o cliente…";
 "log.metal_hud" = "Medidor de FPS do Metal ligado.";
+"log.opening_tool" = "Abrindo %@…";
+"log.tool_exited" = "%1$@ terminou com o status %2$d.";
 "log.exited_normally" = "O jogo foi encerrado normalmente.";
 "log.unknown_size" = "tamanho desconhecido";
 

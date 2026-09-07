@@ -94,6 +94,11 @@ struct ContentView: View {
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
                 Divider()
+                Button(Strings.menuWinecfg) { model.openWineTool(.winecfg) }
+                    .disabled(!model.canOpenWineTools)
+                Button(Strings.menuCommandPrompt) { model.openWineTool(.commandPrompt) }
+                    .disabled(!model.canOpenWineTools)
+                Divider()
                 Button(Strings.menuCopyLog) { model.copyLog() }
                     .disabled(model.log.isEmpty)
             }

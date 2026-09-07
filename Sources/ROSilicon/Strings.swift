@@ -37,6 +37,8 @@ enum Strings {
     static var menuReapplyPatch: String { t("menu.reapply_patch") }
     static var menuRestoreWintrust: String { t("menu.restore_wintrust") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuWinecfg: String { t("menu.winecfg") }
+    static var menuCommandPrompt: String { t("menu.command_prompt") }
     static var menuCopyLog: String { t("menu.copy_log") }
     static var menuClearInstall: String { t("menu.clear_install") }
 
@@ -168,6 +170,10 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static func logOpeningTool(_ name: String) -> String { t("log.opening_tool", name) }
+    static func logToolExited(_ name: String, _ status: Int32) -> String {
+        t("log.tool_exited", name, status)
+    }
     static var logExitedNormally: String { t("log.exited_normally") }
     static var unknownSize: String { t("log.unknown_size") }
 

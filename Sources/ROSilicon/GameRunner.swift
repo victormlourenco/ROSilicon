@@ -16,6 +16,37 @@ enum RunError: LocalizedError {
     }
 }
 
+/// Wine's own tools, offered behind ⌥ for poking at the prefix by hand.
+enum WineTool: Sendable {
+    case winecfg
+    case commandPrompt
+
+    /// The loader in Wine's bin/ that starts it. cmd.exe goes through
+    /// wineconsole because it needs a console window drawn for it, and a
+    /// launcher started from Finder has no terminal to inherit.
+    var executable: String {
+        switch self {
+        case .winecfg: "winecfg"
+        case .commandPrompt: "wineconsole"
+        }
+    }
+
+    var arguments: [String] {
+        switch self {
+        case .winecfg: []
+        case .commandPrompt: ["cmd"]
+        }
+    }
+
+    /// What the log calls it, untranslated: these are program names.
+    var label: String {
+        switch self {
+        case .winecfg: "winecfg"
+        case .commandPrompt: "cmd.exe"
+        }
+    }
+}
+
 /// Launches the client the way Run.command does.
 struct GameRunner: Sendable {
     let paths: Paths
@@ -30,6 +61,35 @@ struct GameRunner: Sendable {
         var environment = paths.wineEnvironment()
         environment["WINEDEBUG"] = "-all"
         _ = try? await Shell.run(paths.wineserver, ["-k"], environment: environment)
+    }
+
+    /// Opens one of Wine's tools against the prefix, in a window of its own.
+    ///
+    /// Unlike playing, this needs neither the client nor the bundled DLLs, so
+    /// it stays available on a half-finished install — which is when it is
+    /// most useful. An uninitialized prefix gets bootstrapped on the way, the
+    /// same as any other wine invocation would do.
+    func open(_ tool: WineTool) async throws {
+        guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
+            throw RunError.missingWine(paths.wine)
+        }
+        let executable = paths.wineTool(tool.executable)
+        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+            throw RunError.missingFile(tool.executable, executable)
+        }
+
+        var environment = paths.wineEnvironment()
+        environment["WINEDEBUG"] = "-all"
+        await reporter.log(Strings.logOpeningTool(tool.label))
+        // Nothing is logged on success: winecfg blocks until its window is
+        // closed, while wineconsole returns the moment it has handed the
+        // console off, so "closed" would be a lie for one of the two.
+        let status = try await Shell.run(
+            executable, tool.arguments, environment: environment
+        ) { line in await reporter.log(line) }
+        if status != 0 {
+            await reporter.log(Strings.logToolExited(tool.label, status))
+        }
     }
 
     func play() async throws {
