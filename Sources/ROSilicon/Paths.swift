@@ -15,7 +15,7 @@ enum BundledToolsError: LocalizedError {
 ///
 /// `root` is where the launcher installs: the Wine build, the prefix, the game
 /// and copies of the two bundled Windows binaries, under
-/// ~/Library/Application Support/RO LATAM. The app itself carries DXVK and the
+/// ~/Library/Application Support/ROSilicon. The app itself carries DXVK and the
 /// Steam stub, so it needs nothing beside it and can live anywhere,
 /// /Applications included.
 struct Paths: Sendable {
@@ -155,7 +155,7 @@ struct Paths: Sendable {
     }
 
     /// Where the launcher installs, by default
-    /// ~/Library/Application Support/RO LATAM. `RO_ROOT` overrides it.
+    /// ~/Library/Application Support/ROSilicon. `RO_ROOT` overrides it.
     static var installRoot: URL {
         if let override = ProcessInfo.processInfo.environment["RO_ROOT"] {
             return URL(filePath: override).standardizedFileURL
@@ -163,7 +163,7 @@ struct Paths: Sendable {
         let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(filePath: NSHomeDirectory()).appending(path: "Library/Application Support")
-        return base.appending(path: "RO LATAM")
+        return base.appending(path: "ROSilicon")
     }
 
     static func locateRoot() -> Paths { Paths(root: installRoot) }

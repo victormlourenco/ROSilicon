@@ -21,7 +21,7 @@ it — without the hardened runtime, so the launcher can pass
 ## What it does
 
 The app is self-contained and installs into
-`~/Library/Application Support/RO LATAM`:
+`~/Library/Application Support/ROSilicon`:
 
 ```
 WoWSilicon.app/    the Wine build, downloaded on first install
