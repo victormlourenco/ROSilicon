@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+._*
+
+# SwiftPM build products
+/.build/
+
+# The app built by build.sh
+/RO LATAM.app/
