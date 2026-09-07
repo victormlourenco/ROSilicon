@@ -16,11 +16,9 @@ struct Status: Sendable {
     var installedSize: Int64?
     var wineReady = false
     var prefixReady = false
-    var wintrustPatched = false
     var clientReady = false
 
     var canPlay: Bool { wineReady && prefixReady && clientReady }
-    var fullyInstalled: Bool { canPlay && wintrustPatched }
 
     /// Inspects the folder. Cheap enough to re-run whenever the window
     /// reappears; the wintrust check parses two DLL export tables.
@@ -47,25 +45,20 @@ struct Status: Sendable {
             id: "rosetta", title: Strings.itemRosetta,
             detail: rosettaDetail, state: rosettaState))
 
-        // 1. The Wine build
-        let installedVersion = paths.installedWineVersion
-        let wineUsable = fm.isExecutableFile(atPath: paths.wine.path) && paths.x87Sidecar != nil
-        switch (installedVersion, wineUsable) {
-        case (Paths.wowSiliconVersion, true):
+        // 1. The Wine runtime, which rides inside the app together with
+        //    x87sidecar: there is nothing to install, only to check. It is
+        //    missing only from a build assembled without one.
+        let version = Paths.bundledWineVersion
+        let wineUsable = fm.isExecutableFile(atPath: paths.wine.path)
+        if let version, wineUsable, Paths.x87Sidecar != nil {
             status.wineReady = true
             status.items.append(Item(
                 id: "wine", title: Strings.itemWine,
-                detail: Strings.wineVersion(Paths.wowSiliconVersion), state: .ok))
-        case (let version?, true):
-            status.wineReady = true
+                detail: Strings.wineVersion(version), state: .ok))
+        } else {
             status.items.append(Item(
                 id: "wine", title: Strings.itemWine,
-                detail: Strings.wineOutdated(version, Paths.wowSiliconVersion),
-                state: .warning))
-        default:
-            status.items.append(Item(
-                id: "wine", title: Strings.itemWine,
-                detail: installedVersion == nil
+                detail: version == nil || !wineUsable
                     ? Strings.notInstalled : Strings.incompleteInstallAgain,
                 state: .missing))
         }
@@ -80,19 +73,7 @@ struct Status: Sendable {
                     ? Strings.incomplete : Strings.notCreated),
             state: status.prefixReady ? .ok : .missing))
 
-        // 3. The signature-check workaround
-        let targets = paths.wintrustTargets.filter { fm.fileExists(atPath: $0.path) }
-        status.wintrustPatched = !targets.isEmpty && targets.allSatisfy(WintrustPatch.isPatched)
-        status.items.append(Item(
-            id: "wintrust", title: Strings.itemPatch,
-            detail: targets.isEmpty
-                ? Strings.noWintrustYet
-                : (status.wintrustPatched
-                    ? Strings.wintrustPatched(targets.count)
-                    : Strings.wintrustNotPatched),
-            state: targets.isEmpty ? .missing : (status.wintrustPatched ? .ok : .warning)))
-
-        // 4. The game client
+        // 3. The game client
         status.clientReady = fm.fileExists(atPath: paths.ragexe.path)
         var clientDetail = Strings.notInstalled
         if status.clientReady {

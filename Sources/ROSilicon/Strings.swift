@@ -34,8 +34,6 @@ enum Strings {
     static var menuShowGameFolder: String { t("menu.show_game_folder") }
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
-    static var menuReapplyPatch: String { t("menu.reapply_patch") }
-    static var menuRestoreWintrust: String { t("menu.restore_wintrust") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
     static var menuWinecfg: String { t("menu.winecfg") }
     static var menuCommandPrompt: String { t("menu.command_prompt") }
@@ -73,28 +71,20 @@ enum Strings {
     static var itemRosetta: String { t("item.rosetta") }
     static var itemWine: String { t("item.wine") }
     static var itemPrefix: String { t("item.prefix") }
-    static var itemPatch: String { t("item.patch") }
     static var itemClient: String { t("item.client") }
 
     static func wineVersion(_ version: String) -> String { t("detail.wine_version", version) }
-    static func wineOutdated(_ installed: String, _ available: String) -> String {
-        t("detail.wine_outdated", installed, available)
-    }
     static var notInstalled: String { t("detail.not_installed") }
     static var rosettaInstalled: String { t("detail.rosetta_installed") }
     static var rosettaNeedsAppleSilicon: String { t("detail.rosetta_needs_apple_silicon") }
     static var incompleteInstallAgain: String { t("detail.incomplete_install_again") }
     static var notCreated: String { t("detail.not_created") }
     static var incomplete: String { t("detail.incomplete") }
-    static var noWintrustYet: String { t("detail.no_wintrust_yet") }
-    static func wintrustPatched(_ count: Int) -> String { t("detail.wintrust_patched", count) }
-    static var wintrustNotPatched: String { t("detail.wintrust_not_patched") }
     static func clientDated(_ date: String) -> String { t("detail.client_dated", date) }
 
     // MARK: - Status line
 
     static var readyToPlay: String { t("status.ready") }
-    static var playableUnpatched: String { t("status.playable_unpatched") }
     static var notInstalledYet: String { t("status.not_installed_yet") }
     static var cancelled: String { t("status.cancelled") }
     static func transferred(_ done: String, _ total: String) -> String {
@@ -104,18 +94,12 @@ enum Strings {
 
     // MARK: - Steps
 
-    static var stepTools: String { t("step.tools") }
-    static func stepDownloadingWine(_ version: String) -> String {
-        t("step.downloading_wine", version)
-    }
-    static func stepInstallingWine(_ version: String) -> String {
-        t("step.installing_wine", version)
+    static func stepCheckingWine(_ version: String) -> String {
+        t("step.checking_wine", version)
     }
     static var stepCheckingRosetta: String { t("step.checking_rosetta") }
     static var stepCheckingSidecar: String { t("step.checking_sidecar") }
     static var stepCreatingPrefix: String { t("step.creating_prefix") }
-    static var stepPatching: String { t("step.patching") }
-    static var stepRestoring: String { t("step.restoring") }
     static var stepCheckingDownload: String { t("step.checking_download") }
     static var stepDownloadingClient: String { t("step.downloading_client") }
     static var stepVerifying: String { t("step.verifying") }
@@ -130,20 +114,9 @@ enum Strings {
 
     static func logInstallingInto(_ path: String) -> String { t("log.installing_into", path) }
     static var logReady: String { t("log.ready") }
-    static var logToolsInPlace: String { t("log.tools_in_place") }
-    static func logToolsCopied(_ files: String, _ folder: String) -> String {
-        t("log.tools_copied", files, folder)
+    static func logRemovingOld(_ name: String) -> String {
+        t("log.removing_old", name)
     }
-    static var logAnd: String { t("log.and") }
-    static func logWineInstalled(_ version: String) -> String { t("log.wine_installed", version) }
-    static func logWineReplacing(_ old: String, _ new: String) -> String {
-        t("log.wine_replacing", old, new)
-    }
-    static func logDownloading(_ name: String, _ size: String) -> String {
-        t("log.downloading", name, size)
-    }
-    static func logMounting(_ name: String) -> String { t("log.mounting", name) }
-    static func logCopyingApp(_ destination: String) -> String { t("log.copying_app", destination) }
     static func logUsingWine(_ version: String) -> String { t("log.using_wine", version) }
     static var logUnknownWineVersion: String { t("log.unknown_wine_version") }
     static var logRosettaOK: String { t("log.rosetta_ok") }
@@ -152,7 +125,6 @@ enum Strings {
     static func logPrefixExists(_ path: String) -> String { t("log.prefix_exists", path) }
     static func logCreatingPrefix(_ path: String) -> String { t("log.creating_prefix", path) }
     static var logPrefixReady: String { t("log.prefix_ready") }
-    static var logPatching: String { t("log.patching") }
     static func logClientInstalled(_ path: String) -> String { t("log.client_installed", path) }
     static func logQuerying(_ url: String) -> String { t("log.querying", url) }
     static func logDownloadingClient(_ size: String) -> String { t("log.downloading_client", size) }
@@ -179,12 +151,6 @@ enum Strings {
 
     // MARK: - The wintrust patch
 
-    static func patchAlreadyDone(_ file: String) -> String { t("patch.already_done", file) }
-    static func patchDone(_ machine: String, _ file: String, _ exports: String) -> String {
-        t("patch.done", machine, file, exports)
-    }
-    static func patchRestored(_ file: String) -> String { t("patch.restored", file) }
-    static func patchNoBackup(_ file: String) -> String { t("patch.no_backup", file) }
 
     // MARK: - Errors
 
@@ -193,7 +159,9 @@ enum Strings {
         t("error.root_not_writable", path)
     }
     static var errorWineRunning: String { t("error.wine_running") }
-    static func errorMissingInDMG(_ name: String) -> String { t("error.missing_in_dmg", name) }
+    static func errorWineRuntimeMissing(_ path: String) -> String {
+        t("error.wine_runtime_missing", path)
+    }
     static func errorSidecarMissing(_ path: String) -> String { t("error.sidecar_missing", path) }
     static func errorRosettaMissing(_ command: String) -> String {
         t("error.rosetta_missing", command)
@@ -224,5 +192,4 @@ enum Strings {
     static func errorProcessFailedDetail(_ command: String, _ status: Int32, _ output: String) -> String {
         t("error.process_failed_detail", command, status, output)
     }
-    static func errorTruncatedPE(_ path: String) -> String { t("error.truncated_pe", path) }
 }

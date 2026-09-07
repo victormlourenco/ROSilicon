@@ -16,8 +16,6 @@
 "menu.show_game_folder" = "Mostrar la carpeta del juego en el Finder";
 "menu.reinstall_client" = "Reinstalar el cliente del juego…";
 "menu.client_url" = "URL del cliente…";
-"menu.reapply_patch" = "Volver a aplicar el parche de verificación de firma";
-"menu.restore_wintrust" = "Restaurar el wintrust.dll original";
 "menu.metal_hud" = "Mostrar el medidor de FPS de Metal";
 "menu.winecfg" = "Abrir la configuración de Wine (winecfg)";
 "menu.command_prompt" = "Abrir el símbolo del sistema (cmd.exe)";
@@ -46,40 +44,30 @@
 
 /* Lista de comprobación */
 "item.rosetta" = "Rosetta 2";
-"item.wine" = "Compilación de Wine";
+"item.wine" = "Entorno de Wine";
 "item.prefix" = "Prefijo de Wine";
-"item.patch" = "Verificación de firma";
 "item.client" = "Cliente del juego";
-"detail.wine_version" = "WoWSilicon %@";
-"detail.wine_outdated" = "WoWSilicon %1$@ — %2$@ disponible";
+"detail.wine_version" = "Wine %@";
 "detail.not_installed" = "sin instalar";
 "detail.rosetta_installed" = "instalado";
 "detail.rosetta_needs_apple_silicon" = "requiere un Mac con Apple Silicon";
 "detail.incomplete_install_again" = "incompleto — instala de nuevo";
 "detail.not_created" = "sin crear";
 "detail.incomplete" = "incompleto";
-"detail.no_wintrust_yet" = "todavía sin wintrust.dll";
-"detail.wintrust_patched" = "wintrust.dll parcheado (%d copias)";
-"detail.wintrust_not_patched" = "wintrust.dll sin parchear";
 "detail.client_dated" = "Ragexe.exe — %@";
 
 /* Línea de estado */
 "status.ready" = "Listo para jugar";
-"status.playable_unpatched" = "Jugable — falta aplicar el parche de verificación de firma";
 "status.not_installed_yet" = "Todavía sin instalar";
 "status.cancelled" = "Cancelado.";
 "status.transferred" = "%1$@ de %2$@";
 "status.per_second" = "%@/s";
 
 /* Etapas */
-"step.tools" = "Instalando Direct3D 9 y el stub de Steam";
-"step.downloading_wine" = "Descargando WoWSilicon %@";
-"step.installing_wine" = "Instalando WoWSilicon %@";
+"step.checking_wine" = "Comprobando Wine %@";
 "step.checking_rosetta" = "Comprobando Rosetta 2";
 "step.checking_sidecar" = "Comprobando x87sidecar";
 "step.creating_prefix" = "Creando el prefijo de Wine";
-"step.patching" = "Parcheando wintrust.dll";
-"step.restoring" = "Restaurando wintrust.dll";
 "step.checking_download" = "Comprobando la descarga del cliente";
 "step.downloading_client" = "Descargando el cliente del juego";
 "step.verifying" = "Comprobando la descarga";
@@ -93,14 +81,7 @@
 /* Registro */
 "log.installing_into" = "Instalando en %@";
 "log.ready" = "Todo listo. Pulsa Jugar.";
-"log.tools_in_place" = "d3d9.dll y steam_stub.exe ya están en su sitio";
-"log.tools_copied" = "%1$@ copiado en %2$@/";
-"log.and" = "y";
-"log.wine_installed" = "WoWSilicon %@ ya está instalado";
-"log.wine_replacing" = "Reemplazando WoWSilicon %1$@ por %2$@";
-"log.downloading" = "Descargando %1$@ (%2$@)";
-"log.mounting" = "Montando %@";
-"log.copying_app" = "Copiando WoWSilicon.app en %@";
+"log.removing_old" = "Eliminando %@, que dejó una instalación anterior — ahora lo lleva la app";
 "log.using_wine" = "Usando %@";
 "log.unknown_wine_version" = "una versión desconocida de Wine";
 "log.rosetta_ok" = "Rosetta 2 está instalado";
@@ -109,7 +90,6 @@
 "log.prefix_exists" = "El prefijo de Wine ya está en %@";
 "log.creating_prefix" = "Creando el prefijo de Wine en %@";
 "log.prefix_ready" = "Prefijo de Wine listo";
-"log.patching" = "Parcheando wintrust.dll (la verificación de firma del cliente)";
 "log.client_installed" = "El cliente ya está instalado en %@";
 "log.querying" = "Consultando %@";
 "log.downloading_client" = "Descargando el cliente (%@) — esto puede tardar";
@@ -131,16 +111,12 @@
 "log.unknown_size" = "tamaño desconocido";
 
 /* Parche de wintrust */
-"patch.already_done" = "%@: ya está parcheado";
-"patch.done" = "%1$@/%2$@: %3$@ parcheado";
-"patch.restored" = "%@: original restaurado";
-"patch.no_backup" = "%@: no hay copia de seguridad";
 
 /* Errores */
 "error.prefix" = "error: ";
 "error.root_not_writable" = "No se puede escribir en %@ — revisa los permisos de la carpeta";
 "error.wine_running" = "Wine sigue en ejecución — cierra el juego y vuelve a intentarlo";
-"error.missing_in_dmg" = "No se encontró WoWSilicon.app dentro de %@";
+"error.wine_runtime_missing" = "No hay entorno de Wine en %@ — esta versión de la app se compiló sin él (make bundle)";
 "error.sidecar_missing" = "No se encontró x87sidecar en %@ — instala de nuevo";
 "error.rosetta_missing" = "Rosetta 2 no está instalado — el cliente del juego es código x86 y no funciona sin él. Instálalo en el Terminal con: %@";
 "error.not_apple_silicon" = "Este Mac no es de Apple Silicon — el launcher necesita Apple Silicon y Rosetta 2";
@@ -155,4 +131,3 @@
 "error.checksum" = "el md5 no coincide (se esperaba %1$@ y llegó %2$@) — el archivo se eliminó, instala de nuevo";
 "error.process_failed" = "%1$@ falló (salida %2$d)";
 "error.process_failed_detail" = "%1$@ falló (salida %2$d):\n%3$@";
-"error.truncated_pe" = "archivo PE truncado: %@";

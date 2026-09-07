@@ -18,10 +18,12 @@ import Foundation
 ///   x86_64:                  31 C0 C3         xor eax,eax; ret
 ///
 /// Originals are preserved next to each file as wintrust.dll.wine-orig.
-/// Reinstalling WoWSilicon reverts the patch, so installing runs it again.
 ///
-/// This is a Swift port of tools/patch_wintrust.py, which stays around as a
-/// standalone command-line tool.
+/// This runs once, at build time: `build.sh` applies it to the Wine runtime it
+/// bundles, through the launcher's own `--patch-wintrust` flag, so the app
+/// ships patched. Wine copies its DLLs into each prefix, so a prefix made from
+/// that runtime is born patched too, and the launcher never writes to either —
+/// it only reads them back, for the checklist.
 enum WintrustPatch {
     static let exports = ["WinVerifyTrust", "WinVerifyTrustEx"]
 
@@ -54,28 +56,19 @@ enum WintrustPatch {
 
     // MARK: - Commands
 
-    /// True when both exports in this DLL already return zero.
-    static func isPatched(_ url: URL) -> Bool {
-        guard let data = try? Data(contentsOf: url) else { return false }
-        return exports.allSatisfy { name in
-            guard let hit = try? findExport(data, named: name, path: url.path) else { return false }
-            let patch = hit.machine.returnZero
-            guard hit.offset + patch.count <= data.count else { return false }
-            return Array(data[hit.offset..<hit.offset + patch.count]) == patch
-        }
-    }
-
-    /// Patches one DLL in place. Returns a human-readable summary of what it did.
+    /// Patches one DLL in place, keeping the bytes it replaces beside it as
+    /// wintrust.dll.wine-orig — the way back, and by hand. Returns false when
+    /// the file was already patched and nothing was written.
     @discardableResult
-    static func patch(_ url: URL) throws -> String {
+    static func patch(_ url: URL) throws -> Bool {
         var data = try Data(contentsOf: url)
         let hits = try exports.map { try findExport(data, named: $0, path: url.path) }
+        let backup = backupURL(for: url)
 
         if hits.allSatisfy({ Array(data[$0.offset..<$0.offset + $0.machine.returnZero.count]) == $0.machine.returnZero }) {
-            return Strings.patchAlreadyDone(url.lastPathComponent)
+            return false
         }
 
-        let backup = backupURL(for: url)
         if let existing = try? Data(contentsOf: backup) {
             if existing != data {
                 // Wine was updated in place: the old backup no longer matches
@@ -95,22 +88,7 @@ enum WintrustPatch {
 
         try makeWritable(url)
         try data.write(to: url)
-
-        let names = hits.map(\.name).joined(separator: ", ")
-        return Strings.patchDone(hits[0].machine.name, url.lastPathComponent, names)
-    }
-
-    /// Puts back the copy saved before patching.
-    @discardableResult
-    static func restore(_ url: URL) throws -> String {
-        let backup = backupURL(for: url)
-        guard FileManager.default.fileExists(atPath: backup.path) else {
-            return Strings.patchNoBackup(url.lastPathComponent)
-        }
-        try makeWritable(url)
-        let original = try Data(contentsOf: backup)
-        try original.write(to: url)
-        return Strings.patchRestored(url.lastPathComponent)
+        return true
     }
 
     static func backupURL(for url: URL) -> URL {

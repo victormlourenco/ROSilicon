@@ -59,15 +59,14 @@ final class LauncherModel: ObservableObject {
     }
 
     var canPlay: Bool { status.canPlay && !phase.isBusy }
-    var needsInstall: Bool { !status.fullyInstalled }
+    var needsInstall: Bool { !status.canPlay }
 
     var statusLine: String {
         switch phase {
         case .working, .running: step
         case .idle:
             if let failure { failure }
-            else if status.fullyInstalled { Strings.readyToPlay }
-            else if status.canPlay { Strings.playableUnpatched }
+            else if status.canPlay { Strings.readyToPlay }
             else { Strings.notInstalledYet }
         }
     }
@@ -121,22 +120,6 @@ final class LauncherModel: ObservableObject {
         let hud = metalHUD
         start(.running) { [reporter] in
             try await GameRunner(paths: paths, reporter: reporter, metalHUD: hud).play()
-        }
-    }
-
-    func reapplyWintrustPatch() {
-        guard !phase.isBusy else { return }
-        let paths = self.paths
-        start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter).patchWintrust()
-        }
-    }
-
-    func restoreWintrust() {
-        guard !phase.isBusy else { return }
-        let paths = self.paths
-        start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter).restoreWintrust()
         }
     }
 

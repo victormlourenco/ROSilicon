@@ -120,29 +120,28 @@ struct GameRunner: Sendable {
         await reporter.log(Strings.logExitedNormally)
     }
 
-    /// Checks the pieces are in place and links DXVK and the Steam stub into
-    /// the prefix. Returns the path of steam.exe inside drive_c.
+    /// Checks the pieces are in place and links DXVK and the Steam stub, both
+    /// inside the app, into the prefix. The links are rewritten every launch,
+    /// so one left pointing at an app that has since moved is replaced rather
+    /// than followed. Returns the path of steam.exe inside drive_c.
     @discardableResult
     func prepare() throws -> URL {
         guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
             throw RunError.missingWine(paths.wine)
         }
-        // Puts back a copy that was deleted, and picks up a newer one from a
-        // rebuilt app.
-        try paths.copyBundledTools()
-        guard FileManager.default.fileExists(atPath: paths.dxvkDLL.path) else {
-            throw RunError.missingFile("d3d9.dll", paths.dxvkDLL)
+        guard FileManager.default.fileExists(atPath: Paths.dxvkDLL.path) else {
+            throw RunError.missingFile("d3d9.dll", Paths.dxvkDLL)
         }
-        guard FileManager.default.fileExists(atPath: paths.steamStub.path) else {
-            throw RunError.missingFile("steam_stub.exe", paths.steamStub)
+        guard FileManager.default.fileExists(atPath: Paths.steamStub.path) else {
+            throw RunError.missingFile("steam_stub.exe", Paths.steamStub)
         }
         guard FileManager.default.fileExists(atPath: paths.gameDir.path) else {
             throw RunError.gameNotInstalled(paths.gameDir)
         }
 
         let steamExe = paths.driveC.appending(path: "steam.exe")
-        try link(paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
-        try link(paths.steamStub, at: steamExe)
+        try link(Paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
+        try link(Paths.steamStub, at: steamExe)
         return steamExe
     }
 

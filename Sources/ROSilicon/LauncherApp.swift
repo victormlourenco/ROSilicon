@@ -1,7 +1,8 @@
 import AppKit
 import SwiftUI
 
-@main
+// Started from main.swift rather than @main: the same binary answers
+// --patch-wintrust for the build.
 struct ROSiliconApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = LauncherModel()

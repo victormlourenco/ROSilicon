@@ -84,13 +84,6 @@ struct ContentView: View {
                 .disabled(model.phase.isBusy)
             if modifiers.optionHeld {
                 Button(Strings.menuClientURL) { editingClientURL = true }
-            }
-            Divider()
-            Button(Strings.menuReapplyPatch) { model.reapplyWintrustPatch() }
-                .disabled(!model.status.wineReady || model.phase.isBusy)
-            if modifiers.optionHeld {
-                Button(Strings.menuRestoreWintrust) { model.restoreWintrust() }
-                    .disabled(!model.status.wineReady || model.phase.isBusy)
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
                 Divider()
