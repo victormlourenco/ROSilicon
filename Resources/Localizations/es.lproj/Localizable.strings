@@ -1,0 +1,145 @@
+/* Lanzador RO LATAM — español (Latinoamérica). */
+
+/* Ventana y botones */
+"app.title" = "ROSilicon";
+"button.play" = "Jugar";
+"button.install" = "Instalar";
+"button.repair" = "Reparar";
+"button.cancel" = "Cancelar";
+"button.quit_game" = "Cerrar el juego";
+"button.log" = "Registro";
+"command.install_or_repair" = "Instalar o reparar";
+
+/* Menú */
+"menu.more" = "Más acciones — mantén ⌥ para ver más";
+"menu.show_install_folder" = "Mostrar la carpeta de instalación en el Finder";
+"menu.show_game_folder" = "Mostrar la carpeta del juego en el Finder";
+"menu.reinstall_client" = "Reinstalar el cliente del juego…";
+"menu.client_url" = "URL del cliente…";
+"menu.reapply_patch" = "Volver a aplicar el parche de verificación de firma";
+"menu.restore_wintrust" = "Restaurar el wintrust.dll original";
+"menu.copy_log" = "Copiar el registro";
+"menu.clear_install" = "Vaciar la carpeta de instalación…";
+
+/* Diálogos */
+"dialog.reinstall.title" = "¿Descargar y extraer el cliente del juego otra vez?";
+"dialog.reinstall.confirm" = "Reinstalar el cliente";
+"dialog.reinstall.message" = "Esto vuelve a descargar unos 4,8 GB y reemplaza los archivos de la carpeta del juego.";
+"dialog.quit.title" = "¿Cerrar el juego en ejecución?";
+"dialog.quit.confirm" = "Cerrar el juego";
+"dialog.quit.keep_playing" = "Seguir jugando";
+"dialog.quit.message" = "Esto apaga todo lo que corre en el prefijo de Wine. El progreso sin guardar se pierde.";
+"dialog.clear.title" = "¿Mover la instalación a la Papelera?";
+"dialog.clear.confirm" = "Mover a la Papelera";
+"dialog.clear.message" = "Todo lo que hay en %1$@ (%2$@) va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
+"dialog.clear.message_no_size" = "Todo lo que hay en %@ va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
+
+/* Panel de la URL del cliente */
+"sheet.client_url.title" = "URL de descarga del cliente";
+"sheet.client_url.explanation" = "Apunta a otra compilación para instalarla en su lugar. Después usa Reinstalar el cliente del juego.";
+"sheet.client_url.field" = "URL";
+"sheet.client_url.reset" = "Restablecer";
+"sheet.done" = "Listo";
+
+/* Lista de comprobación */
+"item.wine" = "Compilación de Wine";
+"item.prefix" = "Prefijo de Wine";
+"item.patch" = "Verificación de firma";
+"item.client" = "Cliente del juego";
+"detail.wine_version" = "WoWSilicon %@";
+"detail.wine_outdated" = "WoWSilicon %1$@ — %2$@ disponible";
+"detail.not_installed" = "sin instalar";
+"detail.incomplete_install_again" = "incompleto — instala de nuevo";
+"detail.not_created" = "sin crear";
+"detail.incomplete" = "incompleto";
+"detail.no_wintrust_yet" = "todavía sin wintrust.dll";
+"detail.wintrust_patched" = "wintrust.dll parcheado (%d copias)";
+"detail.wintrust_not_patched" = "wintrust.dll sin parchear";
+"detail.client_dated" = "Ragexe.exe — %@";
+
+/* Línea de estado */
+"status.ready" = "Listo para jugar";
+"status.playable_unpatched" = "Jugable — falta aplicar el parche de verificación de firma";
+"status.not_installed_yet" = "Todavía sin instalar";
+"status.cancelled" = "Cancelado.";
+"status.transferred" = "%1$@ de %2$@";
+"status.per_second" = "%@/s";
+
+/* Etapas */
+"step.tools" = "Instalando Direct3D 9 y el stub de Steam";
+"step.downloading_wine" = "Descargando WoWSilicon %@";
+"step.installing_wine" = "Instalando WoWSilicon %@";
+"step.checking_sidecar" = "Comprobando x87sidecar";
+"step.creating_prefix" = "Creando el prefijo de Wine";
+"step.patching" = "Parcheando wintrust.dll";
+"step.restoring" = "Restaurando wintrust.dll";
+"step.checking_download" = "Comprobando la descarga del cliente";
+"step.downloading_client" = "Descargando el cliente del juego";
+"step.verifying" = "Comprobando la descarga";
+"step.extracting" = "Extrayendo el cliente del juego";
+"step.extracting_count" = "Extrayendo — %d archivos";
+"step.running" = "En ejecución";
+"step.removing" = "Quitando la instalación";
+"step.removed" = "Instalación eliminada";
+"step.nothing_to_remove" = "No hay nada que quitar";
+
+/* Registro */
+"log.installing_into" = "Instalando en %@";
+"log.ready" = "Todo listo. Pulsa Jugar.";
+"log.tools_in_place" = "d3d9.dll y steam_stub.exe ya están en su sitio";
+"log.tools_copied" = "%1$@ copiado en %2$@/";
+"log.and" = "y";
+"log.wine_installed" = "WoWSilicon %@ ya está instalado";
+"log.wine_replacing" = "Reemplazando WoWSilicon %1$@ por %2$@";
+"log.downloading" = "Descargando %1$@ (%2$@)";
+"log.mounting" = "Montando %@";
+"log.copying_app" = "Copiando WoWSilicon.app en %@";
+"log.using_wine" = "Usando %@";
+"log.unknown_wine_version" = "una versión desconocida de Wine";
+"log.sidecar_ok" = "x87sidecar es compatible con el Rosetta instalado";
+"log.sidecar_unsupported" = "Aviso: x87sidecar indica que esta versión de Rosetta no es compatible; el juego puede ir lento";
+"log.prefix_exists" = "El prefijo de Wine ya está en %@";
+"log.creating_prefix" = "Creando el prefijo de Wine en %@";
+"log.prefix_ready" = "Prefijo de Wine listo";
+"log.patching" = "Parcheando wintrust.dll (la verificación de firma del cliente)";
+"log.client_installed" = "El cliente ya está instalado en %@";
+"log.querying" = "Consultando %@";
+"log.downloading_client" = "Descargando el cliente (%@) — esto puede tardar";
+"log.verifying" = "Comprobando la integridad (md5)";
+"log.md5_ok" = "md5 correcto";
+"log.extracting_to" = "Extrayendo en %@";
+"log.extracted" = "%d archivos extraídos";
+"log.removing_folder" = "Quitando %@/";
+"log.retrying" = "Descarga interrumpida (%1$@) — reintentando, intento %2$d";
+"log.nothing_to_remove" = "No hay nada que quitar en %@";
+"log.moving_to_trash" = "Moviendo %@ a la Papelera";
+"log.in_trash" = "En la Papelera: %@";
+"log.removed" = "(eliminado)";
+"log.launching" = "Iniciando el cliente…";
+"log.exited_normally" = "El juego se cerró con normalidad.";
+"log.unknown_size" = "tamaño desconocido";
+
+/* Parche de wintrust */
+"patch.already_done" = "%@: ya está parcheado";
+"patch.done" = "%1$@/%2$@: %3$@ parcheado";
+"patch.restored" = "%@: original restaurado";
+"patch.no_backup" = "%@: no hay copia de seguridad";
+
+/* Errores */
+"error.prefix" = "error: ";
+"error.root_not_writable" = "No se puede escribir en %@ — revisa los permisos de la carpeta";
+"error.wine_running" = "Wine sigue en ejecución — cierra el juego y vuelve a intentarlo";
+"error.missing_in_dmg" = "No se encontró WoWSilicon.app dentro de %@";
+"error.sidecar_missing" = "No se encontró x87sidecar en %@ — instala de nuevo";
+"error.bundled_tool_missing" = "%1$@ no está en %2$@ — vuelve a compilar la app con build.sh";
+"error.missing_wine" = "No se encontró Wine en %@ — instala primero";
+"error.missing_file" = "No se encontró %1$@ en %2$@";
+"error.game_not_installed" = "No se encontró el juego en %@ — instala primero";
+"error.game_exited" = "El juego terminó con estado %d";
+"error.unreachable" = "no se pudo conectar con %@";
+"error.http_status" = "el servidor respondió HTTP %d";
+"error.incomplete" = "descarga incompleta (%1$@ de %2$@) — instala de nuevo para continuarla";
+"error.checksum" = "el md5 no coincide (se esperaba %1$@ y llegó %2$@) — el archivo se eliminó, instala de nuevo";
+"error.process_failed" = "%1$@ falló (salida %2$d)";
+"error.process_failed_detail" = "%1$@ falló (salida %2$d):\n%3$@";
+"error.truncated_pe" = "archivo PE truncado: %@";

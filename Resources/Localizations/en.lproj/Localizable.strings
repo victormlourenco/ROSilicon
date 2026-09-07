@@ -1,0 +1,148 @@
+/* RO LATAM Launcher — English (development language).
+   Keys are grouped the way Strings.swift groups them. Placeholders keep their
+   order across languages; where a translation needs another order, use the
+   positional form (%1$@, %2$@). */
+
+/* Window and buttons */
+"app.title" = "ROSilicon";
+"button.play" = "Play";
+"button.install" = "Install";
+"button.repair" = "Repair";
+"button.cancel" = "Cancel";
+"button.quit_game" = "Quit Game";
+"button.log" = "Log";
+"command.install_or_repair" = "Install or Repair";
+
+/* Menu */
+"menu.more" = "More actions — hold ⌥ for more";
+"menu.show_install_folder" = "Show Installation Folder in Finder";
+"menu.show_game_folder" = "Show Game Folder in Finder";
+"menu.reinstall_client" = "Reinstall Game Client…";
+"menu.client_url" = "Client URL…";
+"menu.reapply_patch" = "Re-apply Signature Check Workaround";
+"menu.restore_wintrust" = "Restore Original wintrust.dll";
+"menu.copy_log" = "Copy Log";
+"menu.clear_install" = "Clear Installation Folder…";
+
+/* Dialogs */
+"dialog.reinstall.title" = "Download and extract the game client again?";
+"dialog.reinstall.confirm" = "Reinstall Client";
+"dialog.reinstall.message" = "This re-downloads about 4.8 GB and overwrites the files in the game folder.";
+"dialog.quit.title" = "Quit the running game?";
+"dialog.quit.confirm" = "Quit Game";
+"dialog.quit.keep_playing" = "Keep Playing";
+"dialog.quit.message" = "This shuts down everything in the Wine prefix. Unsaved progress is lost.";
+"dialog.clear.title" = "Move the installation to the Trash?";
+"dialog.clear.confirm" = "Move to Trash";
+"dialog.clear.message" = "Everything in %1$@ (%2$@) goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
+"dialog.clear.message_no_size" = "Everything in %@ goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
+
+/* Client URL sheet */
+"sheet.client_url.title" = "Client download URL";
+"sheet.client_url.explanation" = "Point this at another build to install it instead. Use Reinstall Game Client afterwards.";
+"sheet.client_url.field" = "URL";
+"sheet.client_url.reset" = "Reset to Default";
+"sheet.done" = "Done";
+
+/* Checklist */
+"item.wine" = "Wine build";
+"item.prefix" = "Wine prefix";
+"item.patch" = "Signature check";
+"item.client" = "Game client";
+"detail.wine_version" = "WoWSilicon %@";
+"detail.wine_outdated" = "WoWSilicon %1$@ — %2$@ available";
+"detail.not_installed" = "not installed";
+"detail.incomplete_install_again" = "incomplete — install again";
+"detail.not_created" = "not created";
+"detail.incomplete" = "incomplete";
+"detail.no_wintrust_yet" = "no wintrust.dll yet";
+"detail.wintrust_patched" = "wintrust.dll patched (%d copies)";
+"detail.wintrust_not_patched" = "wintrust.dll not patched";
+"detail.client_dated" = "Ragexe.exe — %@";
+
+/* Status line */
+"status.ready" = "Ready to play";
+"status.playable_unpatched" = "Playable — the signature check workaround still needs applying";
+"status.not_installed_yet" = "Not installed yet";
+"status.cancelled" = "Cancelled.";
+"status.transferred" = "%1$@ of %2$@";
+"status.per_second" = "%@/s";
+
+/* Steps */
+"step.tools" = "Installing Direct3D 9 and the Steam stub";
+"step.downloading_wine" = "Downloading WoWSilicon %@";
+"step.installing_wine" = "Installing WoWSilicon %@";
+"step.checking_sidecar" = "Checking x87sidecar";
+"step.creating_prefix" = "Creating the Wine prefix";
+"step.patching" = "Patching wintrust.dll";
+"step.restoring" = "Restoring wintrust.dll";
+"step.checking_download" = "Checking the client download";
+"step.downloading_client" = "Downloading the game client";
+"step.verifying" = "Verifying the download";
+"step.extracting" = "Extracting the game client";
+"step.extracting_count" = "Extracting — %d files";
+"step.running" = "Running";
+"step.removing" = "Removing the installation";
+"step.removed" = "Installation removed";
+"step.nothing_to_remove" = "Nothing to remove";
+
+/* Log */
+"log.installing_into" = "Installing into %@";
+"log.ready" = "Ready. Press Play.";
+"log.tools_in_place" = "d3d9.dll and steam_stub.exe already in place";
+"log.tools_copied" = "Copied %1$@ into %2$@/";
+"log.and" = "and";
+"log.wine_installed" = "WoWSilicon %@ already installed";
+"log.wine_replacing" = "Replacing WoWSilicon %1$@ with %2$@";
+"log.downloading" = "Downloading %1$@ (%2$@)";
+"log.mounting" = "Mounting %@";
+"log.copying_app" = "Copying WoWSilicon.app to %@";
+"log.using_wine" = "Using %@";
+"log.unknown_wine_version" = "an unknown Wine version";
+"log.sidecar_ok" = "x87sidecar supports the installed Rosetta";
+"log.sidecar_unsupported" = "Warning: x87sidecar reports this Rosetta build is unsupported; the game may run slowly";
+"log.prefix_exists" = "Wine prefix already at %@";
+"log.creating_prefix" = "Creating the Wine prefix at %@";
+"log.prefix_ready" = "Wine prefix ready";
+"log.patching" = "Patching wintrust.dll (the client's signature check)";
+"log.client_installed" = "Client already installed at %@";
+"log.querying" = "Querying %@";
+"log.downloading_client" = "Downloading the client (%@) — this may take a while";
+"log.verifying" = "Verifying integrity (md5)";
+"log.md5_ok" = "md5 ok";
+"log.extracting_to" = "Extracting to %@";
+"log.extracted" = "Extracted %d files";
+"log.removing_folder" = "Removing %@/";
+"log.retrying" = "Download interrupted (%1$@) — retrying, attempt %2$d";
+"log.nothing_to_remove" = "Nothing to remove at %@";
+"log.moving_to_trash" = "Moving %@ to the Trash";
+"log.in_trash" = "In the Trash: %@";
+"log.removed" = "(removed)";
+"log.launching" = "Launching the client…";
+"log.exited_normally" = "The game exited normally.";
+"log.unknown_size" = "unknown size";
+
+/* The wintrust patch */
+"patch.already_done" = "%@: already patched";
+"patch.done" = "%1$@/%2$@: patched %3$@";
+"patch.restored" = "%@: restored original";
+"patch.no_backup" = "%@: no backup found";
+
+/* Errors */
+"error.prefix" = "error: ";
+"error.root_not_writable" = "%@ is not writable — check the permissions on it";
+"error.wine_running" = "Wine is still running — quit the game and try again";
+"error.missing_in_dmg" = "WoWSilicon.app not found inside %@";
+"error.sidecar_missing" = "x87sidecar not found under %@ — install again";
+"error.bundled_tool_missing" = "%1$@ is missing from %2$@ — rebuild the app with build.sh";
+"error.missing_wine" = "Wine not found at %@ — install first";
+"error.missing_file" = "%1$@ not found at %2$@";
+"error.game_not_installed" = "Game not found at %@ — install first";
+"error.game_exited" = "The game exited with status %d";
+"error.unreachable" = "could not reach %@";
+"error.http_status" = "server answered HTTP %d";
+"error.incomplete" = "incomplete download (%1$@ of %2$@) — run install again to resume";
+"error.checksum" = "md5 mismatch (expected %1$@, got %2$@) — the file was removed, install again";
+"error.process_failed" = "%1$@ failed (exit %2$d)";
+"error.process_failed_detail" = "%1$@ failed (exit %2$d):\n%3$@";
+"error.truncated_pe" = "truncated PE file: %@";

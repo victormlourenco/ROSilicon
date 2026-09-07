@@ -6,7 +6,7 @@ enum BundledToolsError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missing(let name, let folder):
-            "\(name) is missing from \(folder.path) — rebuild the app with Build Launcher.command"
+            Strings.errorBundledToolMissing(name, folder.path)
         }
     }
 }

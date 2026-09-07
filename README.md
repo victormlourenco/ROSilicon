@@ -1,4 +1,4 @@
-# RO LATAM Launcher
+# ROSilicon
 
 A native macOS launcher for the Ragnarok Online LATAM Windows client on Apple
 Silicon. One window: it installs everything and runs the game.
@@ -10,7 +10,7 @@ client's legacy x87 floating-point code, and DXVK for Direct3D 9.
 ## Build
 
 ```sh
-./build.sh          # -> "RO LATAM.app" in this folder
+./build.sh          # -> ROSilicon.app in this folder
 ```
 
 Needs Xcode (or the Swift toolchain); macOS 14+, Apple Silicon, Rosetta 2. The
@@ -36,8 +36,8 @@ downloads/         in-progress downloads, removed when they finish
    copies the app out, clears the quarantine flag, and checks `x87sidecar`
    against the Rosetta build on this machine.
 2. **The Wine prefix** — `wineboot --init`.
-3. **The GameGuard workaround** — patches every `wintrust.dll`, in the Wine
-   build and in the prefix (see below).
+3. **The signature-check workaround** — patches every `wintrust.dll`, in the
+   Wine build and in the prefix (see below).
 4. **The game client** — reads size and MD5 from the server's headers,
    downloads with resume, verifies, extracts.
 
@@ -50,15 +50,29 @@ log, and clear the installation (to the Trash, after a confirmation).
 
 ## The wintrust patch
 
-GameGuard calls `WinVerifyTrust` on `C:\windows\system32\ntdll.dll`. Under Wine
-that file is Wine's own unsigned reimplementation, so the call fails with
+The client's copy-protection component calls `WinVerifyTrust` on
+`C:\windows\system32\ntdll.dll`. Under Wine that file is Wine's own unsigned
+reimplementation, so the call fails with
 `TRUST_E_NOSIGNATURE` and the client aborts — a false positive by construction,
 since Wine's DLLs can never carry a Microsoft signature.
-[WintrustPatch.swift](Sources/ROLatamLauncher/WintrustPatch.swift) rewrites the
+[WintrustPatch.swift](Sources/ROSilicon/WintrustPatch.swift) rewrites the
 first bytes of the exported `WinVerifyTrust` and `WinVerifyTrustEx` to
 `return 0`, keeping the original beside each file as `wintrust.dll.wine-orig`.
 This Wine copies its DLLs into each prefix rather than symlinking them, so the
 build *and* the prefix are patched.
+
+## Languages
+
+The window, the log and the error messages are translated into **English**,
+**Portuguese (Brazil)** and **Spanish**; macOS picks the one matching the
+reader's language and falls back to English for anything a translation is
+missing. Every Portuguese variant resolves to `pt-BR` and every Spanish one to
+`es`, so a reader set to `pt-PT` or `es-MX` still gets their own language.
+
+Each string lives once in [Strings.swift](Sources/ROSilicon/Strings.swift)
+and once per language in `Resources/Localizations/<lang>.lproj/Localizable.strings`.
+To add a language, copy `en.lproj` to, say, `fr.lproj`, translate the values, and
+build — `build.sh` picks up every `.lproj` it finds and lists them in the bundle.
 
 ## Layout
 
@@ -69,17 +83,19 @@ makeicon.swift           draws AppIcon.icns, no asset files needed
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
   steam_stub/            the Steam stub the client expects, with its source
-Sources/ROLatamLauncher/
+  Localizations/         en.lproj, pt-BR.lproj, es.lproj
+Sources/ROSilicon/
   Paths.swift            pinned versions, URLs, paths, the Wine environment
   Shell.swift            subprocesses with streamed output and cancellation
   Downloader.swift       resumable ranged downloads, retries, md5
-  WintrustPatch.swift    the GameGuard workaround
+  WintrustPatch.swift    the signature-check workaround
   Installer.swift        the install stages
   GameRunner.swift       the launch path
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window
   ContentView.swift      the window
   LauncherApp.swift      the app entry point
+  Strings.swift          every word the launcher shows
 ```
 
 `RO_ROOT` overrides the install folder and `RO_TOOLS` the folder the bundled

@@ -8,10 +8,10 @@ enum RunError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .missingWine(let url): "Wine not found at \(url.path) — install first"
-        case .missingFile(let what, let url): "\(what) not found at \(url.path)"
-        case .gameNotInstalled(let url): "Game not found at \(url.path) — install first"
-        case .exited(let status): "The game exited with status \(status)"
+        case .missingWine(let url): Strings.errorMissingWine(url.path)
+        case .missingFile(let what, let url): Strings.errorMissingFile(what, url.path)
+        case .gameNotInstalled(let url): Strings.errorGameNotInstalled(url.path)
+        case .exited(let status): Strings.errorGameExited(status)
         }
     }
 }
@@ -38,8 +38,8 @@ struct GameRunner: Sendable {
         environment["DXVK_ASYNC"] = "1"
         environment["WINEDEBUG"] = "-all"
 
-        await reporter.step("Running")
-        await reporter.log("Launching the client…")
+        await reporter.step(Strings.stepRunning)
+        await reporter.log(Strings.logLaunching)
         // The client is started through steam.exe because it expects a Steam
         // process to be present.
         let status = try await Shell.run(
@@ -48,7 +48,7 @@ struct GameRunner: Sendable {
 
         if Task.isCancelled { throw CancellationError() }
         guard status == 0 else { throw RunError.exited(status) }
-        await reporter.log("The game exited normally.")
+        await reporter.log(Strings.logExitedNormally)
     }
 
     /// Checks the pieces are in place and links DXVK and the Steam stub into

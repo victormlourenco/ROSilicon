@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "ROLatamLauncher",
+    name: "ROSilicon",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "ROLatamLauncher",
-            path: "Sources/ROLatamLauncher"
+            name: "ROSilicon",
+            path: "Sources/ROSilicon"
         )
     ]
 )

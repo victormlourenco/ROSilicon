@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds RO LATAM.app from the Swift package. The app installs into
+# Builds ROSilicon.app from the Swift package. The app installs into
 # ~/Library/Application Support/RO LATAM and carries everything it needs, so it
 # can be moved anywhere once built.
 #
@@ -9,9 +9,9 @@ set -euo pipefail
 cd "$(dirname "$0")"
 PKG="$(pwd)"
 
-APP_NAME="RO LATAM"
+APP_NAME="ROSilicon"
 APP="${APP_OUT:-$PKG}/$APP_NAME.app"
-EXECUTABLE="ROLatamLauncher"
+EXECUTABLE="ROSilicon"
 VERSION="1.0"
 
 command -v swift >/dev/null 2>&1 || {
@@ -39,6 +39,15 @@ cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 cp "$STEAM_STUB" "$APP/Contents/Resources/steam_stub.exe"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
+# One .lproj per language; macOS picks the reader's and falls back to English.
+LANGUAGES=()
+for lproj in "$PKG"/Resources/Localizations/*.lproj; do
+    [[ -d "$lproj" ]] || { echo "error: no translations in Resources/Localizations" >&2; exit 1; }
+    cp -R "$lproj" "$APP/Contents/Resources/"
+    LANGUAGES+=("$(basename "$lproj" .lproj)")
+done
+echo "==> translations: ${LANGUAGES[*]}"
+
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -46,13 +55,18 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <dict>
     <key>CFBundleName</key>              <string>$APP_NAME</string>
     <key>CFBundleDisplayName</key>       <string>$APP_NAME</string>
-    <key>CFBundleIdentifier</key>        <string>com.rolatam.launcher</string>
+    <key>CFBundleIdentifier</key>        <string>com.rosilicon.launcher</string>
     <key>CFBundleExecutable</key>        <string>$EXECUTABLE</string>
     <key>CFBundleIconFile</key>          <string>AppIcon</string>
     <key>CFBundlePackageType</key>       <string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key>           <string>$VERSION</string>
     <key>LSMinimumSystemVersion</key>    <string>14.0</string>
+    <key>CFBundleDevelopmentRegion</key>  <string>en</string>
+    <key>CFBundleLocalizations</key>
+    <array>
+$(printf '        <string>%s</string>\n' "${LANGUAGES[@]}")
+    </array>
     <key>LSApplicationCategoryType</key> <string>public.app-category.games</string>
     <key>NSHighResolutionCapable</key>   <true/>
     <key>NSSupportsAutomaticTermination</key><false/>

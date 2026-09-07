@@ -2,11 +2,11 @@ import Foundation
 
 /// Makes Wine's wintrust.dll report every file as trusted.
 ///
-/// Why: Ragnarok LATAM's GameGuard calls
+/// Why: the client's copy-protection component calls
 ///     WinVerifyTrust(WINTRUST_ACTION_GENERIC_VERIFY_V2,
 ///                    L"C:\\windows\\system32\\ntdll.dll")
 /// Under Wine that file is Wine's own unsigned reimplementation, so the call
-/// fails with TRUST_E_NOSIGNATURE (0x800b0100) and GameGuard aborts with
+/// fails with TRUST_E_NOSIGNATURE (0x800b0100) and the client aborts with
 /// "Verify C:\\windows\\system32\\ntdll.dll". Wine's system DLLs can never
 /// carry a Microsoft signature, so this check is a false positive by
 /// construction.
@@ -44,6 +44,8 @@ enum WintrustPatch {
         }
     }
 
+    /// A DLL that cannot be parsed. The reasons stay in English on purpose:
+    /// they describe a malformed PE file and are diagnostics, not guidance.
     struct PEError: LocalizedError {
         let path: String
         let reason: String
@@ -70,7 +72,7 @@ enum WintrustPatch {
         let hits = try exports.map { try findExport(data, named: $0, path: url.path) }
 
         if hits.allSatisfy({ Array(data[$0.offset..<$0.offset + $0.machine.returnZero.count]) == $0.machine.returnZero }) {
-            return "\(url.lastPathComponent): already patched"
+            return Strings.patchAlreadyDone(url.lastPathComponent)
         }
 
         let backup = backupURL(for: url)
@@ -95,7 +97,7 @@ enum WintrustPatch {
         try data.write(to: url)
 
         let names = hits.map(\.name).joined(separator: ", ")
-        return "\(hits[0].machine.name)/\(url.lastPathComponent): patched \(names)"
+        return Strings.patchDone(hits[0].machine.name, url.lastPathComponent, names)
     }
 
     /// Puts back the copy saved before patching.
@@ -103,12 +105,12 @@ enum WintrustPatch {
     static func restore(_ url: URL) throws -> String {
         let backup = backupURL(for: url)
         guard FileManager.default.fileExists(atPath: backup.path) else {
-            return "\(url.lastPathComponent): no backup found"
+            return Strings.patchNoBackup(url.lastPathComponent)
         }
         try makeWritable(url)
         let original = try Data(contentsOf: backup)
         try original.write(to: url)
-        return "\(url.lastPathComponent): restored original"
+        return Strings.patchRestored(url.lastPathComponent)
     }
 
     static func backupURL(for url: URL) -> URL {

@@ -9,8 +9,8 @@ struct ProcessFailure: LocalizedError {
     var errorDescription: String? {
         let tail = output.split(separator: "\n").suffix(3).joined(separator: "\n")
         return tail.isEmpty
-            ? "\(command) failed (exit \(status))"
-            : "\(command) failed (exit \(status)):\n\(tail)"
+            ? Strings.errorProcessFailed(command, status)
+            : Strings.errorProcessFailedDetail(command, status, tail)
     }
 }
 

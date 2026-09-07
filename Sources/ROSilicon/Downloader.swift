@@ -28,12 +28,15 @@ enum DownloadError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unreachable(let url): "could not reach \(url.host() ?? url.absoluteString)"
-        case .httpStatus(let code): "server answered HTTP \(code)"
+        case .unreachable(let url):
+            Strings.errorUnreachable(url.host() ?? url.absoluteString)
+        case .httpStatus(let code): Strings.errorHTTPStatus(code)
         case .incomplete(let expected, let got):
-            "incomplete download (\(got) of \(expected) bytes) — run install again to resume"
+            Strings.errorIncomplete(
+                ByteCountFormatter.string(fromByteCount: got, countStyle: .file),
+                ByteCountFormatter.string(fromByteCount: expected, countStyle: .file))
         case .checksumMismatch(let expected, let got):
-            "md5 mismatch (expected \(expected), got \(got)) — the file was removed, install again"
+            Strings.errorChecksum(expected, got)
         }
     }
 }

@@ -35,54 +35,56 @@ struct Status: Sendable {
         case (Paths.wowSiliconVersion, true):
             status.wineReady = true
             status.items.append(Item(
-                id: "wine", title: "Wine build",
-                detail: "WoWSilicon \(Paths.wowSiliconVersion)", state: .ok))
+                id: "wine", title: Strings.itemWine,
+                detail: Strings.wineVersion(Paths.wowSiliconVersion), state: .ok))
         case (let version?, true):
             status.wineReady = true
             status.items.append(Item(
-                id: "wine", title: "Wine build",
-                detail: "WoWSilicon \(version) — \(Paths.wowSiliconVersion) available",
+                id: "wine", title: Strings.itemWine,
+                detail: Strings.wineOutdated(version, Paths.wowSiliconVersion),
                 state: .warning))
         default:
             status.items.append(Item(
-                id: "wine", title: "Wine build",
-                detail: installedVersion == nil ? "not installed" : "incomplete — install again",
+                id: "wine", title: Strings.itemWine,
+                detail: installedVersion == nil
+                    ? Strings.notInstalled : Strings.incompleteInstallAgain,
                 state: .missing))
         }
 
         // 2. The Wine prefix
         status.prefixReady = paths.prefixInitialized
         status.items.append(Item(
-            id: "prefix", title: "Wine prefix",
+            id: "prefix", title: Strings.itemPrefix,
             detail: status.prefixReady
                 ? paths.prefix.lastPathComponent + "/"
-                : (fm.fileExists(atPath: paths.prefix.path) ? "incomplete" : "not created"),
+                : (fm.fileExists(atPath: paths.prefix.path)
+                    ? Strings.incomplete : Strings.notCreated),
             state: status.prefixReady ? .ok : .missing))
 
-        // 3. The GameGuard workaround
+        // 3. The signature-check workaround
         let targets = paths.wintrustTargets.filter { fm.fileExists(atPath: $0.path) }
         status.wintrustPatched = !targets.isEmpty && targets.allSatisfy(WintrustPatch.isPatched)
         status.items.append(Item(
-            id: "wintrust", title: "GameGuard workaround",
+            id: "wintrust", title: Strings.itemPatch,
             detail: targets.isEmpty
-                ? "no wintrust.dll yet"
+                ? Strings.noWintrustYet
                 : (status.wintrustPatched
-                    ? "wintrust.dll patched (\(targets.count) copies)"
-                    : "wintrust.dll not patched"),
+                    ? Strings.wintrustPatched(targets.count)
+                    : Strings.wintrustNotPatched),
             state: targets.isEmpty ? .missing : (status.wintrustPatched ? .ok : .warning)))
 
         // 4. The game client
         status.clientReady = fm.fileExists(atPath: paths.ragexe.path)
-        var clientDetail = "not installed"
+        var clientDetail = Strings.notInstalled
         if status.clientReady {
             let modified = (try? paths.ragexe.resourceValues(forKeys: [.contentModificationDateKey]))?
                 .contentModificationDate
             clientDetail = modified.map {
-                "Ragexe.exe — " + $0.formatted(date: .abbreviated, time: .omitted)
+                Strings.clientDated($0.formatted(date: .abbreviated, time: .omitted))
             } ?? "Ragexe.exe"
         }
         status.items.append(Item(
-            id: "client", title: "Game client", detail: clientDetail,
+            id: "client", title: Strings.itemClient, detail: clientDetail,
             state: status.clientReady ? .ok : .missing))
 
         status.installedSize = sizeOnDisk(paths.root)

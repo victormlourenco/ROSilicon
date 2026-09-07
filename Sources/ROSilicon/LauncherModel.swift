@@ -25,8 +25,13 @@ final class LauncherModel: ObservableObject {
     private static let logLimit = 5_000
 
     struct LogLine: Identifiable, Sendable {
+        /// What the line is, so the view can colour it without matching on
+        /// text that changes with the reader's language.
+        enum Kind: Sendable { case plain, step, failure }
+
         let id = UUID()
         let text: String
+        var kind: Kind = .plain
     }
 
     init() {
@@ -55,9 +60,9 @@ final class LauncherModel: ObservableObject {
         case .working, .running: step
         case .idle:
             if let failure { failure }
-            else if status.fullyInstalled { "Ready to play" }
-            else if status.canPlay { "Playable — the GameGuard workaround still needs applying" }
-            else { "Not installed yet" }
+            else if status.fullyInstalled { Strings.readyToPlay }
+            else if status.canPlay { Strings.playableUnpatched }
+            else { Strings.notInstalledYet }
         }
     }
 
@@ -72,16 +77,16 @@ final class LauncherModel: ObservableObject {
             })
     }
 
-    private func append(_ line: String) {
+    private func append(_ line: String, kind: LogLine.Kind = .plain) {
         let trimmed = line.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty || !log.isEmpty else { return }
-        log.append(LogLine(text: trimmed))
+        log.append(LogLine(text: trimmed, kind: kind))
         if log.count > Self.logLimit { log.removeFirst(log.count - Self.logLimit) }
     }
 
     private func setStep(_ text: String) {
         step = text
-        append("==> " + text)
+        append("==> " + text, kind: .step)
     }
 
     private func setProgress(_ value: DownloadProgress?) {
@@ -171,10 +176,10 @@ final class LauncherModel: ObservableObject {
             do {
                 try await work()
             } catch is CancellationError {
-                self?.finish(with: "Cancelled.")
+                self?.finish(with: Strings.cancelled)
                 return
             } catch let error as URLError where error.code == .cancelled {
-                self?.finish(with: "Cancelled.")
+                self?.finish(with: Strings.cancelled)
                 return
             } catch {
                 self?.finish(with: error.localizedDescription)
@@ -190,7 +195,7 @@ final class LauncherModel: ObservableObject {
         progress = nil
         self.failure = failure
         if let failure {
-            append("error: " + failure)
+            append(Strings.errorPrefix + failure, kind: .failure)
             step = failure
         }
         refresh()

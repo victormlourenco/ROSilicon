@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var model: LauncherModel
+    @StateObject private var modifiers = ModifierKeys()
     @State private var showLog = false
     @State private var confirmReinstall = false
     @State private var confirmQuit = false
@@ -22,33 +23,37 @@ struct ContentView: View {
         }
         .background(.background)
         .confirmationDialog(
-            "Download and extract the game client again?",
+            Strings.reinstallTitle,
             isPresented: $confirmReinstall, titleVisibility: .visible
         ) {
-            Button("Reinstall Client", role: .destructive) { model.install(reinstallClient: true) }
-            Button("Cancel", role: .cancel) {}
+            Button(Strings.reinstallConfirm, role: .destructive) {
+                model.install(reinstallClient: true)
+            }
+            Button(Strings.cancel, role: .cancel) {}
         } message: {
-            Text("This re-downloads about 4.8 GB and overwrites the files in the game folder.")
+            Text(Strings.reinstallMessage)
         }
         .confirmationDialog(
-            "Quit the running game?", isPresented: $confirmQuit, titleVisibility: .visible
+            Strings.quitTitle, isPresented: $confirmQuit, titleVisibility: .visible
         ) {
-            Button("Quit Game", role: .destructive) { model.quitGame() }
-            Button("Keep Playing", role: .cancel) {}
+            Button(Strings.quitConfirm, role: .destructive) { model.quitGame() }
+            Button(Strings.quitKeepPlaying, role: .cancel) {}
         } message: {
-            Text("This shuts down everything in the Wine prefix. Unsaved progress is lost.")
+            Text(Strings.quitMessage)
         }
         .confirmationDialog(
-            "Move the installation to the Trash?",
-            isPresented: $confirmClear, titleVisibility: .visible
+            Strings.clearTitle, isPresented: $confirmClear, titleVisibility: .visible
         ) {
-            Button("Move to Trash", role: .destructive) { model.clearInstallation() }
-            Button("Cancel", role: .cancel) {}
+            Button(Strings.clearConfirm, role: .destructive) { model.clearInstallation() }
+            Button(Strings.cancel, role: .cancel) {}
         } message: {
             Text(clearMessage)
         }
         .sheet(isPresented: $editingClientURL) { clientURLSheet }
-        .onAppear { model.refresh() }
+        .onAppear {
+            model.refresh()
+            modifiers.watch()
+        }
     }
 
     // MARK: - Header
@@ -58,22 +63,8 @@ struct ContentView: View {
             Image(systemName: "gamecontroller.fill")
                 .font(.system(size: 26))
                 .foregroundStyle(.tint)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ragnarok Online LATAM")
-                    .font(.title3.weight(.semibold))
-                Button {
-                    model.revealInstallFolder()
-                } label: {
-                    Text(model.installFolder.path(percentEncoded: false)
-                        .replacingOccurrences(of: NSHomeDirectory(), with: "~"))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                }
-                .buttonStyle(.plain)
-                .help("Show the installation folder in Finder")
-            }
+            Text(Strings.appTitle)
+                .font(.title3.weight(.semibold))
             Spacer()
             actionsMenu
         }
@@ -83,23 +74,29 @@ struct ContentView: View {
 
     private var actionsMenu: some View {
         Menu {
-            Button("Show Installation Folder in Finder") { model.revealInstallFolder() }
-            Button("Show Game Folder in Finder") { model.revealGameFolder() }
+            Button(Strings.menuShowGameFolder) { model.revealGameFolder() }
                 .disabled(!model.status.clientReady)
+            if modifiers.optionHeld {
+                Button(Strings.menuShowInstallFolder) { model.revealInstallFolder() }
+            }
             Divider()
-            Button("Reinstall Game Client…") { confirmReinstall = true }
+            Button(Strings.menuReinstallClient) { confirmReinstall = true }
                 .disabled(model.phase.isBusy)
-            Button("Client URL…") { editingClientURL = true }
+            if modifiers.optionHeld {
+                Button(Strings.menuClientURL) { editingClientURL = true }
+            }
             Divider()
-            Button("Re-apply GameGuard Workaround") { model.reapplyWintrustPatch() }
+            Button(Strings.menuReapplyPatch) { model.reapplyWintrustPatch() }
                 .disabled(!model.status.wineReady || model.phase.isBusy)
-            Button("Restore Original wintrust.dll") { model.restoreWintrust() }
-                .disabled(!model.status.wineReady || model.phase.isBusy)
+            if modifiers.optionHeld {
+                Button(Strings.menuRestoreWintrust) { model.restoreWintrust() }
+                    .disabled(!model.status.wineReady || model.phase.isBusy)
+                Divider()
+                Button(Strings.menuCopyLog) { model.copyLog() }
+                    .disabled(model.log.isEmpty)
+            }
             Divider()
-            Button("Copy Log") { model.copyLog() }
-                .disabled(model.log.isEmpty)
-            Divider()
-            Button("Clear Installation Folder…", role: .destructive) { confirmClear = true }
+            Button(Strings.menuClearInstall, role: .destructive) { confirmClear = true }
                 .disabled(model.phase.isBusy || !model.hasSomethingInstalled)
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -108,7 +105,7 @@ struct ContentView: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
-        .help("More actions")
+        .help(Strings.menuMore)
     }
 
     // MARK: - Checklist
@@ -192,20 +189,22 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 switch model.phase {
                 case .working:
-                    Button("Cancel") { model.cancel() }
+                    Button(Strings.cancel) { model.cancel() }
                         .controlSize(.large)
                 case .running:
-                    Button("Quit Game") { confirmQuit = true }
+                    Button(Strings.quitGame) { confirmQuit = true }
                         .controlSize(.large)
                 case .idle:
-                    Button(model.needsInstall ? "Install" : "Repair") { model.install() }
-                        .controlSize(.large)
+                    Button(model.needsInstall ? Strings.install : Strings.repair) {
+                        model.install()
+                    }
+                    .controlSize(.large)
                 }
                 Spacer()
                 Button {
                     model.play()
                 } label: {
-                    Label("Play", systemImage: "play.fill")
+                    Label(Strings.play, systemImage: "play.fill")
                         .frame(minWidth: 90)
                 }
                 .buttonStyle(.borderedProminent)
@@ -222,11 +221,13 @@ struct ContentView: View {
         let done = ByteCountFormatter.string(
             fromByteCount: progress.completed, countStyle: .file)
         guard let total = progress.total else { return done }
-        return "\(done) of \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))"
+        return Strings.transferred(
+            done, ByteCountFormatter.string(fromByteCount: total, countStyle: .file))
     }
 
     private func rate(_ bytesPerSecond: Double) -> String {
-        ByteCountFormatter.string(fromByteCount: Int64(bytesPerSecond), countStyle: .file) + "/s"
+        Strings.perSecond(
+            ByteCountFormatter.string(fromByteCount: Int64(bytesPerSecond), countStyle: .file))
     }
 
     // MARK: - Log
@@ -240,7 +241,7 @@ struct ContentView: View {
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .rotationEffect(.degrees(showLog ? 90 : 0))
-                    Text("Log")
+                    Text(Strings.log)
                         .font(.callout)
                     if !showLog, let last = model.log.last {
                         Text(last.text)
@@ -264,9 +265,7 @@ struct ContentView: View {
                             ForEach(model.log) { line in
                                 Text(line.text)
                                     .font(.system(size: 11, design: .monospaced))
-                                    .foregroundStyle(
-                                        line.text.hasPrefix("==>") ? Color.accentColor :
-                                        (line.text.hasPrefix("error:") ? .red : .secondary))
+                                    .foregroundStyle(colour(line.kind))
                                     .textSelection(.enabled)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .id(line.id)
@@ -285,33 +284,41 @@ struct ContentView: View {
         }
     }
 
+    private func colour(_ kind: LauncherModel.LogLine.Kind) -> Color {
+        switch kind {
+        case .plain: .secondary
+        case .step: .accentColor
+        case .failure: .red
+        }
+    }
+
     private var clearMessage: String {
-        let size = model.installedSizeText.map { " (\($0))" } ?? ""
-        return "Everything in \(model.installFolder.path(percentEncoded: false))\(size) goes "
-            + "to the Trash: the Wine build, the prefix, the game client and its settings. "
-            + "Installing again downloads it all afresh."
+        let folder = model.installFolder.path(percentEncoded: false)
+        guard let size = model.installedSizeText else {
+            return Strings.clearMessageNoSize(folder)
+        }
+        return Strings.clearMessage(folder, size)
     }
 
     // MARK: - Sheets
 
     private var clientURLSheet: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Client download URL")
+            Text(Strings.clientURLTitle)
                 .font(.headline)
-            Text("Point this at another build to install it instead. "
-                 + "Use Reinstall Game Client afterwards.")
+            Text(Strings.clientURLExplanation)
                 .font(.callout)
                 .foregroundStyle(.secondary)
-            TextField("URL", text: $model.clientURLText, axis: .vertical)
+            TextField(Strings.clientURLField, text: $model.clientURLText, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
                 .font(.system(size: 11, design: .monospaced))
             HStack {
-                Button("Reset to Default") {
+                Button(Strings.clientURLReset) {
                     model.clientURLText = Paths.defaultClientURL.absoluteString
                 }
                 Spacer()
-                Button("Done") { editingClientURL = false }
+                Button(Strings.done) { editingClientURL = false }
                     .keyboardShortcut(.defaultAction)
             }
         }
