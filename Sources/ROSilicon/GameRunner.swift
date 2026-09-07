@@ -16,6 +16,37 @@ enum RunError: LocalizedError {
     }
 }
 
+/// Wine's own tools, offered behind ⌥ for poking at the prefix by hand.
+enum WineTool: Sendable {
+    case winecfg
+    case commandPrompt
+
+    /// The loader in Wine's bin/ that starts it. cmd.exe goes through
+    /// wineconsole because it needs a console window drawn for it, and a
+    /// launcher started from Finder has no terminal to inherit.
+    var executable: String {
+        switch self {
+        case .winecfg: "winecfg"
+        case .commandPrompt: "wineconsole"
+        }
+    }
+
+    var arguments: [String] {
+        switch self {
+        case .winecfg: []
+        case .commandPrompt: ["cmd"]
+        }
+    }
+
+    /// What the log calls it, untranslated: these are program names.
+    var label: String {
+        switch self {
+        case .winecfg: "winecfg"
+        case .commandPrompt: "cmd.exe"
+        }
+    }
+}
+
 /// Launches the client the way Run.command does.
 struct GameRunner: Sendable {
     let paths: Paths
@@ -30,6 +61,35 @@ struct GameRunner: Sendable {
         var environment = paths.wineEnvironment()
         environment["WINEDEBUG"] = "-all"
         _ = try? await Shell.run(paths.wineserver, ["-k"], environment: environment)
+    }
+
+    /// Opens one of Wine's tools against the prefix, in a window of its own.
+    ///
+    /// Unlike playing, this needs neither the client nor the bundled DLLs, so
+    /// it stays available on a half-finished install — which is when it is
+    /// most useful. An uninitialized prefix gets bootstrapped on the way, the
+    /// same as any other wine invocation would do.
+    func open(_ tool: WineTool) async throws {
+        guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
+            throw RunError.missingWine(paths.wine)
+        }
+        let executable = paths.wineTool(tool.executable)
+        guard FileManager.default.isExecutableFile(atPath: executable.path) else {
+            throw RunError.missingFile(tool.executable, executable)
+        }
+
+        var environment = paths.wineEnvironment()
+        environment["WINEDEBUG"] = "-all"
+        await reporter.log(Strings.logOpeningTool(tool.label))
+        // Nothing is logged on success: winecfg blocks until its window is
+        // closed, while wineconsole returns the moment it has handed the
+        // console off, so "closed" would be a lie for one of the two.
+        let status = try await Shell.run(
+            executable, tool.arguments, environment: environment
+        ) { line in await reporter.log(line) }
+        if status != 0 {
+            await reporter.log(Strings.logToolExited(tool.label, status))
+        }
     }
 
     func play() async throws {
@@ -60,29 +120,28 @@ struct GameRunner: Sendable {
         await reporter.log(Strings.logExitedNormally)
     }
 
-    /// Checks the pieces are in place and links DXVK and the Steam stub into
-    /// the prefix. Returns the path of steam.exe inside drive_c.
+    /// Checks the pieces are in place and links DXVK and the Steam stub, both
+    /// inside the app, into the prefix. The links are rewritten every launch,
+    /// so one left pointing at an app that has since moved is replaced rather
+    /// than followed. Returns the path of steam.exe inside drive_c.
     @discardableResult
     func prepare() throws -> URL {
         guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
             throw RunError.missingWine(paths.wine)
         }
-        // Puts back a copy that was deleted, and picks up a newer one from a
-        // rebuilt app.
-        try paths.copyBundledTools()
-        guard FileManager.default.fileExists(atPath: paths.dxvkDLL.path) else {
-            throw RunError.missingFile("d3d9.dll", paths.dxvkDLL)
+        guard FileManager.default.fileExists(atPath: Paths.dxvkDLL.path) else {
+            throw RunError.missingFile("d3d9.dll", Paths.dxvkDLL)
         }
-        guard FileManager.default.fileExists(atPath: paths.steamStub.path) else {
-            throw RunError.missingFile("steam_stub.exe", paths.steamStub)
+        guard FileManager.default.fileExists(atPath: Paths.steamStub.path) else {
+            throw RunError.missingFile("steam_stub.exe", Paths.steamStub)
         }
         guard FileManager.default.fileExists(atPath: paths.gameDir.path) else {
             throw RunError.gameNotInstalled(paths.gameDir)
         }
 
         let steamExe = paths.driveC.appending(path: "steam.exe")
-        try link(paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
-        try link(paths.steamStub, at: steamExe)
+        try link(Paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
+        try link(Paths.steamStub, at: steamExe)
         return steamExe
     }
 

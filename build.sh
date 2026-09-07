@@ -1,11 +1,14 @@
 #!/bin/bash
 # Builds ROSilicon.app from the Swift package, and a .dmg holding it beside a
-# shortcut to /Applications to drag it onto. The app installs into
-# ~/Library/Application Support/ROSilicon and carries everything it needs, so it
-# can be moved anywhere once built.
+# shortcut to /Applications to drag it onto. The app carries the Wine runtime,
+# DXVK, x87sidecar and the Steam stub, and installs into
+# ~/Library/Application Support/ROSilicon, so it downloads nothing but the game
+# client and can be moved anywhere once built.
 #
-# Set APP_OUT to build somewhere other than this folder, and pass --no-dmg to
-# build only the .app.
+# Set APP_OUT to build somewhere other than this folder and WINE_RUNTIME to take
+# the Wine tree from somewhere other than .wine-runtime. Pass --no-dmg to build
+# only the .app, and --no-wine to leave the Wine runtime out — quick for working
+# on the UI, but the resulting app cannot install.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -22,12 +25,21 @@ VERSION="$(tr -d '[:space:]' < "$PKG/VERSION")"
 [[ -n "$VERSION" ]] || { echo "error: $PKG/VERSION is empty" >&2; exit 1; }
 
 MAKE_DMG=1
+COPY_WINE=1
 for arg in "$@"; do
     case "$arg" in
         --no-dmg) MAKE_DMG=0 ;;
-        *) echo "usage: $(basename "$0") [--no-dmg]" >&2; exit 2 ;;
+        --no-wine) COPY_WINE=0 ;;
+        *) echo "usage: $(basename "$0") [--no-dmg] [--no-wine]" >&2; exit 2 ;;
     esac
 done
+
+WINE_RUNTIME="${WINE_RUNTIME:-$PKG/.wine-runtime}"
+if [[ "$COPY_WINE" == 1 && ! -x "$WINE_RUNTIME/bin/wine" ]]; then
+    echo "error: no Wine runtime at $WINE_RUNTIME" >&2
+    echo "       run 'make restore' to fetch the pinned one, or pass --no-wine" >&2
+    exit 1
+fi
 
 command -v swift >/dev/null 2>&1 || {
     echo "error: swift not found — install Xcode or the command line tools" >&2
@@ -38,11 +50,12 @@ echo "==> building (release)"
 swift build -c release --package-path "$PKG"
 BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE"
 
-# DXVK and the Steam stub ride inside the bundle, so the app installs and runs
-# without needing tools/ next to it.
+# DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
+# installs and runs without needing tools/ next to it.
 DXVK="$PKG/Resources/d9vk/d3d9.dll"
 STEAM_STUB="$PKG/Resources/steam_stub/steam_stub.exe"
-for f in "$DXVK" "$STEAM_STUB"; do
+X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
+for f in "$DXVK" "$STEAM_STUB" "$X87_SIDECAR"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
 done
 
@@ -52,7 +65,34 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 cp "$STEAM_STUB" "$APP/Contents/Resources/steam_stub.exe"
+install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+# The Wine runtime, which the installer copies out of here into the install
+# folder. It goes in before the signature, since codesign seals Resources/ —
+# adding it afterwards would invalidate the signature it just wrote.
+if [[ "$COPY_WINE" == 1 ]]; then
+    echo "==> bundling the Wine runtime from $WINE_RUNTIME"
+    # ditto, not cp: the tree is full of symlinks and executables whose modes
+    # have to survive.
+    ditto "$WINE_RUNTIME" "$APP/Contents/Resources/Wine"
+    # codesign seals every file under Resources/; the Finder's leftovers have no
+    # business in the signature.
+    find "$APP/Contents/Resources/Wine" -name .DS_Store -delete
+
+    # The wintrust patch, applied here rather than at install time, by the
+    # launcher's own code. The copy in .wine-runtime stays untouched, so it
+    # still matches the runtime lock; each patched DLL keeps its stock bytes
+    # beside it as wintrust.dll.wine-orig, which is what the "restore" menu
+    # item puts back. A prefix created later copies these DLLs, so it is born
+    # patched too.
+    echo "==> patching wintrust"
+    "$BIN" --patch-wintrust \
+        "$APP/Contents/Resources/Wine/lib/wine/i386-windows/wintrust.dll" \
+        "$APP/Contents/Resources/Wine/lib/wine/x86_64-windows/wintrust.dll"
+else
+    echo "==> skipping the Wine runtime (--no-wine)"
+fi
 
 # One .lproj per language; macOS picks the reader's and falls back to English.
 LANGUAGES=()

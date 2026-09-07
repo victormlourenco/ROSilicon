@@ -11,33 +11,31 @@ enum BundledToolsError: LocalizedError {
     }
 }
 
-/// Every path and pinned version the launcher needs, mirroring tools/wine-env.sh.
+/// Every path and pinned version the launcher needs.
 ///
-/// `root` is where the launcher installs: the Wine build, the prefix, the game
-/// and copies of the two bundled Windows binaries, under
-/// ~/Library/Application Support/ROSilicon. The app itself carries DXVK and the
-/// Steam stub, so it needs nothing beside it and can live anywhere,
-/// /Applications included.
+/// `root` is where the launcher installs: the prefix, the game and copies of the
+/// bundled helper binaries, under ~/Library/Application Support/ROSilicon. Wine
+/// is not among them — it runs from inside the app bundle, which also carries
+/// DXVK, x87sidecar and the Steam stub, so the launcher downloads nothing but
+/// the game client and can live anywhere, /Applications included.
 struct Paths: Sendable {
-    static let wowSiliconVersion = "3.1.0"
     static let defaultClientURL = URL(string:
         "https://ro1patch.gnjoylatam.com/LIVE/client/LATAM_RO1_Live_20260601_091136.tar")!
-
-    static var wowSiliconDMGURL: URL {
-        URL(string: "https://github.com/WoWSilicon/WoWSilicon/releases/download/"
-            + "v\(wowSiliconVersion)/WoWSilicon-\(wowSiliconVersion).dmg")!
-    }
 
     let root: URL
 
     init(root: URL) { self.root = root }
 
-    var wsApp: URL { root.appending(path: "WoWSilicon.app") }
-    var wsResources: URL { wsApp.appending(path: "Contents/Resources") }
-    var wineRoot: URL { wsResources.appending(path: "Wine") }
+    /// Wine runs where it lies, inside the app bundle. Nothing writes to it:
+    /// `build.sh` applies the wintrust patch when it assembles the app, so the
+    /// tree under the signature is never touched afterwards.
+    var wineRoot: URL { Self.bundledWineRoot }
     var wine: URL { wineRoot.appending(path: "bin/wine") }
     var wineserver: URL { wineRoot.appending(path: "bin/wineserver") }
     var wineExternalLibs: URL { wineRoot.appending(path: "lib/external") }
+
+    /// One of Wine's own tools beside `wine` itself, e.g. winecfg.
+    func wineTool(_ name: String) -> URL { wineRoot.appending(path: "bin/" + name) }
 
     var prefix: URL { root.appending(path: "wine") }
     var driveC: URL { prefix.appending(path: "drive_c") }
@@ -55,7 +53,8 @@ struct Paths: Sendable {
             && fm.fileExists(atPath: driveC.appending(path: "windows/system32").path)
     }
 
-    /// Where the app keeps the two Windows binaries it ships with.
+    /// Where the app keeps everything it ships with: the Wine runtime, DXVK,
+    /// x87sidecar and the Steam stub.
     ///
     /// Normally the app's own Resources/. `RO_TOOLS` points somewhere else when
     /// the code runs outside a bundle, as it does under `swift run`.
@@ -66,73 +65,47 @@ struct Paths: Sendable {
         return Bundle.main.resourceURL ?? Bundle.main.bundleURL
     }()
 
-    /// Their copies in the install folder. The prefix links to these rather
-    /// than reaching into the app bundle, so the install stands on its own.
-    var toolsDir: URL { root.appending(path: "tools") }
-    var dxvkDLL: URL { toolsDir.appending(path: "d3d9.dll") }
-    var steamStub: URL { toolsDir.appending(path: "steam_stub.exe") }
+    /// The Wine runtime inside the app bundle, put there by `build.sh`.
+    static var bundledWineRoot: URL { bundledTools.appending(path: "Wine") }
 
-    /// Copies the bundled binaries into the install folder, replacing copies
-    /// that differ from the ones the app now ships. Returns what it copied.
-    @discardableResult
-    func copyBundledTools() throws -> [String] {
-        let fm = FileManager.default
-        try fm.createDirectory(at: toolsDir, withIntermediateDirectories: true)
+    /// The three helper binaries, read where they lie in the app. The prefix
+    /// links to the two Windows ones rather than holding copies; `prepare()`
+    /// rewrites those links on every launch, so they follow the app when it
+    /// moves.
+    static var dxvkDLL: URL { bundledTools.appending(path: "d3d9.dll") }
+    static var steamStub: URL { bundledTools.appending(path: "steam_stub.exe") }
 
-        var copied: [String] = []
-        for name in ["d3d9.dll", "steam_stub.exe"] {
-            let source = Self.bundledTools.appending(path: name)
-            let destination = toolsDir.appending(path: name)
-            guard fm.fileExists(atPath: source.path) else {
-                throw BundledToolsError.missing(name, Self.bundledTools)
+    /// The arm64 helper Wine's loader re-execs itself under. nil when the app
+    /// was built without it, which is the only way it can be absent.
+    static var x87Sidecar: URL? {
+        let sidecar = bundledTools.appending(path: "x87sidecar")
+        return FileManager.default.isExecutableFile(atPath: sidecar.path) ? sidecar : nil
+    }
+
+    /// Everything the app must carry for an install to be possible. Throws
+    /// naming the first one missing, which means a build that left it out.
+    static func verifyBundledTools() throws {
+        for name in ["d3d9.dll", "steam_stub.exe", "x87sidecar"] {
+            let url = bundledTools.appending(path: name)
+            guard FileManager.default.fileExists(atPath: url.path) else {
+                throw BundledToolsError.missing(name, bundledTools)
             }
-            // Size is enough to notice a rebuilt app shipping a new DXVK.
-            let sizeOf: (URL) -> Int64? = {
-                (try? fm.attributesOfItem(atPath: $0.path)[.size] as? NSNumber)??.int64Value
-            }
-            if let have = sizeOf(destination), have == sizeOf(source) { continue }
-            try? fm.removeItem(at: destination)
-            try fm.copyItem(at: source, to: destination)
-            copied.append(name)
         }
-        return copied
     }
 
     var downloads: URL { root.appending(path: "downloads") }
 
-    /// x87sidecar ships inside the SwiftPM resource bundle; some builds flatten
-    /// it straight into Resources/ instead.
-    var x87Sidecar: URL? {
-        let candidates = [
-            wsResources.appending(path: "WoWSilicon-swift_WoWSiliconSwift.bundle/Patching/x87sidecar/x87sidecar"),
-            wsResources.appending(path: "Patching/x87sidecar/x87sidecar"),
-        ]
-        return candidates.first { FileManager.default.isExecutableFile(atPath: $0.path) }
-    }
-
-    /// Version of the installed WoWSilicon.app, nil when it is not there.
-    var installedWineVersion: String? {
-        let plist = wsApp.appending(path: "Contents/Info.plist")
-        guard let data = try? Data(contentsOf: plist),
-              let info = try? PropertyListSerialization.propertyList(
-                  from: data, format: nil) as? [String: Any]
+    /// How the bundled runtime names itself, e.g. "11.13 (r15)", read from the
+    /// lock the build embeds in the tree. nil when the app was built without a
+    /// runtime, or the lock cannot be read.
+    static var bundledWineVersion: String? {
+        let lock = bundledWineRoot.appending(path: "share/wowsilicon/runtime-lock.json")
+        guard let data = try? Data(contentsOf: lock),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let wine = (json["wine"] as? [String: Any])?["version"] as? String
         else { return nil }
-        return info["CFBundleShortVersionString"] as? String
-    }
-
-    /// Every wintrust.dll that needs patching. This Wine copies its DLLs into
-    /// each prefix instead of symlinking them, so patching the build alone
-    /// leaves an already-created prefix untouched.
-    var wintrustTargets: [URL] {
-        var targets = [
-            wineRoot.appending(path: "lib/wine/i386-windows/wintrust.dll"),
-            wineRoot.appending(path: "lib/wine/x86_64-windows/wintrust.dll"),
-        ]
-        for dll in ["windows/system32/wintrust.dll", "windows/syswow64/wintrust.dll"] {
-            let url = driveC.appending(path: dll)
-            if FileManager.default.fileExists(atPath: url.path) { targets.append(url) }
-        }
-        return targets
+        guard let revision = json["runtimeRevision"] as? Int else { return wine }
+        return "\(wine) (r\(revision))"
     }
 
     /// Environment shared by every Wine invocation — the Swift side of `wine_env`.
@@ -145,7 +118,7 @@ struct Paths: Sendable {
         // this is set. That is what makes the client's legacy x87 float code
         // fast on Apple Silicon, and unlike rosettax87 it needs no
         // task_for_pid privilege, so macOS never asks for a password.
-        if let sidecar = x87Sidecar { env["X87_SIDECAR_PATH"] = sidecar.path }
+        if let sidecar = Self.x87Sidecar { env["X87_SIDECAR_PATH"] = sidecar.path }
         // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
         // bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""

@@ -84,15 +84,13 @@ struct ContentView: View {
                 .disabled(model.phase.isBusy)
             if modifiers.optionHeld {
                 Button(Strings.menuClientURL) { editingClientURL = true }
-            }
-            Divider()
-            Button(Strings.menuReapplyPatch) { model.reapplyWintrustPatch() }
-                .disabled(!model.status.wineReady || model.phase.isBusy)
-            if modifiers.optionHeld {
-                Button(Strings.menuRestoreWintrust) { model.restoreWintrust() }
-                    .disabled(!model.status.wineReady || model.phase.isBusy)
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                Divider()
+                Button(Strings.menuWinecfg) { model.openWineTool(.winecfg) }
+                    .disabled(!model.canOpenWineTools)
+                Button(Strings.menuCommandPrompt) { model.openWineTool(.commandPrompt) }
+                    .disabled(!model.canOpenWineTools)
                 Divider()
                 Button(Strings.menuCopyLog) { model.copyLog() }
                     .disabled(model.log.isEmpty)

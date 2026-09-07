@@ -8,3 +8,6 @@
 # The app and disk image built by build.sh
 /ROSilicon.app/
 /ROSilicon-*.dmg
+
+# The Wine tree the app ships (make restore)
+/.wine-runtime/

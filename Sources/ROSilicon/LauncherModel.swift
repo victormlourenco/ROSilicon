@@ -59,15 +59,14 @@ final class LauncherModel: ObservableObject {
     }
 
     var canPlay: Bool { status.canPlay && !phase.isBusy }
-    var needsInstall: Bool { !status.fullyInstalled }
+    var needsInstall: Bool { !status.canPlay }
 
     var statusLine: String {
         switch phase {
         case .working, .running: step
         case .idle:
             if let failure { failure }
-            else if status.fullyInstalled { Strings.readyToPlay }
-            else if status.canPlay { Strings.playableUnpatched }
+            else if status.canPlay { Strings.readyToPlay }
             else { Strings.notInstalledYet }
         }
     }
@@ -124,21 +123,29 @@ final class LauncherModel: ObservableObject {
         }
     }
 
-    func reapplyWintrustPatch() {
-        guard !phase.isBusy else { return }
+    /// Opens winecfg or a cmd.exe window against the prefix.
+    ///
+    /// These run beside the launcher instead of through `start`: they are
+    /// windows of their own that stay open until someone closes them, so
+    /// taking the launcher busy for the whole time would be wrong. Two can be
+    /// open at once, which is exactly what someone comparing settings wants.
+    func openWineTool(_ tool: WineTool) {
+        guard canOpenWineTools else { return }
         let paths = self.paths
-        start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter).patchWintrust()
+        let reporter = self.reporter
+        Task {
+            do {
+                try await GameRunner(paths: paths, reporter: reporter).open(tool)
+            } catch {
+                append(Strings.errorPrefix + error.localizedDescription, kind: .failure)
+            }
         }
     }
 
-    func restoreWintrust() {
-        guard !phase.isBusy else { return }
-        let paths = self.paths
-        start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter).restoreWintrust()
-        }
-    }
+    /// Wine has to be there, and an install must not be replacing the build
+    /// underneath them. A running game is fine — that is when looking at the
+    /// prefix is most useful.
+    var canOpenWineTools: Bool { status.wineReady && phase != .working }
 
     /// Moves the install folder to the Trash. Only offered behind a
     /// confirmation, and refused while Wine is running.
