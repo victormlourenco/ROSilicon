@@ -17,7 +17,8 @@ export APP_OUT
 export WINE_RUNTIME
 
 .DEFAULT_GOAL := app
-.PHONY: app app-no-wine dmg run clean help validate_wine_runtime package_wine_runtime \
+.PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
+        package_wine_runtime \
         update-mtld3d update-x87sidecar restore bundle
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
@@ -38,6 +39,12 @@ dmg:
 run: app
 	open "$(OUT)/$(APP_NAME).app"
 
+# The suite is swift-testing, so it builds the package on its own and never
+# needs the .app. FILTER narrows it down to the tests whose names match:
+#     make FILTER=Downloader test
+test:
+	swift test $(if $(FILTER),--filter "$(FILTER)",)
+
 # Only build products, every one of them gitignored.
 clean:
 	rm -rf .build "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
@@ -46,6 +53,7 @@ help:
 	@echo "make             build $(APP_NAME).app — the fast one"
 	@echo "make dmg         build the .app and the .dmg"
 	@echo "make run         build the .app and open it"
+	@echo "make test        run the test suite"
 	@echo "make bundle      check the Wine runtime, then build the .app and the .dmg"
 	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
@@ -53,6 +61,7 @@ help:
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
+	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
 	@test -d "$(WINE_RUNTIME)" || (echo "Wine runtime not found at $(WINE_RUNTIME)" >&2; exit 1)
