@@ -85,6 +85,55 @@ default, so Wine stays quiet) and a field for extra `NAME=value` variables
 separated by `;`. Both are remembered, applied after everything the launcher
 sets itself — so they can override it — and take effect on the next launch.
 
+## Command-key game shortcuts
+
+**Use ⌘ for Ragnarok Shortcuts** is visible in the `…` menu without holding
+Option. It is on by default, and the choice is remembered between launcher
+sessions. It is disabled while the launcher is installing or running the game;
+changes take effect on the next **Play** or **Install/Repair**.
+
+Wine normally maps Command to Windows Alt, but the bundled runtime's native
+Mac Edit menu intercepts Command+A/C/V/X/Z and sends editing commands instead.
+The toggle configures only this game's registry value:
+
+```text
+HKEY_CURRENT_USER\Software\Wine\AppDefaults\Ragexe.exe\Mac Driver
+EditMenu (REG_SZ): "disabled" when on, "key" when off
+```
+
+With it on, those keys reach Ragnarok as Alt shortcuts; use Windows Control
+shortcuts for text editing where the client supports them. Turning it off
+explicitly restores the runtime's default Mac editing behavior for the game.
+Other Windows applications, the Mac launcher, Command/Option modifier mappings,
+and the signed app bundle are not changed.
+
+The setting is applied after creating (or finding) the prefix during installation
+and before each game launch, so existing installs do not need to be recreated.
+Repairs and client reinstalls honor the saved choice, including **off**. On Play,
+the same effective environment is used for the registry command and the game,
+including an advanced `WINEPREFIX` override. A failed registry command is
+reported and stops the operation instead of claiming the setting was applied.
+
+The saved preference is `commandShortcuts` in the launcher's macOS preferences.
+The Wine value lives in the chosen prefix's `user.reg`; to stop managing it
+entirely, use an unmodified launcher and remove only `EditMenu` from the key
+above. This feature does not add backup files, helper apps, or system services.
+
+### Testing
+
+```sh
+swift test
+swift build -c release
+```
+
+Automated tests use an injected registry runner and isolated preference domains;
+they do not launch Wine, download the client, or modify a real Wine prefix.
+For an end-to-end check, use a disposable install root (`RO_ROOT`), confirm the
+value after Install/Repair and after Play with each toggle state, and verify
+Command+A/C/V/X/Z in-game. Also check that turning the option off persists after
+restarting the launcher, repairing, or reinstalling the client. Game input needs
+manual verification; a successful registry write alone does not prove it.
+
 ## The wintrust patch
 
 The client's copy-protection component calls `WinVerifyTrust` on
@@ -142,6 +191,7 @@ Sources/ROSilicon/
   WintrustPatch.swift    the signature-check workaround
   Installer.swift        the install stages
   GameRunner.swift       the launch path
+  GameKeyboardSettings.swift  the saved Command-shortcut choice and Wine setting
   LaunchOptions.swift    WINEDEBUG and the extra variables, as typed
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window

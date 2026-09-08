@@ -87,6 +87,10 @@ struct ContentView: View {
                 Button(Strings.menuShowInstallFolder) { model.revealInstallFolder() }
             }
             Divider()
+            Toggle(Strings.menuCommandShortcuts, isOn: $model.commandShortcuts)
+                .disabled(model.phase.isBusy)
+                .help(Strings.commandShortcutsHelp)
+            Divider()
             Button(Strings.menuReinstallClient) { confirmReinstall = true }
                 .disabled(model.phase.isBusy)
             if modifiers.optionHeld {

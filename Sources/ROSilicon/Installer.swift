@@ -37,6 +37,7 @@ enum InstallError: LocalizedError {
 struct Installer: Sendable {
     let paths: Paths
     let reporter: Reporter
+    var keyboard = GameKeyboardSettings()
 
     func installEverything(clientURL: URL, reinstallClient: Bool) async throws {
         try paths.createRoot()
@@ -53,6 +54,10 @@ struct Installer: Sendable {
         try await checkBundle()
         try await probeSidecar()
         try await createPrefix()
+        // Outside createPrefix's early return: repairs of existing prefixes
+        // must apply the saved choice just like a new installation does.
+        try await keyboard.apply(
+            wine: paths.wine, environment: paths.wineEnvironment(), reporter: reporter)
         try await installClient(from: clientURL, force: reinstallClient)
 
         await reporter.step(Strings.readyToPlay)
