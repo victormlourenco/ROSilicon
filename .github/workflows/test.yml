@@ -1,0 +1,37 @@
+# The suite on every pull request, and on main after a merge.
+#
+# `make test` is the whole job. It does not need the Wine runtime — nothing
+# under Tests/ reads .wine-runtime, only Resources/ and Sources/, both of which
+# are in the repository — so CI never runs `make restore` and never builds the
+# .app. A checkout and `swift test` is all of it.
+name: Test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# A second push to the same branch makes the first run pointless; on main the
+# runs are the record of what merged, so they are left to finish.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # This name is the status check to require for merging: "test".
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Which toolchain ran the suite, in the log, for when a failure turns out
+      # to be the runner image moving rather than the code.
+      - name: Toolchain
+        run: swift --version
+
+      - name: Test
+        run: make test
