@@ -25,6 +25,9 @@ jobs:
   # This name is the status check to require for merging: "test".
   test:
     runs-on: macos-latest
+    # The suite takes well under a minute; anything approaching this is a hang,
+    # and a hang should fail rather than sit on a runner until someone notices.
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
