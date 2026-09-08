@@ -35,6 +35,8 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuCommandShortcuts: String { t("menu.command_shortcuts") }
+    static var commandShortcutsHelp: String { t("help.command_shortcuts") }
     static var menuWineDebug: String { t("menu.wine_debug") }
     static var menuEnvironment: String { t("menu.environment") }
     static var menuWinecfg: String { t("menu.winecfg") }
@@ -150,6 +152,8 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
+    static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
     static func logWineDebug(_ channels: String) -> String { t("log.wine_debug", channels) }
     static func logExtraEnvironment(_ variables: String) -> String {
         t("log.extra_environment", variables)

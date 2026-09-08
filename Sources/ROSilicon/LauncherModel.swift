@@ -25,6 +25,14 @@ final class LauncherModel: ObservableObject {
     @Published var metalHUD = UserDefaults.standard.bool(forKey: LauncherModel.metalHUDKey) {
         didSet { UserDefaults.standard.set(metalHUD, forKey: Self.metalHUDKey) }
     }
+    /// Saved immediately, applied on the next Install/Repair or Play. Changing
+    /// a preference must not start Wine or initialize a prefix on its own.
+    @Published var commandShortcuts = GameKeyboardSettings.load(
+        from: .standard).commandShortcuts {
+        didSet {
+            GameKeyboardSettings(commandShortcuts: commandShortcuts).save(to: .standard)
+        }
+    }
     /// Wine's debug channels, as typed. Remembered between launches like the
     /// overlay is: someone chasing a crash keeps their channels across
     /// restarts of the launcher.
@@ -127,10 +135,11 @@ final class LauncherModel: ObservableObject {
     func install(reinstallClient: Bool = false) {
         guard !phase.isBusy else { return }
         let paths = self.paths
+        let keyboard = GameKeyboardSettings(commandShortcuts: commandShortcuts)
         let url = URL(string: clientURLText.trimmingCharacters(in: .whitespaces))
             ?? Paths.defaultClientURL
         start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter)
+            try await Installer(paths: paths, reporter: reporter, keyboard: keyboard)
                 .installEverything(clientURL: url, reinstallClient: reinstallClient)
         }
     }
@@ -140,9 +149,11 @@ final class LauncherModel: ObservableObject {
         let paths = self.paths
         let hud = metalHUD
         let options = launchOptions
+        let keyboard = GameKeyboardSettings(commandShortcuts: commandShortcuts)
         start(.running) { [reporter] in
             try await GameRunner(
-                paths: paths, reporter: reporter, metalHUD: hud, options: options
+                paths: paths, reporter: reporter, metalHUD: hud, options: options,
+                keyboard: keyboard
             ).play()
         }
     }

@@ -57,6 +57,7 @@ struct GameRunner: Sendable {
     /// Wine's debug channels and any extra variables set from the menu.
     /// Untouched by default, which is the launcher's own quiet environment.
     var options = LaunchOptions()
+    var keyboard = GameKeyboardSettings()
 
     /// Shuts down everything in the prefix. Wine's own way of doing it, so a
     /// hung client goes down with it rather than being orphaned.
@@ -109,6 +110,8 @@ struct GameRunner: Sendable {
             await reporter.log(Strings.logMetalHUD)
         }
         await applyOptions(to: &environment)
+
+        try await keyboard.apply(wine: paths.wine, environment: environment, reporter: reporter)
 
         await reporter.step(Strings.stepRunning)
         await reporter.log(Strings.logLaunching)

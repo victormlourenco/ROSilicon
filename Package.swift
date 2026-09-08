@@ -8,6 +8,10 @@ let package = Package(
         .executableTarget(
             name: "ROSilicon",
             path: "Sources/ROSilicon"
+        ),
+        .testTarget(
+            name: "ROSiliconTests",
+            dependencies: ["ROSilicon"]
         )
     ]
 )
