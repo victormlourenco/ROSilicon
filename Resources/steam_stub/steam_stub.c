@@ -27,7 +27,7 @@ BOOL isAnyProcessRunning(const char *processes[], int count) {
     return FALSE;
 }
 
-void launchRagnarok() {
+void launchGame() {
     STARTUPINFO si = {0};
     PROCESS_INFORMATION pi = {0};
     si.cb = sizeof(si);
@@ -58,7 +58,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     BOOL alreadyRunning = (GetLastError() == ERROR_ALREADY_EXISTS);
 
-    launchRagnarok();
+    launchGame();
 
     if (alreadyRunning) {
         return 0;

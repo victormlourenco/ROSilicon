@@ -1,4 +1,4 @@
-/* RO LATAM Launcher — English (development language).
+/* ROSilicon Launcher — English (development language).
    Keys are grouped the way Strings.swift groups them. Placeholders keep their
    order across languages; where a translation needs another order, use the
    positional form (%1$@, %2$@). */
@@ -20,8 +20,8 @@
 "menu.reinstall_client" = "Reinstall Game Client…";
 "menu.client_url" = "Client URL…";
 "menu.metal_hud" = "Show Metal Frame-Rate Overlay";
-"menu.command_shortcuts" = "Use ⌘ for Ragnarok Shortcuts";
-"help.command_shortcuts" = "Pass ⌘A/C/V/X/Z to Ragnarok as Alt shortcuts instead of Mac editing commands. Use Control for text editing. Applies on the next game launch; turn off to restore Mac editing commands.";
+"menu.command_shortcuts" = "Use ⌘ for Game Shortcuts";
+"help.command_shortcuts" = "Pass ⌘A/C/V/X/Z to the game as Alt shortcuts instead of Mac editing commands. Use Control for text editing. Applies on the next game launch; turn off to restore Mac editing commands.";
 "menu.wine_debug" = "Wine Debug Channels (WINEDEBUG)…";
 "menu.environment" = "Additional Environment Variables…";
 "menu.winecfg" = "Open Wine Configuration (winecfg)";
@@ -118,8 +118,8 @@
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
 "log.metal_hud" = "Metal frame-rate overlay on.";
-"log.command_shortcuts_on" = "Ragnarok Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
-"log.command_shortcuts_off" = "Ragnarok Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
+"log.command_shortcuts_on" = "Game Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
+"log.command_shortcuts_off" = "Game Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
 "log.wine_debug" = "WINEDEBUG=%@";
 "log.extra_environment" = "Extra environment: %@";
 "log.opening_tool" = "Opening %@…";

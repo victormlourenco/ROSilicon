@@ -1,4 +1,4 @@
-/* Launcher RO LATAM — português (Brasil). */
+/* Launcher ROSilicon — português (Brasil). */
 
 /* Janela e botões */
 "app.title" = "ROSilicon";
@@ -17,8 +17,8 @@
 "menu.reinstall_client" = "Reinstalar cliente do jogo…";
 "menu.client_url" = "URL do cliente…";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
-"menu.command_shortcuts" = "Usar ⌘ nos atalhos do Ragnarok";
-"help.command_shortcuts" = "Envia ⌘A/C/V/X/Z ao Ragnarok como atalhos com Alt, em vez de comandos de edição do Mac. Use Control para editar texto. Vale ao iniciar o jogo novamente; desative para restaurar os comandos de edição do Mac.";
+"menu.command_shortcuts" = "Usar ⌘ nos atalhos do jogo";
+"help.command_shortcuts" = "Envia ⌘A/C/V/X/Z ao jogo como atalhos com Alt, em vez de comandos de edição do Mac. Use Control para editar texto. Vale ao iniciar o jogo novamente; desative para restaurar os comandos de edição do Mac.";
 "menu.wine_debug" = "Canais de depuração do Wine (WINEDEBUG)…";
 "menu.environment" = "Variáveis de ambiente adicionais…";
 "menu.winecfg" = "Abrir a configuração do Wine (winecfg)";
@@ -115,8 +115,8 @@
 "log.removed" = "(removido)";
 "log.launching" = "Iniciando o cliente…";
 "log.metal_hud" = "Medidor de FPS do Metal ligado.";
-"log.command_shortcuts_on" = "Atalhos do Ragnarok com Command ativados: menu Editar do Mac desativado para Ragexe.exe.";
-"log.command_shortcuts_off" = "Atalhos do Ragnarok com Command desativados: comandos de edição do Mac restaurados para Ragexe.exe.";
+"log.command_shortcuts_on" = "Atalhos do jogo com Command ativados: menu Editar do Mac desativado para Ragexe.exe.";
+"log.command_shortcuts_off" = "Atalhos do jogo com Command desativados: comandos de edição do Mac restaurados para Ragexe.exe.";
 "log.wine_debug" = "WINEDEBUG=%@";
 "log.extra_environment" = "Ambiente adicional: %@";
 "log.opening_tool" = "Abrindo %@…";

@@ -1,6 +1,6 @@
 # ROSilicon
 
-A native macOS launcher for the Ragnarok Online LATAM Windows client on Apple
+A native macOS launcher for the LATAM Windows game client on Apple
 Silicon. One window: it installs everything and runs the game.
 
 It ships the Wine runtime from
@@ -87,7 +87,7 @@ sets itself — so they can override it — and take effect on the next launch.
 
 ## Command-key game shortcuts
 
-**Use ⌘ for Ragnarok Shortcuts** is visible in the `…` menu without holding
+**Use ⌘ for Game Shortcuts** is visible in the `…` menu without holding
 Option. It is on by default, and the choice is remembered between launcher
 sessions. It is disabled while the launcher is installing or running the game;
 changes take effect on the next **Play** or **Install/Repair**.
@@ -101,7 +101,7 @@ HKEY_CURRENT_USER\Software\Wine\AppDefaults\Ragexe.exe\Mac Driver
 EditMenu (REG_SZ): "disabled" when on, "key" when off
 ```
 
-With it on, those keys reach Ragnarok as Alt shortcuts; use Windows Control
+With it on, those keys reach the game as Alt shortcuts; use Windows Control
 shortcuts for text editing where the client supports them. Turning it off
 explicitly restores the runtime's default Mac editing behavior for the game.
 Other Windows applications, the Mac launcher, Command/Option modifier mappings,

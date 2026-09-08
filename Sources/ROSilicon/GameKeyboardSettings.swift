@@ -1,6 +1,6 @@
 import Foundation
 
-/// Wine's Mac Edit menu consumes Command+A/C/V/X/Z before Ragnarok sees
+/// Wine's Mac Edit menu consumes Command+A/C/V/X/Z before the game sees
 /// them as Alt shortcuts. Disable it for Ragexe.exe, not the whole prefix.
 struct GameKeyboardSettings: Sendable {
     var commandShortcuts = true
