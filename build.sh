@@ -41,6 +41,17 @@ if [[ "$COPY_WINE" == 1 && ! -x "$WINE_RUNTIME/bin/wine" ]]; then
     exit 1
 fi
 
+# The Steam stub is built, not checked in, and this script only copies it — so
+# it is a missing build product here, the same as the Wine runtime above, and
+# not something to cross-compile in the middle of an app build.
+STEAM_STUB="${STEAM_STUB:-$PKG/.steam-stub}"
+STEAM_STUB_EXE="$STEAM_STUB/steam_stub.exe"
+if [[ ! -f "$STEAM_STUB_EXE" ]]; then
+    echo "error: no Steam stub at $STEAM_STUB" >&2
+    echo "       run 'make steam-stub' to build it" >&2
+    exit 1
+fi
+
 command -v swift >/dev/null 2>&1 || {
     echo "error: swift not found — install Xcode or the command line tools" >&2
     exit 1
@@ -53,9 +64,8 @@ BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE
 # DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
 # installs and runs without needing tools/ next to it.
 DXVK="$PKG/Resources/d9vk/d3d9.dll"
-STEAM_STUB="$PKG/Resources/steam_stub/steam_stub.exe"
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
-for f in "$DXVK" "$STEAM_STUB" "$X87_SIDECAR"; do
+for f in "$DXVK" "$X87_SIDECAR"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
 done
 
@@ -64,7 +74,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
-cp "$STEAM_STUB" "$APP/Contents/Resources/steam_stub.exe"
+cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
