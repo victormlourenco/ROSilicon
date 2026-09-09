@@ -11,3 +11,6 @@
 
 # The Wine tree the app ships (make restore)
 /.wine-runtime/
+
+# The Steam stub the app ships (make steam-stub)
+/.steam-stub/

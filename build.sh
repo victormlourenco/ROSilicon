@@ -41,23 +41,28 @@ if [[ "$COPY_WINE" == 1 && ! -x "$WINE_RUNTIME/bin/wine" ]]; then
     exit 1
 fi
 
+# The Steam stub is built, not checked in, and this script only copies it — so
+# it is a missing build product here, the same as the Wine runtime above, and
+# not something to cross-compile in the middle of an app build.
+STEAM_STUB="${STEAM_STUB:-$PKG/.steam-stub}"
+STEAM_STUB_EXE="$STEAM_STUB/steam_stub.exe"
+if [[ ! -f "$STEAM_STUB_EXE" ]]; then
+    echo "error: no Steam stub at $STEAM_STUB" >&2
+    echo "       run 'make steam-stub' to build it" >&2
+    exit 1
+fi
+
 command -v swift >/dev/null 2>&1 || {
     echo "error: swift not found — install Xcode or the command line tools" >&2
     exit 1
 }
-
-# The Steam stub is compiled into the bundle further down. Checking for its
-# cross-compiler now means a missing one is reported straight away, rather than
-# after the release build has already run.
-"$PKG/tools/steam-stub/build.sh" --check
 
 echo "==> building (release)"
 swift build -c release --package-path "$PKG"
 BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE"
 
 # DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
-# installs and runs without needing tools/ next to it. DXVK and x87sidecar are
-# checked in; the stub is compiled from source into the bundle below.
+# installs and runs without needing tools/ next to it.
 DXVK="$PKG/Resources/d9vk/d3d9.dll"
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 for f in "$DXVK" "$X87_SIDECAR"; do
@@ -69,14 +74,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
+cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
-
-# Straight into the bundle: the stub is built, never stored, so the .exe the app
-# carries is always the one tools/steam-stub/steam_stub.c describes. It lands
-# before the signature, which seals everything under Resources/.
-echo "==> building the Steam stub"
-"$PKG/tools/steam-stub/build.sh" --output "$APP/Contents/Resources/steam_stub.exe"
 
 # The Wine runtime, which the installer copies out of here into the install
 # folder. It goes in before the signature, since codesign seals Resources/ —

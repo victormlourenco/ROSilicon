@@ -12,20 +12,22 @@ Direct3D 9. Nothing but the game client is downloaded at install time.
 
 ```sh
 make restore        # -> .wine-runtime, the pinned Wine tree (once)
+make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
 make bundle         # -> validates the Wine runtime, then the app and the .dmg
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
 
-Needs Xcode (or the Swift toolchain) and mingw-w64 for the
+Needs Xcode (or the Swift toolchain), and mingw-w64 once for the
 [Steam stub](#the-steam-stub); macOS 14+, Apple Silicon, Rosetta 2. The
 script builds the package, assembles the bundle — the Wine runtime from
 `.wine-runtime` included — draws the icon and ad-hoc signs it, without the
 hardened runtime, so the launcher can pass `DYLD_LIBRARY_PATH` down to Wine. Set
 `APP_OUT` to build elsewhere and `WINE_RUNTIME` to ship a Wine tree from
-somewhere other than `.wine-runtime`. The version is read from the `VERSION`
-file, and names both the bundle and the disk image.
+somewhere other than `.wine-runtime`, or `STEAM_STUB` for the Steam stub. The
+version is read from the `VERSION` file, and names both the bundle and the disk
+image.
 
 The runtime goes in *before* the signature, since `codesign` seals everything
 under `Resources/`, and the [wintrust patch](#the-wintrust-patch) is applied to
@@ -159,24 +161,32 @@ rebuild the app from the untouched tree in `.wine-runtime`, or to put the
 
 The client expects to find Steam running, so the app carries a small stand-in
 that launches the game and waits for it to exit. It lives in
-[tools/steam-stub/](tools/steam-stub/) as the C source it is built from, and
-`build.sh` cross-compiles it **straight into the app bundle** — there is no
-`.exe` checked into this repository, so the stub the app ships is always the one
-the source describes, and there is no second copy to drift.
+[tools/steam-stub/](tools/steam-stub/) as the C source it is built from — there
+is no `.exe` checked into this repository.
 
-It is a 32-bit Windows GUI program, which needs the mingw-w64 cross-compiler:
+`make steam-stub` cross-compiles it into `.steam-stub`, and `build.sh` copies it
+from there into the bundle, the same arrangement as the Wine runtime and
+`.wine-runtime`. Both folders are gitignored build products the build consumes
+rather than makes: `build.sh` says what to run if either is missing instead of
+producing it in the middle of an app build.
+
+It is a 32-bit Windows GUI program, so it needs the mingw-w64 cross-compiler:
 
 ```sh
 make steam-stub-toolchain   # brew install mingw-w64
 ```
 
-Every build compiles the stub, so this is needed to build the app at all — a
-build reports a missing compiler up front, before the release build runs, and
-never installs one behind your back. `make steam-stub` compiles it into `.build`
-on its own, which is only useful for checking that it still builds. The result
-is checked for being a 32-bit PE before it goes into the bundle, the build is
-reproducible — the same source and compiler give the same bytes — and
-`STEAM_STUB_CC` names a cross-compiler other than `i686-w64-mingw32-gcc`.
+That compiler only runs when the stub is actually out of date. `.steam-stub/steam_stub.exe`
+is the one real file target in the Makefile — it is rebuilt when `steam_stub.c`
+or the build script is newer and left alone otherwise, so an ordinary
+`make` never invokes it. `make bundle` checks the result over the way it checks
+the Wine runtime, `make clean` removes `.steam-stub`, and nothing installs a
+compiler behind your back.
+
+The build is reproducible — the same source and compiler give the same bytes, so
+a rebuild that changes nothing does not churn the binary the app ships.
+`STEAM_STUB` points somewhere other than `.steam-stub`, and `STEAM_STUB_CC`
+names a cross-compiler other than `i686-w64-mingw32-gcc`.
 
 ## Languages
 
@@ -201,8 +211,9 @@ makeicon.swift           draws AppIcon.icns, no asset files needed
 Makefile                 names the builds; build.sh does the work
 Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
-tools/steam-stub/        the Steam stub's source, and the script that builds it
+tools/steam-stub/        the Steam stub's source, and the scripts around it
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
+.steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
   x87sidecar/            the x87 hook, bundled into the app
