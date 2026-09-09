@@ -46,16 +46,21 @@ command -v swift >/dev/null 2>&1 || {
     exit 1
 }
 
+# The Steam stub is compiled into the bundle further down. Checking for its
+# cross-compiler now means a missing one is reported straight away, rather than
+# after the release build has already run.
+"$PKG/tools/steam-stub/build.sh" --check
+
 echo "==> building (release)"
 swift build -c release --package-path "$PKG"
 BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE"
 
 # DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
-# installs and runs without needing tools/ next to it.
+# installs and runs without needing tools/ next to it. DXVK and x87sidecar are
+# checked in; the stub is compiled from source into the bundle below.
 DXVK="$PKG/Resources/d9vk/d3d9.dll"
-STEAM_STUB="$PKG/Resources/steam_stub/steam_stub.exe"
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
-for f in "$DXVK" "$STEAM_STUB" "$X87_SIDECAR"; do
+for f in "$DXVK" "$X87_SIDECAR"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
 done
 
@@ -64,9 +69,14 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
-cp "$STEAM_STUB" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
+
+# Straight into the bundle: the stub is built, never stored, so the .exe the app
+# carries is always the one tools/steam-stub/steam_stub.c describes. It lands
+# before the signature, which seals everything under Resources/.
+echo "==> building the Steam stub"
+"$PKG/tools/steam-stub/build.sh" --output "$APP/Contents/Resources/steam_stub.exe"
 
 # The Wine runtime, which the installer copies out of here into the install
 # folder. It goes in before the signature, since codesign seals Resources/ —

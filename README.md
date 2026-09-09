@@ -1,6 +1,6 @@
 # ROSilicon
 
-A native macOS launcher for the LATAM Windows game client on Apple
+A native macOS launcher for the Ragnarok Online LATAM Windows client on Apple
 Silicon. One window: it installs everything and runs the game.
 
 It ships the Wine runtime from
@@ -18,7 +18,8 @@ make bundle         # -> validates the Wine runtime, then the app and the .dmg
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
 
-Needs Xcode (or the Swift toolchain); macOS 14+, Apple Silicon, Rosetta 2. The
+Needs Xcode (or the Swift toolchain) and mingw-w64 for the
+[Steam stub](#the-steam-stub); macOS 14+, Apple Silicon, Rosetta 2. The
 script builds the package, assembles the bundle — the Wine runtime from
 `.wine-runtime` included — draws the icon and ad-hoc signs it, without the
 hardened runtime, so the launcher can pass `DYLD_LIBRARY_PATH` down to Wine. Set
@@ -154,6 +155,29 @@ applies nor reports it — there is nothing for it to decide. The way back is to
 rebuild the app from the untouched tree in `.wine-runtime`, or to put the
 `wintrust.dll.wine-orig` kept beside each patched DLL back by hand.
 
+## The Steam stub
+
+The client expects to find Steam running, so the app carries a small stand-in
+that launches the game and waits for it to exit. It lives in
+[tools/steam-stub/](tools/steam-stub/) as the C source it is built from, and
+`build.sh` cross-compiles it **straight into the app bundle** — there is no
+`.exe` checked into this repository, so the stub the app ships is always the one
+the source describes, and there is no second copy to drift.
+
+It is a 32-bit Windows GUI program, which needs the mingw-w64 cross-compiler:
+
+```sh
+make steam-stub-toolchain   # brew install mingw-w64
+```
+
+Every build compiles the stub, so this is needed to build the app at all — a
+build reports a missing compiler up front, before the release build runs, and
+never installs one behind your back. `make steam-stub` compiles it into `.build`
+on its own, which is only useful for checking that it still builds. The result
+is checked for being a 32-bit PE before it goes into the bundle, the build is
+reproducible — the same source and compiler give the same bytes — and
+`STEAM_STUB_CC` names a cross-compiler other than `i686-w64-mingw32-gcc`.
+
 ## Languages
 
 The window, the log and the error messages are translated into **English**,
@@ -177,10 +201,10 @@ makeicon.swift           draws AppIcon.icns, no asset files needed
 Makefile                 names the builds; build.sh does the work
 Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
+tools/steam-stub/        the Steam stub's source, and the script that builds it
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
-  steam_stub/            the Steam stub the client expects, with its source
   x87sidecar/            the x87 hook, bundled into the app
   Localizations/         en.lproj, pt-BR.lproj, es.lproj
 Sources/ROSilicon/
