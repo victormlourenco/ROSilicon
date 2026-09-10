@@ -45,7 +45,7 @@ void launchGame() {
             CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         DWORD err = GetLastError();
         char buffer[256];
-        sprintf(buffer, "Failed to start %s", err, path);
+        snprintf(buffer, sizeof(buffer), "Failed to start %s (error %lu)", path, err);
         OutputDebugStringA(buffer);
     } else {
         CloseHandle(pi.hThread);
