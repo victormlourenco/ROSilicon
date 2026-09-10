@@ -76,6 +76,8 @@ cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
+# The GPL travels with the binary: whoever gets the app gets the license.
+cp "$PKG/LICENSE" "$APP/Contents/Resources/LICENSE"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
 # The Wine runtime, which the installer copies out of here into the install
@@ -133,6 +135,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 $(printf '        <string>%s</string>\n' "${LANGUAGES[@]}")
     </array>
     <key>LSApplicationCategoryType</key> <string>public.app-category.games</string>
+    <key>NSHumanReadableCopyright</key>  <string>GNU General Public License v3.0 or later</string>
     <key>NSHighResolutionCapable</key>   <true/>
     <key>NSSupportsAutomaticTermination</key><false/>
 </dict>

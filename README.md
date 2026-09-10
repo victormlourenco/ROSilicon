@@ -250,3 +250,11 @@ it. Both are useful when running outside an app bundle.
   [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit).
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
 - **D9VK** — [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk)
+
+## License
+
+ROSilicon is free software, licensed under the
+[GNU General Public License v3.0](LICENSE) or, at your option, any later
+version. It comes with no warranty. The components it bundles — the Wine
+runtime, `x87sidecar`, DXVK/D9VK — keep the licenses of their own projects,
+listed under [Credits](#credits).
