@@ -3,8 +3,9 @@
 A native macOS launcher for the Ragnarok Online LATAM Windows client on Apple
 Silicon. One window: it installs everything and runs the game.
 
-It ships the Wine runtime from
-[WoWSilicon](https://github.com/WoWSilicon/WoWSilicon) inside the app, with
+It ships [its own build of Wine](#the-wine-runtime) inside the app —
+[WineAndAqua](https://github.com/WineAndAqua/wine)'s macOS Wine, with patches
+that are mostly [WoWSilicon](https://github.com/WoWSilicon/WoWSilicon)'s — with
 `x87sidecar` for the client's legacy x87 floating-point code (or
 [`rosettax87_jit`](#x87-translation), chosen behind ⌥), and DXVK for Direct3D 9.
 Nothing but the game client is downloaded at install time.
@@ -37,9 +38,9 @@ flag its binary answers, so there is one implementation of the patch and not
 two. The tree in `.wine-runtime` is left untouched, and still matches the
 runtime lock `make bundle` validates it against.
 
-`make restore` fetches the pinned tree published by WoWSilicon and checks it
-against `Packaging/WineRuntime/artifact-lock.json`; `tools/wine-runtime/` also
-holds the scripts that build one from source.
+`make restore` fetches the pinned tree from the releases of the repository
+`Packaging/WineRuntime/artifact-lock.json` names, and checks it against that
+lock; [The Wine runtime](#the-wine-runtime) says how one is built.
 
 The disk image is the one to hand to someone else: it opens on a window holding
 the app beside a shortcut to `/Applications` to drag it onto, and wears the app's
@@ -217,6 +218,46 @@ a rebuild that changes nothing does not churn the binary the app ships.
 `STEAM_STUB` points somewhere other than `.steam-stub`, and `STEAM_STUB_CC`
 names a cross-compiler other than `i686-w64-mingw32-gcc`.
 
+## The Wine runtime
+
+The **Wine runtime** workflow,
+[.github/workflows/wine-runtime.yml](.github/workflows/wine-runtime.yml), builds
+it, run by hand from the Actions tab: it fetches the Wine commit
+`Packaging/WineRuntime/runtime-lock.json` pins, applies the patches beside it in
+order, builds, assembles and validates the tree, and uploads the archive with
+the `artifact-lock.json` that pins it. With **publish** ticked it also releases
+the archive as `wine-runtime-r<revision>`; committing that lock is what points
+`make restore` at it.
+
+Everything below the launcher is x86_64, but Homebrew stopped building Intel
+bottles in September 2026, so the runtime is built on Apple Silicon under
+Rosetta 2: Xcode's clang compiles the host side for x86_64 against headers from
+the arm64 Homebrew, and mingw-w64 compiles the Windows side as it would anywhere.
+Wine loads FreeType, GnuTLS and MoltenVK by name at run time, and configure
+learns those names by linking against x86_64 copies. Those copies, like the
+mtld3d and library overlays assembled into the tree, come from the runtime the
+lock pinned before, so each release is built on the last one; the first was
+built on WoWSilicon's r15. The runtime targets macOS 14, like the app.
+
+Wine's Mac driver titles its application menu — and the Hide and Quit items in
+it — after the `CFBundleName` of the Info.plist embedded in its loader.
+[0013-loader-name-the-app-rosilicon.patch](Packaging/WineRuntime/patches/0013-loader-name-the-app-rosilicon.patch)
+makes that ROSilicon (`com.rosilicon.wine`), and `validate.sh` refuses a tree
+without it. The process itself is still `wine` to macOS, as it always was.
+
+To build one here instead, on Apple Silicon with Rosetta 2:
+
+```sh
+brew install bison mingw-w64 freetype gnutls xz jq
+tools/wine-runtime/restore.sh --no-validate --runtime /tmp/base
+tools/wine-runtime/fetch-source.sh --output /tmp/wine-src
+tools/wine-runtime/build.sh --source /tmp/wine-src --build /tmp/wine-build \
+    --install /tmp/wine-install --libs /tmp/base/lib/external
+tools/wine-runtime/assemble.sh --wine-root /tmp/wine-install \
+    --mtld3d-root /tmp/base/lib --external-root /tmp/base/lib/external \
+    --output .wine-runtime
+```
+
 ## Languages
 
 The window, the log and the error messages are translated into **English**,
@@ -242,6 +283,7 @@ Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
+.github/workflows/       the workflow that builds and releases the Wine runtime
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
 Resources/
@@ -275,7 +317,8 @@ it. Both are useful when running outside an app bundle.
 ## Credits
 
 - **WoWSilicon** — [WoWSilicon/WoWSilicon](https://github.com/WoWSilicon/WoWSilicon)
-  — the Wine runtime and the Rosetta work behind it.
+  — the Wine patches and runtime tooling this one's is built with, the mtld3d
+  and library overlays it carries, and the Rosetta work behind it.
 - **x87sidecar** — [athei/x87sidecar](https://github.com/athei/x87sidecar) — the
   x87 hook the runtime re-execs into; the bundled binary is that project's
   release, tracked in `Packaging/X87Sidecar/x87sidecar-lock.json`. Built on

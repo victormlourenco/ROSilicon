@@ -1,0 +1,17 @@
+diff --git a/loader/wine_info.plist.in b/loader/wine_info.plist.in
+--- a/loader/wine_info.plist.in
++++ b/loader/wine_info.plist.in
+@@ -9,11 +9,11 @@
+     <key>CFBundleExecutable</key>
+     <string>wine</string>
+     <key>CFBundleIdentifier</key>
+-    <string>org.winehq.wine</string>
++    <string>com.rosilicon.wine</string>
+     <key>CFBundleInfoDictionaryVersion</key>
+     <string>6.0</string>
+     <key>CFBundleName</key>
+-    <string>Wine</string>
++    <string>ROSilicon</string>
+     <key>CFBundlePackageType</key>
+     <string>APPL</string>
+     <key>CFBundleShortVersionString</key>

@@ -4,8 +4,11 @@ set -euo pipefail
 usage() {
   cat >&2 <<'EOF'
 Usage: tools/wine-runtime/package.sh [--runtime PATH] [--output-dir PATH]
+                                     [--repository OWNER/REPO]
 
-Creates and validates a versioned WoWSilicon Wine runtime archive.
+Creates and validates a versioned ROSilicon Wine runtime archive, and pins it
+in artifact-lock.json as released from --repository: GITHUB_REPOSITORY when
+unset, then victormlourenco/ROSilicon.
 EOF
   exit 1
 }
@@ -16,6 +19,7 @@ manifest="$repo_root/Packaging/WineRuntime/runtime-lock.json"
 artifact_lock="$repo_root/Packaging/WineRuntime/artifact-lock.json"
 runtime="$repo_root/.wine-runtime"
 output_dir="$repo_root/.build/runtime-artifacts"
+repository="${GITHUB_REPOSITORY:-victormlourenco/ROSilicon}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -27,6 +31,11 @@ while [[ $# -gt 0 ]]; do
     --output-dir)
       [[ $# -ge 2 ]] || usage
       output_dir="$2"
+      shift 2
+      ;;
+    --repository)
+      [[ $# -ge 2 ]] || usage
+      repository="$2"
       shift 2
       ;;
     *)
@@ -45,10 +54,10 @@ done
 "$script_dir/validate.sh" --runtime "$runtime"
 
 runtime_revision="$(jq -er '.runtimeRevision | numbers' "$manifest")"
-artifact_name="WoWSilicon-WineRuntime-r${runtime_revision}.tar.xz"
+artifact_name="ROSilicon-WineRuntime-r${runtime_revision}.tar.xz"
 artifact_path="$output_dir/$artifact_name"
 checksum_path="$artifact_path.sha256"
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/wowsilicon-runtime-package.XXXXXX")"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/rosilicon-runtime-package.XXXXXX")"
 
 cleanup() {
   rm -rf "$work_dir"
@@ -81,6 +90,7 @@ tar -xJf "$artifact_path" -C "$work_dir/verify"
 
 artifact_size="$(wc -c < "$artifact_path" | tr -d ' ')"
 jq -n \
+  --arg repository "$repository" \
   --argjson runtimeRevision "$runtime_revision" \
   --arg releaseTag "wine-runtime-r${runtime_revision}" \
   --arg asset "$artifact_name" \
@@ -88,6 +98,7 @@ jq -n \
   --arg sha256 "$artifact_sha256" \
   '{
     schemaVersion: 1,
+    repository: $repository,
     runtimeRevision: $runtimeRevision,
     releaseTag: $releaseTag,
     asset: $asset,

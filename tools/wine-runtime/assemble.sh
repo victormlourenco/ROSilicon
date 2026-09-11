@@ -5,7 +5,7 @@ usage() {
   cat >&2 <<'EOF'
 Usage: assemble.sh --wine-root PATH --mtld3d-root PATH --external-root PATH --output PATH
 
-Assembles a pinned WoWSilicon Wine runtime from an installed Wine tree and
+Assembles a pinned ROSilicon Wine runtime from an installed Wine tree and
 the custom runtime overlays described by Packaging/WineRuntime/runtime-lock.json.
 The output path must not already exist.
 EOF
@@ -140,4 +140,4 @@ fi
 mkdir -p "$output/share/wowsilicon"
 cp -X "$manifest" "$output/share/wowsilicon/runtime-lock.json"
 
-echo "Assembled WoWSilicon Wine runtime at $output"
+echo "Assembled ROSilicon Wine runtime at $output"
