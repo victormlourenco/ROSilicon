@@ -44,8 +44,8 @@
 "dialog.quit.message" = "This shuts down everything in the Wine prefix. Unsaved progress is lost.";
 "dialog.clear.title" = "Move the installation to the Trash?";
 "dialog.clear.confirm" = "Move to Trash";
-"dialog.clear.message" = "Everything in %1$@ (%2$@) goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
-"dialog.clear.message_no_size" = "Everything in %@ goes to the Trash: the Wine build, the prefix, the game client and its settings. Installing again downloads it all afresh.";
+"dialog.clear.message" = "Everything in %1$@ (%2$@) goes to the Trash: every profile, the default one included, with its Wine prefix, game client and settings. Installing again downloads it all afresh.";
+"dialog.clear.message_no_size" = "Everything in %@ goes to the Trash: every profile, the default one included, with its Wine prefix, game client and settings. Installing again downloads it all afresh.";
 
 /* Sheets */
 "sheet.client_url.title" = "Client download URL";
@@ -59,6 +59,27 @@
 "sheet.environment.field" = "Variables";
 "sheet.reset" = "Reset to Default";
 "sheet.done" = "Done";
+
+/* Profiles */
+"profile.default" = "Default";
+"menu.profile" = "Profile";
+"help.profile" = "Each profile is a Wine prefix of its own, with its own game client and settings. Switch profiles while nothing is installing or running.";
+"menu.new_profile" = "New Profile…";
+"menu.delete_profile" = "Delete Profile “%@”…";
+"sheet.new_profile.title" = "New profile";
+"sheet.new_profile.explanation" = "A profile is a Wine prefix of its own, kept in the profiles folder, with its own game client and settings. Press Install after creating it to set it up.";
+"sheet.new_profile.field" = "Name";
+"sheet.new_profile.create" = "Create";
+"dialog.delete_profile.title" = "Move the profile “%@” to the Trash?";
+"dialog.delete_profile.confirm" = "Move to Trash";
+"dialog.delete_profile.message" = "Everything in %1$@ (%2$@) goes to the Trash: the profile's Wine prefix, its game client and its settings. The other profiles are left as they are.";
+"dialog.delete_profile.message_no_size" = "Everything in %@ goes to the Trash: the profile's Wine prefix, its game client and its settings. The other profiles are left as they are.";
+"step.removing_profile" = "Removing the profile %@";
+"step.profile_removed" = "Profile %@ removed";
+"error.profile_name_empty" = "Give the profile a name";
+"error.profile_name_invalid" = "A profile name cannot start with a dot or contain / or :";
+"error.profile_name_taken" = "There is already a profile called %@";
+"error.default_profile_not_deletable" = "The default profile cannot be deleted";
 
 /* Checklist */
 "item.rosetta" = "Rosetta 2";

@@ -65,6 +65,28 @@ struct StatusTests {
         #expect(name(try item("prefix", in: status).state) == "missing")
     }
 
+    /// Named by where it sits in the install folder, so one profile's prefix
+    /// is told from another's at a glance.
+    @Test func anAdditionalProfilesPrefixIsNamedByItsFolder() throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(to: "profiles/Alt/system.reg")
+        try temp.makeDirectory("profiles/Alt/drive_c/windows/system32")
+
+        let status = Status.inspect(Paths(root: temp.url, profile: .named("Alt")))
+        #expect(status.prefixReady)
+        #expect(try item("prefix", in: status).detail == "profiles/Alt/")
+    }
+
+    /// A profile's checklist is about its own prefix, not the default one's.
+    @Test func aProfileDoesNotSeeTheDefaultProfilesClient() throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(Data("MZ".utf8), to: "wine/drive_c/Gravity/Ragnarok/Ragexe.exe")
+        try temp.makeDirectory("profiles/Alt")
+
+        #expect(Status.inspect(Paths(root: temp.url)).clientReady)
+        #expect(!Status.inspect(Paths(root: temp.url, profile: .named("Alt"))).clientReady)
+    }
+
     // MARK: - The client
 
     @Test func theClientIsFoundByItsExecutable() throws {
@@ -117,6 +139,21 @@ struct StatusTests {
     @Test func anEmptyInstallFolderTakesUpNothing() throws {
         let temp = try TemporaryDirectory()
         #expect(Status.inspect(Paths(root: temp.url)).installedSize == 0)
+    }
+
+    /// The confirmation before deleting a profile says what that profile
+    /// alone takes up; the default one cannot be deleted, so it is not asked.
+    @Test func aProfileThatCanBeDeletedSaysWhatItAloneTakesUp() throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(Data(repeating: 0x41, count: 200_000), to: "wine/drive_c/data.grf")
+        try temp.write(Data(repeating: 0x42, count: 100_000), to: "profiles/Alt/drive_c/data.grf")
+
+        #expect(Status.inspect(Paths(root: temp.url)).profileSize == nil)
+
+        let status = Status.inspect(Paths(root: temp.url, profile: .named("Alt")))
+        let size = try #require(status.profileSize)
+        #expect(size >= 100_000 && size < 200_000)
+        #expect(try #require(status.installedSize) >= 300_000)
     }
 
     // MARK: - Rosetta

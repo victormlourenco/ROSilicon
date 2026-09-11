@@ -41,8 +41,8 @@
 "dialog.quit.message" = "Isso desliga tudo que estiver rodando no prefixo do Wine. O progresso não salvo é perdido.";
 "dialog.clear.title" = "Mover a instalação para o Lixo?";
 "dialog.clear.confirm" = "Mover para o Lixo";
-"dialog.clear.message" = "Tudo em %1$@ (%2$@) vai para o Lixo: a build do Wine, o prefixo, o cliente do jogo e as configurações. Instalar de novo baixa tudo outra vez.";
-"dialog.clear.message_no_size" = "Tudo em %@ vai para o Lixo: a build do Wine, o prefixo, o cliente do jogo e as configurações. Instalar de novo baixa tudo outra vez.";
+"dialog.clear.message" = "Tudo em %1$@ (%2$@) vai para o Lixo: todos os perfis, inclusive o padrão, com o prefixo do Wine, o cliente do jogo e as configurações de cada um. Instalar de novo baixa tudo outra vez.";
+"dialog.clear.message_no_size" = "Tudo em %@ vai para o Lixo: todos os perfis, inclusive o padrão, com o prefixo do Wine, o cliente do jogo e as configurações de cada um. Instalar de novo baixa tudo outra vez.";
 
 /* Painéis */
 "sheet.client_url.title" = "URL de download do cliente";
@@ -56,6 +56,27 @@
 "sheet.environment.field" = "Variáveis";
 "sheet.reset" = "Restaurar padrão";
 "sheet.done" = "Concluído";
+
+/* Perfis */
+"profile.default" = "Padrão";
+"menu.profile" = "Perfil";
+"help.profile" = "Cada perfil é um prefixo do Wine próprio, com o seu próprio cliente do jogo e configurações. Troque de perfil quando nada estiver instalando ou em execução.";
+"menu.new_profile" = "Novo perfil…";
+"menu.delete_profile" = "Apagar perfil “%@”…";
+"sheet.new_profile.title" = "Novo perfil";
+"sheet.new_profile.explanation" = "Um perfil é um prefixo do Wine próprio, guardado na pasta profiles, com o seu próprio cliente do jogo e configurações. Depois de criá-lo, aperte Instalar para prepará-lo.";
+"sheet.new_profile.field" = "Nome";
+"sheet.new_profile.create" = "Criar";
+"dialog.delete_profile.title" = "Mover o perfil “%@” para o Lixo?";
+"dialog.delete_profile.confirm" = "Mover para o Lixo";
+"dialog.delete_profile.message" = "Tudo em %1$@ (%2$@) vai para o Lixo: o prefixo do Wine do perfil, o cliente do jogo e as configurações dele. Os outros perfis continuam como estão.";
+"dialog.delete_profile.message_no_size" = "Tudo em %@ vai para o Lixo: o prefixo do Wine do perfil, o cliente do jogo e as configurações dele. Os outros perfis continuam como estão.";
+"step.removing_profile" = "Removendo o perfil %@";
+"step.profile_removed" = "Perfil %@ removido";
+"error.profile_name_empty" = "Dê um nome ao perfil";
+"error.profile_name_invalid" = "O nome de um perfil não pode começar com ponto nem conter / ou :";
+"error.profile_name_taken" = "Já existe um perfil chamado %@";
+"error.default_profile_not_deletable" = "O perfil padrão não pode ser apagado";
 
 /* Lista de verificação */
 "item.rosetta" = "Rosetta 2";

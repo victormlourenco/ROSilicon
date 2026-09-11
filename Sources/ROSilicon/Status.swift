@@ -14,14 +14,17 @@ struct Status: Sendable {
     var items: [Item] = []
     /// Bytes on disk under the install folder, nil when there is nothing there.
     var installedSize: Int64?
+    /// Bytes in the profile's own prefix, for the confirmation before deleting
+    /// it. nil for the default profile, which cannot be deleted.
+    var profileSize: Int64?
     var wineReady = false
     var prefixReady = false
     var clientReady = false
 
     var canPlay: Bool { wineReady && prefixReady && clientReady }
 
-    /// Inspects the folder. Cheap enough to re-run whenever the window
-    /// reappears.
+    /// Inspects the folder, as far as the profile in `paths` goes. Cheap
+    /// enough to re-run whenever the window reappears.
     static func inspect(_ paths: Paths) -> Status {
         let fm = FileManager.default
         var status = Status()
@@ -63,12 +66,13 @@ struct Status: Sendable {
                 state: .missing))
         }
 
-        // 2. The Wine prefix
+        // 2. The Wine prefix, named by where it sits in the install folder so
+        //    one profile's is told from another's at a glance.
         status.prefixReady = paths.prefixInitialized
         status.items.append(Item(
             id: "prefix", title: Strings.itemPrefix,
             detail: status.prefixReady
-                ? paths.prefix.lastPathComponent + "/"
+                ? paths.profile.folder + "/"
                 : (fm.fileExists(atPath: paths.prefix.path)
                     ? Strings.incomplete : Strings.notCreated),
             state: status.prefixReady ? .ok : .missing))
@@ -88,11 +92,11 @@ struct Status: Sendable {
             state: status.clientReady ? .ok : .missing))
 
         status.installedSize = sizeOnDisk(paths.root)
+        if paths.profile.isDeletable { status.profileSize = sizeOnDisk(paths.prefix) }
         return status
     }
 
-    /// Walks the install folder so the "clear" confirmation can say how much
-    /// is about to go.
+    /// Walks a folder so the confirmations can say how much is about to go.
     private static func sizeOnDisk(_ url: URL) -> Int64? {
         let keys: [URLResourceKey] = [.totalFileAllocatedSizeKey, .fileAllocatedSizeKey]
         guard let walker = FileManager.default.enumerator(
