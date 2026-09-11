@@ -54,16 +54,11 @@ void launchGame() {
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
-    HANDLE hMutex = CreateMutexA(NULL, TRUE, "Global\\SteamDummyMonitor");
-
-    BOOL alreadyRunning = (GetLastError() == ERROR_ALREADY_EXISTS);
-
     launchGame();
 
-    if (alreadyRunning) {
-        return 0;
-    }
-
+    // Every stub waits while any client is open, not only the first one
+    // started: with several clients open, each stub returns when the last of
+    // them closes, so the launcher sees one session however many it started.
     const char *watchList[] = {
         "Ragexe.exe",
         "Ragnarok.exe",
@@ -74,6 +69,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         Sleep(2000);
     }
 
-    CloseHandle(hMutex);
     return 0;
 }

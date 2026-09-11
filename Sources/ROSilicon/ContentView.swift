@@ -221,17 +221,32 @@ struct ContentView: View {
                 Button {
                     model.play()
                 } label: {
-                    Label(Strings.play, systemImage: "play.fill")
+                    playLabel
                         .frame(minWidth: 90)
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
                 .disabled(!model.canPlay)
+                .animation(.easeInOut(duration: 0.15), value: model.isStarting)
             }
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 16)
+    }
+
+    /// A spinner in place of the triangle while a press is being held back,
+    /// so the click visibly landed and there is no reason to click again.
+    @ViewBuilder
+    private var playLabel: some View {
+        if model.isStarting {
+            HStack(spacing: 6) {
+                ProgressView().controlSize(.small)
+                Text(Strings.starting)
+            }
+        } else {
+            Label(Strings.play, systemImage: "play.fill")
+        }
     }
 
     private func transferred(_ progress: DownloadProgress) -> String {

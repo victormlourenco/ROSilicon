@@ -83,6 +83,16 @@ gigabytes — and then runs three stages, each skipped when it is already done:
 **Play** links DXVK and the Steam stub into the prefix and starts the client
 through `steam.exe`, which is what the client expects to find running.
 
+Play stays available while the game runs: each press opens another client in
+the same prefix, with the settings of that moment. For a few seconds after each
+press the button shows a spinner and ignores further presses, so a double click
+opens one client, not two. A link already pointing at
+the app is left alone, so a second launch never pulls DXVK out from under a
+client that is starting. Every `steam.exe` waits for the last client to close,
+so the launcher shows the game as running until then, whichever was started
+first. **Quit Game** shuts all of them down, since it stops everything in the
+prefix.
+
 The `…` menu holds the rest: show the installation or game folder, reinstall the
 client, change the client URL, copy the log, and clear the installation (to the
 Trash, after a confirmation). Holding ⌥ also reveals `WINEDEBUG` (`-all` by
@@ -188,7 +198,9 @@ reports it — there is nothing for it to decide.
 ## The Steam stub
 
 The client expects to find Steam running, so the app carries a small stand-in
-that launches the game and waits for it to exit. It lives in
+that launches the game and waits until no client is left running — every copy
+of it, not only the first, so each Play lasts as long as the whole session. It
+lives in
 [tools/steam-stub/](tools/steam-stub/) as the C source it is built from — there
 is no `.exe` checked into this repository.
 

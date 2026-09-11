@@ -16,6 +16,14 @@ struct LauncherModelTests {
         #expect(LauncherModel.Phase.running.isBusy)
     }
 
+    /// Play opens another client beside a running one, but never starts the
+    /// game on a build an install is still replacing.
+    @Test func onlyAnInstallHoldsPlayBack() {
+        #expect(LauncherModel.Phase.idle.allowsPlay)
+        #expect(LauncherModel.Phase.running.allowsPlay)
+        #expect(!LauncherModel.Phase.working.allowsPlay)
+    }
+
     @Test func aLogLineIsOrdinaryUnlessItSaysOtherwise() {
         let line = LauncherModel.LogLine(text: "wine: created the prefix")
         #expect(line.text == "wine: created the prefix")

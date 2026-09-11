@@ -151,7 +151,7 @@ struct GameRunner: Sendable {
     }
 
     /// Checks the pieces are in place and links DXVK and the Steam stub, both
-    /// inside the app, into the prefix. The links are rewritten every launch,
+    /// inside the app, into the prefix. The links are checked every launch,
     /// so one left pointing at an app that has since moved is replaced rather
     /// than followed. Returns the path of steam.exe inside drive_c.
     @discardableResult
@@ -175,14 +175,17 @@ struct GameRunner: Sendable {
         }
 
         let steamExe = paths.driveC.appending(path: "steam.exe")
-        try link(Paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
-        try link(Paths.steamStub, at: steamExe)
+        try Self.link(Paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
+        try Self.link(Paths.steamStub, at: steamExe)
         return steamExe
     }
 
-    /// `ln -sfn`: replace whatever is there with a symlink.
-    private func link(_ target: URL, at location: URL) throws {
+    /// `ln -sfn`: replace whatever is there with a symlink — unless it already
+    /// is that symlink. A client started beside a running one must not find
+    /// d3d9.dll missing because the second launch was busy rewriting it.
+    static func link(_ target: URL, at location: URL) throws {
         let fm = FileManager.default
+        if (try? fm.destinationOfSymbolicLink(atPath: location.path)) == target.path { return }
         if (try? location.checkResourceIsReachable()) == true
             || (try? fm.attributesOfItem(atPath: location.path)) != nil {
             try fm.removeItem(at: location)

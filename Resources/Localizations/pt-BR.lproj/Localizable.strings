@@ -3,6 +3,7 @@
 /* Janela e botões */
 "app.title" = "ROSilicon";
 "button.play" = "Jogar";
+"button.starting" = "Iniciando…";
 "button.install" = "Instalar";
 "button.repair" = "Reparar";
 "button.cancel" = "Cancelar";

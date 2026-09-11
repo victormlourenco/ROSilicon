@@ -20,6 +20,7 @@ enum Strings {
 
     static var appTitle: String { t("app.title") }
     static var play: String { t("button.play") }
+    static var starting: String { t("button.starting") }
     static var install: String { t("button.install") }
     static var repair: String { t("button.repair") }
     static var cancel: String { t("button.cancel") }
