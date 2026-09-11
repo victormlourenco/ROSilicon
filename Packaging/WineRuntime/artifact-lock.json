@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "repository": "WoWSilicon/WoWSilicon",
-  "runtimeRevision": 15,
-  "releaseTag": "wine-runtime-r15",
-  "asset": "WoWSilicon-WineRuntime-r15.tar.xz",
-  "sizeBytes": 61997416,
-  "sha256": "2414cb391159ea7272bfd74e1c65db8d490299de7651adcb173a65cbe6bbae7e"
+  "repository": "victormlourenco/ROSilicon",
+  "runtimeRevision": 16,
+  "releaseTag": "wine-runtime-r16",
+  "asset": "ROSilicon-WineRuntime-r16.tar.xz",
+  "sizeBytes": 61581380,
+  "sha256": "3bf6b9c5f45c7a8387386514bf6b174f1b1c76d6ac5ff71b58632d95e538ccab"
 }

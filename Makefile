@@ -28,8 +28,8 @@ export STEAM_STUB
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
         package_wine_runtime validate_steam_stub \
-        update-mtld3d update-x87sidecar restore bundle \
-        steam-stub steam-stub-toolchain
+        update-mtld3d update-x87sidecar restore runtime release-runtime \
+        bundle steam-stub steam-stub-toolchain
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -55,10 +55,13 @@ run: app
 test:
 	swift test $(if $(FILTER),--filter "$(FILTER)",)
 
-# Only build products, every one of them gitignored. The Wine runtime is left
-# alone: it is a download, not something this builds, and `make restore` is slow.
+# The build products, every one of them gitignored — the Wine runtime and the
+# Steam stub included, so `make runtime` can start over. Getting the runtime
+# back takes `make restore` or `make runtime`, both slow.
 clean:
 	rm -rf .build "$(STEAM_STUB)" "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
+	rm -rf .wine-runtime
+	rm -rf .steam-stub
 
 help:
 	@echo "make             build $(APP_NAME).app — the fast one"
@@ -67,6 +70,8 @@ help:
 	@echo "make test        run the test suite"
 	@echo "make bundle      check the Wine runtime, then build the .app and the .dmg"
 	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
+	@echo "make runtime     build the Wine runtime from source into .wine-runtime"
+	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
 	@echo "make steam-stub  build the Steam stub into .steam-stub"
 	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
@@ -89,6 +94,16 @@ update-mtld3d:
 
 restore:
 	@tools/wine-runtime/restore.sh --runtime "$(WINE_RUNTIME)"
+
+# Builds the Wine runtime from source into WINE_RUNTIME, which must not exist
+# yet: several minutes on Apple Silicon, under Rosetta 2. See the README.
+runtime:
+	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
+
+# Publishes WINE_RUNTIME as the GitHub release runtime-lock.json names, and
+# pins it in artifact-lock.json, which is then yours to commit.
+release-runtime:
+	@tools/wine-runtime/release.sh --runtime "$(WINE_RUNTIME)"
 
 update-x87sidecar:
 	@tools/wine-runtime/update-x87sidecar.sh $(if $(TAG),--tag $(TAG),)

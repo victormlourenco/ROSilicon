@@ -103,17 +103,6 @@ if [[ "$COPY_WINE" == 1 ]]; then
     # codesign seals every file under Resources/; the Finder's leftovers have no
     # business in the signature.
     find "$APP/Contents/Resources/Wine" -name .DS_Store -delete
-
-    # The wintrust patch, applied here rather than at install time, by the
-    # launcher's own code. The copy in .wine-runtime stays untouched, so it
-    # still matches the runtime lock; each patched DLL keeps its stock bytes
-    # beside it as wintrust.dll.wine-orig, which is what the "restore" menu
-    # item puts back. A prefix created later copies these DLLs, so it is born
-    # patched too.
-    echo "==> patching wintrust"
-    "$BIN" --patch-wintrust \
-        "$APP/Contents/Resources/Wine/lib/wine/i386-windows/wintrust.dll" \
-        "$APP/Contents/Resources/Wine/lib/wine/x86_64-windows/wintrust.dll"
 else
     echo "==> skipping the Wine runtime (--no-wine)"
 fi

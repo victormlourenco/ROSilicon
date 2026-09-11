@@ -21,7 +21,7 @@ struct Status: Sendable {
     var canPlay: Bool { wineReady && prefixReady && clientReady }
 
     /// Inspects the folder. Cheap enough to re-run whenever the window
-    /// reappears; the wintrust check parses two DLL export tables.
+    /// reappears.
     static func inspect(_ paths: Paths) -> Status {
         let fm = FileManager.default
         var status = Status()

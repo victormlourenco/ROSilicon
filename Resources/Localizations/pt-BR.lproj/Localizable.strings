@@ -130,8 +130,6 @@
 "log.exited_normally" = "O jogo foi encerrado normalmente.";
 "log.unknown_size" = "tamanho desconhecido";
 
-/* Correção do wintrust */
-
 /* Erros */
 "error.prefix" = "erro: ";
 "error.root_not_writable" = "%@ não permite escrita — confira as permissões da pasta";
