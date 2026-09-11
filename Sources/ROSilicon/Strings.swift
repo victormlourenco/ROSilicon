@@ -42,6 +42,8 @@ enum Strings {
     static var menuX87Disabled: String { t("menu.x87_backend.disabled") }
     static var menuCommandShortcuts: String { t("menu.command_shortcuts") }
     static var commandShortcutsHelp: String { t("help.command_shortcuts") }
+    static var menuDiscordPresence: String { t("menu.discord_presence") }
+    static var discordPresenceHelp: String { t("help.discord_presence") }
     static var menuWineDebug: String { t("menu.wine_debug") }
     static var menuEnvironment: String { t("menu.environment") }
     static var menuWinecfg: String { t("menu.winecfg") }
@@ -193,6 +195,10 @@ enum Strings {
     static var logX87Disabled: String { t("log.x87_disabled") }
     static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
     static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
+    static var logDiscordPresence: String { t("log.discord_presence") }
+    static func logDiscordPresenceRefused(_ message: String) -> String {
+        t("log.discord_presence_refused", message)
+    }
     static func logWineDebug(_ channels: String) -> String { t("log.wine_debug", channels) }
     static func logExtraEnvironment(_ variables: String) -> String {
         t("log.extra_environment", variables)

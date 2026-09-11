@@ -24,6 +24,8 @@
 "menu.x87_backend.disabled" = "Nenhuma (Rosetta padrão)";
 "menu.command_shortcuts" = "Usar ⌘ nos atalhos do jogo";
 "help.command_shortcuts" = "Envia ⌘A/C/V/X/Z ao jogo como atalhos com Alt, em vez de comandos de edição do Mac. Use Control para editar texto. Vale ao iniciar o jogo novamente; desative para restaurar os comandos de edição do Mac.";
+"menu.discord_presence" = "Mostrar a atividade do jogo no Discord";
+"help.discord_presence" = "Enquanto o jogo estiver aberto, o app do Discord mostra que você está jogando Ragnarok Online, e há quanto tempo. Precisa do app do Discord aberto neste Mac; quem vê depende das configurações de Privacidade de atividades do Discord. Vale na hora.";
 "menu.wine_debug" = "Canais de depuração do Wine (WINEDEBUG)…";
 "menu.environment" = "Variáveis de ambiente adicionais…";
 "menu.winecfg" = "Abrir a configuração do Wine (winecfg)";
@@ -145,6 +147,8 @@
 "log.x87_disabled" = "Sem tradução x87 acelerada: o código x87 do cliente roda no Rosetta padrão, mais lento.";
 "log.command_shortcuts_on" = "Atalhos do jogo com Command ativados: menu Editar do Mac desativado para Ragexe.exe.";
 "log.command_shortcuts_off" = "Atalhos do jogo com Command desativados: comandos de edição do Mac restaurados para Ragexe.exe.";
+"log.discord_presence" = "O Discord mostra Ragnarok Online como sua atividade.";
+"log.discord_presence_refused" = "O Discord recusou a atividade do jogo: %@";
 "log.wine_debug" = "WINEDEBUG=%@";
 "log.extra_environment" = "Ambiente adicional: %@";
 "log.opening_tool" = "Abrindo %@…";

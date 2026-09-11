@@ -62,6 +62,16 @@ final class LauncherModel: ObservableObject {
         forKey: LauncherModel.extraEnvironmentKey) ?? "" {
         didSet { UserDefaults.standard.set(extraEnvironmentText, forKey: Self.extraEnvironmentKey) }
     }
+    /// Shows the game in the Discord app while a client runs. On unless
+    /// someone turned it off — who sees it is up to Discord's own settings —
+    /// and it takes effect at once, a game already running included.
+    @Published var discordPresence = UserDefaults.standard.object(
+        forKey: LauncherModel.discordPresenceKey) as? Bool ?? true {
+        didSet {
+            UserDefaults.standard.set(discordPresence, forKey: Self.discordPresenceKey)
+            updatePresence()
+        }
+    }
 
     /// An install or a clear.
     private var job: Task<Void, Never>?
@@ -69,6 +79,10 @@ final class LauncherModel: ObservableObject {
     /// last client in the prefix to close, so these end together, and the
     /// launcher is running for as long as any is left.
     private var games: [UUID: Task<Void, Never>] = [:]
+    /// When the first of the clients still running was started: what Discord
+    /// counts the time played from. Nil while no game runs.
+    private var sessionStart: Date?
+    private let presence = DiscordPresence()
     /// Ends the hold on Play once `playHoldDuration` has passed.
     private var playHold: Task<Void, Never>?
     private static let playHoldDuration: Duration = .seconds(5)
@@ -78,6 +92,7 @@ final class LauncherModel: ObservableObject {
     private static let wineDebugKey = "wineDebug"
     private static let extraEnvironmentKey = "extraEnvironment"
     private static let profileKey = "profile"
+    private static let discordPresenceKey = "discordPresence"
 
     struct LogLine: Identifiable, Sendable {
         /// What the line is, so the view can colour it without matching on
@@ -194,13 +209,17 @@ final class LauncherModel: ObservableObject {
             paths: paths, reporter: reporter, metalHUD: metalHUD, options: launchOptions,
             keyboard: GameKeyboardSettings(commandShortcuts: commandShortcuts), x87: x87Backend)
         let id = UUID()
-        if games.isEmpty { failure = nil }
+        if games.isEmpty {
+            failure = nil
+            sessionStart = .now
+        }
         phase = .running
         holdPlay()
         games[id] = Task { [weak self] in
             let outcome = await Outcome.of { try await runner.play() }
             self?.gameEnded(id, outcome)
         }
+        updatePresence()
     }
 
     /// Opens winecfg or a cmd.exe window against the prefix.
@@ -294,6 +313,8 @@ final class LauncherModel: ObservableObject {
             }
             return
         }
+        sessionStart = nil
+        updatePresence()
         finish(with: outcome.failure)
     }
 
@@ -356,6 +377,19 @@ final class LauncherModel: ObservableObject {
             step = failure
         }
         refresh()
+    }
+
+    // MARK: - Discord
+
+    /// Shows the game in Discord while a client runs and the choice is on,
+    /// and takes it down otherwise. Called whenever either changes; showing
+    /// what is already shown is a no-op, so the session keeps its start time.
+    private func updatePresence() {
+        if discordPresence, let sessionStart {
+            presence.show(since: sessionStart, reporter: reporter)
+        } else {
+            presence.clear()
+        }
     }
 
     // MARK: - Profiles
