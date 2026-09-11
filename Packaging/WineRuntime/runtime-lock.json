@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "runtimeRevision": 16,
+  "runtimeRevision": 17,
   "wine": {
-    "version": "11.13",
+    "version": "11.15",
     "repository": "https://github.com/WineAndAqua/wine.git",
-    "branch": "wine-11.13-macos",
-    "commit": "37540b5d94ac1c86e2599ef55d7f3a15e3237ce8"
+    "branch": "wine-11.15-macos",
+    "commit": "216d705494413fd74efc01c7ddac21b426b6e744"
   },
   "mtld3d": {
     "version": "v0.7.0"
