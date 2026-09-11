@@ -17,6 +17,10 @@
 "menu.reinstall_client" = "Reinstalar cliente do jogo…";
 "menu.client_url" = "URL do cliente…";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
+"menu.x87_backend" = "Tradução x87";
+"menu.x87_backend.sidecar" = "x87sidecar (padrão)";
+"menu.x87_backend.rosettax87_jit" = "rosettax87_jit (pede sua senha)";
+"menu.x87_backend.disabled" = "Nenhuma (Rosetta padrão)";
 "menu.command_shortcuts" = "Usar ⌘ nos atalhos do jogo";
 "help.command_shortcuts" = "Envia ⌘A/C/V/X/Z ao jogo como atalhos com Alt, em vez de comandos de edição do Mac. Use Control para editar texto. Vale ao iniciar o jogo novamente; desative para restaurar os comandos de edição do Mac.";
 "menu.wine_debug" = "Canais de depuração do Wine (WINEDEBUG)…";
@@ -115,6 +119,8 @@
 "log.removed" = "(removido)";
 "log.launching" = "Iniciando o cliente…";
 "log.metal_hud" = "Medidor de FPS do Metal ligado.";
+"log.rosettax87_jit" = "O código x87 roda com o rosettax87_jit — o macOS pede sua senha para deixá-lo se conectar ao jogo.";
+"log.x87_disabled" = "Sem tradução x87 acelerada: o código x87 do cliente roda no Rosetta padrão, mais lento.";
 "log.command_shortcuts_on" = "Atalhos do jogo com Command ativados: menu Editar do Mac desativado para Ragexe.exe.";
 "log.command_shortcuts_off" = "Atalhos do jogo com Command desativados: comandos de edição do Mac restaurados para Ragexe.exe.";
 "log.wine_debug" = "WINEDEBUG=%@";

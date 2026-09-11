@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "upstream": "https://github.com/Lifeisawful/rosettax87_jit",
+  "source": "WoWSilicon's bundled copy, Sources/WoWSiliconSwift/Resources/Patching/rosettax87 (rosettax87 renamed to runtime_loader)",
+  "binaries": {
+    "runtime_loader": "67cbdd70e2edb0866f9e8356c257eb3cad826205cbb729e59f8964b1858cd790",
+    "libRuntimeRosettax87": "d5f065eb9c25481e060631d5681ed068db39d5365a4ad8fb1f9872839ea98cd2"
+  }
+}

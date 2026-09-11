@@ -35,6 +35,10 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuX87Backend: String { t("menu.x87_backend") }
+    static var menuX87Sidecar: String { t("menu.x87_backend.sidecar") }
+    static var menuRosettaX87JIT: String { t("menu.x87_backend.rosettax87_jit") }
+    static var menuX87Disabled: String { t("menu.x87_backend.disabled") }
     static var menuCommandShortcuts: String { t("menu.command_shortcuts") }
     static var commandShortcutsHelp: String { t("help.command_shortcuts") }
     static var menuWineDebug: String { t("menu.wine_debug") }
@@ -152,6 +156,8 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static var logRosettaX87JIT: String { t("log.rosettax87_jit") }
+    static var logX87Disabled: String { t("log.x87_disabled") }
     static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
     static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
     static func logWineDebug(_ channels: String) -> String { t("log.wine_debug", channels) }

@@ -20,6 +20,10 @@
 "menu.reinstall_client" = "Reinstall Game Client…";
 "menu.client_url" = "Client URL…";
 "menu.metal_hud" = "Show Metal Frame-Rate Overlay";
+"menu.x87_backend" = "x87 Translation";
+"menu.x87_backend.sidecar" = "x87sidecar (Default)";
+"menu.x87_backend.rosettax87_jit" = "rosettax87_jit (Asks for Your Password)";
+"menu.x87_backend.disabled" = "None (Stock Rosetta)";
 "menu.command_shortcuts" = "Use ⌘ for Game Shortcuts";
 "help.command_shortcuts" = "Pass ⌘A/C/V/X/Z to the game as Alt shortcuts instead of Mac editing commands. Use Control for text editing. Applies on the next game launch; turn off to restore Mac editing commands.";
 "menu.wine_debug" = "Wine Debug Channels (WINEDEBUG)…";
@@ -118,6 +122,8 @@
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
 "log.metal_hud" = "Metal frame-rate overlay on.";
+"log.rosettax87_jit" = "x87 code runs under rosettax87_jit — macOS asks for your password to let it attach to the game.";
+"log.x87_disabled" = "No accelerated x87 translation: the client's x87 code runs under stock Rosetta, more slowly.";
 "log.command_shortcuts_on" = "Game Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
 "log.command_shortcuts_off" = "Game Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
 "log.wine_debug" = "WINEDEBUG=%@";

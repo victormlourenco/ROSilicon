@@ -97,6 +97,10 @@ struct ContentView: View {
                 Button(Strings.menuClientURL) { editor = .clientURL }
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                Picker(Strings.menuX87Backend, selection: $model.x87Backend) {
+                    ForEach(X87Backend.allCases) { Text($0.menuLabel).tag($0) }
+                }
+                .pickerStyle(.menu)
                 Button(Strings.menuWineDebug) { editor = .wineDebug }
                 Button(Strings.menuEnvironment) { editor = .environment }
                 Divider()
