@@ -114,7 +114,7 @@ struct Paths: Sendable {
 
     var downloads: URL { root.appending(path: "downloads") }
 
-    /// How the bundled runtime names itself, e.g. "11.13 (r15)", read from the
+    /// How the bundled runtime names itself, e.g. "11.13 (r16)", read from the
     /// lock the build embeds in the tree. nil when the app was built without a
     /// runtime, or the lock cannot be read.
     static var bundledWineVersion: String? {

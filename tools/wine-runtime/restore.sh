@@ -2,7 +2,15 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--runtime PATH] [--repository OWNER/REPO]" >&2
+  cat >&2 <<'EOF'
+Usage: restore.sh [--runtime PATH] [--repository OWNER/REPO] [--no-validate]
+
+Fetches the runtime artifact-lock.json pins from the GitHub releases of the
+repository it names, and checks it against the lock.
+
+--no-validate skips validate.sh, for a runtime restored only as the base of
+the next build: its embedded runtime lock predates the one in this checkout.
+EOF
   exit 1
 }
 
@@ -10,7 +18,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
 artifact_lock="$repo_root/Packaging/WineRuntime/artifact-lock.json"
 runtime="$repo_root/.wine-runtime"
-repository="${GITHUB_REPOSITORY:-WoWSilicon/WoWSilicon}"
+repository=""
+validate=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -23,6 +32,10 @@ while [[ $# -gt 0 ]]; do
       [[ $# -ge 2 ]] || usage
       repository="$2"
       shift 2
+      ;;
+    --no-validate)
+      validate=0
+      shift
       ;;
     *)
       usage
@@ -42,12 +55,13 @@ done
   exit 1
 }
 
+[[ -n "$repository" ]] || repository="$(jq -er '.repository | strings' "$artifact_lock")"
 release_tag="$(jq -er '.releaseTag | strings' "$artifact_lock")"
 asset_name="$(jq -er '.asset | strings' "$artifact_lock")"
 expected_size="$(jq -er '.sizeBytes | numbers' "$artifact_lock")"
 expected_sha256="$(jq -er '.sha256 | strings' "$artifact_lock")"
 download_url="https://github.com/$repository/releases/download/$release_tag/$asset_name"
-work_dir="$(mktemp -d "${TMPDIR:-/tmp}/wowsilicon-runtime-restore.XXXXXX")"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/rosilicon-runtime-restore.XXXXXX")"
 archive="$work_dir/$asset_name"
 
 cleanup() {
@@ -55,7 +69,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Downloading Wine runtime $release_tag ..."
+echo "Downloading Wine runtime $release_tag from $repository ..."
 curl -fL --retry 3 --retry-all-errors --progress-bar -o "$archive" "$download_url"
 
 actual_size="$(wc -c < "$archive" | tr -d ' ')"
@@ -78,6 +92,8 @@ archive_root="$(tar -tJf "$archive" | sed -n '1p')"
 
 mkdir -p "$runtime"
 tar -xJf "$archive" --strip-components 1 -C "$runtime"
-"$script_dir/validate.sh" --runtime "$runtime"
+if (( validate )); then
+  "$script_dir/validate.sh" --runtime "$runtime"
+fi
 
 echo "Restored Wine runtime $release_tag at $runtime"

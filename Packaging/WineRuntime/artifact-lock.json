@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "repository": "WoWSilicon/WoWSilicon",
   "runtimeRevision": 15,
   "releaseTag": "wine-runtime-r15",
   "asset": "WoWSilicon-WineRuntime-r15.tar.xz",

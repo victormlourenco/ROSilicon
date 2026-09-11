@@ -179,6 +179,15 @@ strings -a "$secur32" | grep 'gnutls_global_init' >/dev/null || {
   exit 1
 }
 
+# Wine's application menu is titled after the Info.plist embedded in the
+# loader (0013-loader-name-the-app-rosilicon.patch): a tree built without it
+# shows the game under whatever name its builder chose.
+loader="$runtime/lib/wine/x86_64-unix/wine"
+strings -a "$loader" | grep -q '<string>com.rosilicon.wine</string>' || {
+  echo "The Wine loader is not named ROSilicon: $loader" >&2
+  exit 1
+}
+
 arch -x86_64 "$runtime/bin/wine" --version >/dev/null
 
-echo "Validated WoWSilicon Wine runtime at $runtime"
+echo "Validated ROSilicon Wine runtime at $runtime"
