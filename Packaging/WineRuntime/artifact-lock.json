@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "repository": "victormlourenco/ROSilicon",
-  "runtimeRevision": 16,
-  "releaseTag": "wine-runtime-r16",
-  "asset": "ROSilicon-WineRuntime-r16.tar.xz",
-  "sizeBytes": 61581380,
-  "sha256": "3bf6b9c5f45c7a8387386514bf6b174f1b1c76d6ac5ff71b58632d95e538ccab"
+  "runtimeRevision": 17,
+  "releaseTag": "wine-runtime-r17",
+  "asset": "ROSilicon-WineRuntime-r17.tar.xz",
+  "sizeBytes": 62506608,
+  "sha256": "fc3b9be514aec1c13b435696cf755b9ad64404c1f45ec3a29e488cbbb349b65a"
 }
