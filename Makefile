@@ -21,15 +21,12 @@ STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
 
 # build.sh reads these out of the environment; unset and empty both mean "here".
-export APP_OUT
-export WINE_RUNTIME
-export STEAM_STUB
+export APP_OUT WINE_RUNTIME STEAM_STUB
 
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
-        package_wine_runtime validate_steam_stub \
-        update-mtld3d update-x87sidecar restore runtime release-runtime \
-        bundle steam-stub steam-stub-toolchain
+        validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
+        release-runtime bundle steam-stub steam-stub-toolchain
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -57,11 +54,10 @@ test:
 
 # The build products, every one of them gitignored — the Wine runtime and the
 # Steam stub included, so `make runtime` can start over. Getting the runtime
-# back takes `make restore` or `make runtime`, both slow.
+# back takes `make restore` or `make runtime`, both slow. Only this folder's
+# copies go: a WINE_RUNTIME or STEAM_STUB pointed elsewhere is left alone.
 clean:
-	rm -rf .build "$(STEAM_STUB)" "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
-	rm -rf .wine-runtime
-	rm -rf .steam-stub
+	rm -rf .build .wine-runtime .steam-stub "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
 	@echo "make             build $(APP_NAME).app — the fast one"
@@ -85,9 +81,6 @@ help:
 validate_wine_runtime:
 	@test -d "$(WINE_RUNTIME)" || (echo "Wine runtime not found at $(WINE_RUNTIME)" >&2; exit 1)
 	@tools/wine-runtime/validate.sh --runtime "$(WINE_RUNTIME)"
-
-package_wine_runtime:
-	@tools/wine-runtime/package.sh --runtime "$(WINE_RUNTIME)"
 
 update-mtld3d:
 	@tools/wine-runtime/update-mtld3d.sh $(if $(TAG),--tag $(TAG),)
