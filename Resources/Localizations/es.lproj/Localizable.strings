@@ -41,8 +41,8 @@
 "dialog.quit.message" = "Esto apaga todo lo que corre en el prefijo de Wine. El progreso sin guardar se pierde.";
 "dialog.clear.title" = "¿Mover la instalación a la Papelera?";
 "dialog.clear.confirm" = "Mover a la Papelera";
-"dialog.clear.message" = "Todo lo que hay en %1$@ (%2$@) va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
-"dialog.clear.message_no_size" = "Todo lo que hay en %@ va a la Papelera: la compilación de Wine, el prefijo, el cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
+"dialog.clear.message" = "Todo lo que hay en %1$@ (%2$@) va a la Papelera: todos los perfiles, incluido el predeterminado, con su prefijo de Wine, su cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
+"dialog.clear.message_no_size" = "Todo lo que hay en %@ va a la Papelera: todos los perfiles, incluido el predeterminado, con su prefijo de Wine, su cliente del juego y su configuración. Instalar de nuevo lo descarga todo otra vez.";
 
 /* Paneles */
 "sheet.client_url.title" = "URL de descarga del cliente";
@@ -56,6 +56,27 @@
 "sheet.environment.field" = "Variables";
 "sheet.reset" = "Restablecer";
 "sheet.done" = "Listo";
+
+/* Perfiles */
+"profile.default" = "Predeterminado";
+"menu.profile" = "Perfil";
+"help.profile" = "Cada perfil es un prefijo de Wine propio, con su propio cliente del juego y su configuración. Cambia de perfil cuando no haya nada instalándose ni en ejecución.";
+"menu.new_profile" = "Nuevo perfil…";
+"menu.delete_profile" = "Eliminar el perfil “%@”…";
+"sheet.new_profile.title" = "Nuevo perfil";
+"sheet.new_profile.explanation" = "Un perfil es un prefijo de Wine propio, guardado en la carpeta profiles, con su propio cliente del juego y su configuración. Después de crearlo, pulsa Instalar para prepararlo.";
+"sheet.new_profile.field" = "Nombre";
+"sheet.new_profile.create" = "Crear";
+"dialog.delete_profile.title" = "¿Mover el perfil “%@” a la Papelera?";
+"dialog.delete_profile.confirm" = "Mover a la Papelera";
+"dialog.delete_profile.message" = "Todo lo que hay en %1$@ (%2$@) va a la Papelera: el prefijo de Wine del perfil, su cliente del juego y su configuración. Los demás perfiles quedan como están.";
+"dialog.delete_profile.message_no_size" = "Todo lo que hay en %@ va a la Papelera: el prefijo de Wine del perfil, su cliente del juego y su configuración. Los demás perfiles quedan como están.";
+"step.removing_profile" = "Quitando el perfil %@";
+"step.profile_removed" = "Perfil %@ eliminado";
+"error.profile_name_empty" = "Ponle un nombre al perfil";
+"error.profile_name_invalid" = "El nombre de un perfil no puede empezar con un punto ni contener / o :";
+"error.profile_name_taken" = "Ya hay un perfil llamado %@";
+"error.default_profile_not_deletable" = "El perfil predeterminado no se puede eliminar";
 
 /* Lista de comprobación */
 "item.rosetta" = "Rosetta 2";

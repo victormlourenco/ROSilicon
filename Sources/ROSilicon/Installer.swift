@@ -201,10 +201,10 @@ struct Installer: Sendable {
 
     // MARK: - Extras
 
-    /// Moves the whole install folder to the Trash: the prefix, the game, the
-    /// downloads. Not Wine, DXVK or the stubs, which are part of the app. The
-    /// Trash rather than an outright delete, so a mis-click is recoverable
-    /// until it is emptied.
+    /// Moves the whole install folder to the Trash: every profile's prefix and
+    /// game, the downloads. Not Wine, DXVK or the stubs, which are part of the
+    /// app. The Trash rather than an outright delete, so a mis-click is
+    /// recoverable until it is emptied.
     ///
     /// Returns where it landed, or nil when there was nothing to remove.
     @discardableResult
@@ -212,19 +212,42 @@ struct Installer: Sendable {
         if await Shell.isProcessRunning(matching: paths.wineRoot.path) {
             throw InstallError.wineRunning
         }
-        guard FileManager.default.fileExists(atPath: paths.root.path) else {
-            await reporter.log(Strings.logNothingToRemove(paths.root.path))
+        return try await trash(
+            paths.root, removing: Strings.stepRemoving, removed: Strings.stepRemoved)
+    }
+
+    /// Moves the profile's prefix to the Trash, its game and settings with it,
+    /// and leaves every other profile alone. Never the default profile, which
+    /// only goes with the whole install folder.
+    ///
+    /// Returns where it landed, or nil when there was nothing to remove.
+    @discardableResult
+    func deleteProfile() async throws -> URL? {
+        guard paths.profile.isDeletable else { throw ProfileError.defaultNotDeletable }
+        if await Shell.isProcessRunning(matching: paths.wineRoot.path) {
+            throw InstallError.wineRunning
+        }
+        let name = paths.profile.displayName
+        return try await trash(
+            paths.prefix, removing: Strings.stepRemovingProfile(name),
+            removed: Strings.stepProfileRemoved(name))
+    }
+
+    /// Moves `folder` to the Trash, announcing it with the two steps given.
+    private func trash(_ folder: URL, removing: String, removed: String) async throws -> URL? {
+        guard FileManager.default.fileExists(atPath: folder.path) else {
+            await reporter.log(Strings.logNothingToRemove(folder.path))
             await reporter.step(Strings.stepNothingToRemove)
             return nil
         }
 
-        await reporter.step(Strings.stepRemoving)
-        await reporter.log(Strings.logMovingToTrash(paths.root.path))
+        await reporter.step(removing)
+        await reporter.log(Strings.logMovingToTrash(folder.path))
         var trashed: NSURL?
-        try FileManager.default.trashItem(at: paths.root, resultingItemURL: &trashed)
+        try FileManager.default.trashItem(at: folder, resultingItemURL: &trashed)
         let destination = trashed as URL?
         await reporter.log(Strings.logInTrash(destination?.path ?? Strings.logRemoved))
-        await reporter.step(Strings.stepRemoved)
+        await reporter.step(removed)
         return destination
     }
 

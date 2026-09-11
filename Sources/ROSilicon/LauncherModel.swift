@@ -16,6 +16,9 @@ final class LauncherModel: ObservableObject {
     }
 
     @Published private(set) var paths: Paths
+    /// Every profile on disk, the default first. Re-read on every refresh, so
+    /// one made or removed in the Finder shows up too.
+    @Published private(set) var profiles: [Profile] = [.default]
     @Published private(set) var status = Status()
     @Published private(set) var phase: Phase = .idle
     /// True for a few seconds after Play is pressed, while that client is on
@@ -74,6 +77,7 @@ final class LauncherModel: ObservableObject {
     private static let x87BackendKey = "x87Backend"
     private static let wineDebugKey = "wineDebug"
     private static let extraEnvironmentKey = "extraEnvironment"
+    private static let profileKey = "profile"
 
     struct LogLine: Identifiable, Sendable {
         /// What the line is, so the view can colour it without matching on
@@ -86,19 +90,35 @@ final class LauncherModel: ObservableObject {
     }
 
     init() {
-        paths = Paths.locateRoot()
+        paths = Paths.locateRoot(profile: Profile(
+            rawValue: UserDefaults.standard.string(forKey: Self.profileKey) ?? ""))
         refresh()
     }
 
     var installFolder: URL { paths.root }
+    var profile: Profile { paths.profile }
+    var profileFolder: URL { paths.prefix }
 
     // MARK: - State
 
+    /// Re-reads the profiles and the checklist. A profile gone from under the
+    /// launcher — deleted here, cleared with the rest of the install, or moved
+    /// away in the Finder — falls back to the default one.
     func refresh() {
         guard !phase.isBusy else { return }
-        let paths = self.paths
+        let root = paths.root
+        let wanted = paths.profile
         Task {
-            let fresh = await Task.detached { Status.inspect(paths) }.value
+            let (profiles, profile, fresh) = await Task.detached {
+                () -> ([Profile], Profile, Status) in
+                let profiles = Profile.all(in: root)
+                let profile = profiles.contains(wanted) ? wanted : .default
+                return (profiles, profile, Status.inspect(Paths(root: root, profile: profile)))
+            }.value
+            // Another profile was chosen meanwhile, and its own refresh has the say.
+            guard self.paths.profile == wanted else { return }
+            self.profiles = profiles
+            if profile != wanted { use(profile) }
             self.status = fresh
         }
     }
@@ -221,8 +241,13 @@ final class LauncherModel: ObservableObject {
     }
 
     /// What the install takes up on disk, for the confirmation dialog.
-    var installedSizeText: String? {
-        guard let bytes = status.installedSize, bytes > 0 else { return nil }
+    var installedSizeText: String? { Self.sizeText(status.installedSize) }
+
+    /// What the profile's prefix takes up, for the one before deleting it.
+    var profileSizeText: String? { Self.sizeText(status.profileSize) }
+
+    private static func sizeText(_ bytes: Int64?) -> String? {
+        guard let bytes, bytes > 0 else { return nil }
         return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
     }
 
@@ -331,6 +356,56 @@ final class LauncherModel: ObservableObject {
             step = failure
         }
         refresh()
+    }
+
+    // MARK: - Profiles
+
+    /// Switches the window to another profile. Not while an install or a game
+    /// is under way: each is bound to the prefix it started in, and Quit Game
+    /// has to reach the one the game is running in.
+    func selectProfile(_ profile: Profile) {
+        guard !phase.isBusy, profile != paths.profile else { return }
+        failure = nil
+        use(profile)
+        refresh()
+    }
+
+    /// Makes a profile's folder and switches to it, for Install to set up
+    /// from there. Throws when the name will not do.
+    func createProfile(named name: String) throws {
+        guard !phase.isBusy else { return }
+        let profile = try Profile.create(named: name, in: paths.root)
+        profiles = Profile.all(in: paths.root)
+        selectProfile(profile)
+    }
+
+    /// Why `name` cannot be a new profile's, or nil when it can. Checked
+    /// against the profiles already listed, so it can run on every keystroke.
+    func profileNameProblem(_ name: String) -> String? {
+        do {
+            _ = try Profile.validatedName(name, existing: profiles)
+            return nil
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
+    /// Moves the current profile to the Trash; the refresh once it is done
+    /// finds it gone and switches to the default one. Only offered behind a
+    /// confirmation, never for the default profile, and refused while Wine
+    /// is running.
+    func deleteProfile() {
+        guard !phase.isBusy, paths.profile.isDeletable else { return }
+        let paths = self.paths
+        start(.working) { [reporter] in
+            try await Installer(paths: paths, reporter: reporter).deleteProfile()
+        }
+    }
+
+    /// Points everything at `profile`, and remembers it for the next launch.
+    private func use(_ profile: Profile) {
+        paths = Paths(root: paths.root, profile: profile)
+        UserDefaults.standard.set(profile.rawValue, forKey: Self.profileKey)
     }
 
     // MARK: - Folders

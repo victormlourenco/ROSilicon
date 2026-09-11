@@ -112,6 +112,55 @@ struct InstallerTests {
         #expect(await recorder.steps.items == [Strings.stepRemoving, Strings.stepRemoved])
     }
 
+    // MARK: - Deleting a profile
+
+    /// The default profile always stays; refused before anything is touched.
+    @Test func theDefaultProfileCannotBeDeleted() async throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(to: "wine/system.reg")
+        let paths = Paths(root: temp.url)
+        let recorder = RecordingReporter()
+
+        await #expect(throws: ProfileError.defaultNotDeletable) {
+            try await installer(paths, recorder).deleteProfile()
+        }
+        #expect(FileManager.default.fileExists(atPath: paths.prefix.path))
+        #expect(await recorder.steps.items.isEmpty)
+    }
+
+    /// Only that profile's folder goes, and to the Trash; the default prefix
+    /// and the other profiles are left as they were.
+    @Test func deletingAProfileMovesOnlyItsFolderToTheTrash() async throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(to: "wine/system.reg")
+        try temp.write(to: "profiles/Alt/system.reg")
+        try temp.write(to: "profiles/Other/system.reg")
+        let paths = Paths(root: temp.url, profile: .named("Alt"))
+        let recorder = RecordingReporter()
+
+        let destination = try await installer(paths, recorder).deleteProfile()
+
+        let trashed = try #require(destination, "the folder should have landed somewhere")
+        defer { try? FileManager.default.removeItem(at: trashed) }
+        #expect(FileManager.default.fileExists(atPath: trashed.path))
+        #expect(!FileManager.default.fileExists(atPath: paths.prefix.path))
+        #expect(FileManager.default.fileExists(
+            atPath: temp.url.appending(path: "wine/system.reg").path))
+        #expect(Profile.all(in: temp.url) == [.default, .named("Other")])
+        #expect(await recorder.steps.items
+                == [Strings.stepRemovingProfile("Alt"), Strings.stepProfileRemoved("Alt")])
+    }
+
+    @Test func deletingAProfileAlreadyGoneRemovesNothingAndSaysSo() async throws {
+        let temp = try TemporaryDirectory()
+        let paths = Paths(root: temp.url, profile: .named("Alt"))
+        let recorder = RecordingReporter()
+
+        #expect(try await installer(paths, recorder).deleteProfile() == nil)
+        #expect(await recorder.logs.items == [Strings.logNothingToRemove(paths.prefix.path)])
+        #expect(await recorder.steps.items == [Strings.stepNothingToRemove])
+    }
+
     // MARK: - Where it installs
 
     /// A folder that cannot be written to is caught before Rosetta, the

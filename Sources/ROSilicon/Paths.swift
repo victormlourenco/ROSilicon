@@ -13,8 +13,9 @@ enum BundledToolsError: LocalizedError {
 
 /// Every path and pinned version the launcher needs.
 ///
-/// `root` is where the launcher installs: the prefix, the game and copies of the
-/// bundled helper binaries, under ~/Library/Application Support/ROSilicon. Wine
+/// `root` is where the launcher installs, under ~/Library/Application
+/// Support/ROSilicon: a prefix per profile, each with its own game, and
+/// `profile` is the one every prefix path below points into. Wine
 /// is not among them — it runs from inside the app bundle, which also carries
 /// DXVK, x87sidecar and the Steam stub, so the launcher downloads nothing but
 /// the game client and can live anywhere, /Applications included.
@@ -23,8 +24,13 @@ struct Paths: Sendable {
         "https://ro1patch.gnjoylatam.com/LIVE/client/LATAM_RO1_Live_20260601_091136.tar")!
 
     let root: URL
+    /// Whose prefix `prefix`, `driveC` and the game folder are.
+    let profile: Profile
 
-    init(root: URL) { self.root = root }
+    init(root: URL, profile: Profile = .default) {
+        self.root = root
+        self.profile = profile
+    }
 
     /// Wine runs where it lies, inside the app bundle. Nothing writes to it, so
     /// the tree under the signature is never touched after the build.
@@ -36,7 +42,8 @@ struct Paths: Sendable {
     /// One of Wine's own tools beside `wine` itself, e.g. winecfg.
     func wineTool(_ name: String) -> URL { wineRoot.appending(path: "bin/" + name) }
 
-    var prefix: URL { root.appending(path: "wine") }
+    /// `wine/` for the default profile, `profiles/<name>/` for the rest.
+    var prefix: URL { root.appending(path: profile.folder) }
     var driveC: URL { prefix.appending(path: "drive_c") }
     var gameDir: URL { driveC.appending(path: "Gravity/Ragnarok") }
     var ragexe: URL { gameDir.appending(path: "Ragexe.exe") }
@@ -163,7 +170,9 @@ struct Paths: Sendable {
         return base.appending(path: "ROSilicon")
     }
 
-    static func locateRoot() -> Paths { Paths(root: installRoot) }
+    static func locateRoot(profile: Profile = .default) -> Paths {
+        Paths(root: installRoot, profile: profile)
+    }
 
     /// Creates the install folder. Called before installing and before showing
     /// the folder in Finder, so neither ever faces a missing directory.

@@ -81,6 +81,38 @@ enum Strings {
     static var resetToDefault: String { t("sheet.reset") }
     static var done: String { t("sheet.done") }
 
+    // MARK: - Profiles
+
+    static var profileDefault: String { t("profile.default") }
+    static var menuProfile: String { t("menu.profile") }
+    static var profileHelp: String { t("help.profile") }
+    static var menuNewProfile: String { t("menu.new_profile") }
+    static func menuDeleteProfile(_ name: String) -> String { t("menu.delete_profile", name) }
+    static var newProfileTitle: String { t("sheet.new_profile.title") }
+    static var newProfileExplanation: String { t("sheet.new_profile.explanation") }
+    static var newProfileField: String { t("sheet.new_profile.field") }
+    static var newProfileCreate: String { t("sheet.new_profile.create") }
+    static func deleteProfileTitle(_ name: String) -> String {
+        t("dialog.delete_profile.title", name)
+    }
+    static var deleteProfileConfirm: String { t("dialog.delete_profile.confirm") }
+    static func deleteProfileMessage(_ folder: String, _ size: String) -> String {
+        t("dialog.delete_profile.message", folder, size)
+    }
+    static func deleteProfileMessageNoSize(_ folder: String) -> String {
+        t("dialog.delete_profile.message_no_size", folder)
+    }
+    static func stepRemovingProfile(_ name: String) -> String { t("step.removing_profile", name) }
+    static func stepProfileRemoved(_ name: String) -> String { t("step.profile_removed", name) }
+    static var errorProfileNameEmpty: String { t("error.profile_name_empty") }
+    static var errorProfileNameInvalid: String { t("error.profile_name_invalid") }
+    static func errorProfileNameTaken(_ name: String) -> String {
+        t("error.profile_name_taken", name)
+    }
+    static var errorDefaultProfileNotDeletable: String {
+        t("error.default_profile_not_deletable")
+    }
+
     // MARK: - Checklist
 
     static var itemRosetta: String { t("item.rosetta") }
