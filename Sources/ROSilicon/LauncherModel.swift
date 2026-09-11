@@ -10,11 +10,17 @@ final class LauncherModel: ObservableObject {
         case running
 
         var isBusy: Bool { self != .idle }
+        /// Another client can start beside a running one: only an install or
+        /// a clear holds Play back.
+        var allowsPlay: Bool { self != .working }
     }
 
     @Published private(set) var paths: Paths
     @Published private(set) var status = Status()
     @Published private(set) var phase: Phase = .idle
+    /// True for a few seconds after Play is pressed, while that client is on
+    /// its way: a double click — or a held Return — must not open two.
+    @Published private(set) var isStarting = false
     @Published private(set) var step = ""
     @Published private(set) var progress: DownloadProgress?
     @Published private(set) var log: [LogLine] = []
@@ -54,7 +60,15 @@ final class LauncherModel: ObservableObject {
         didSet { UserDefaults.standard.set(extraEnvironmentText, forKey: Self.extraEnvironmentKey) }
     }
 
+    /// An install or a clear.
     private var job: Task<Void, Never>?
+    /// One per Play still waiting on its steam.exe. Every stub waits for the
+    /// last client in the prefix to close, so these end together, and the
+    /// launcher is running for as long as any is left.
+    private var games: [UUID: Task<Void, Never>] = [:]
+    /// Ends the hold on Play once `playHoldDuration` has passed.
+    private var playHold: Task<Void, Never>?
+    private static let playHoldDuration: Duration = .seconds(5)
     private static let logLimit = 5_000
     private static let metalHUDKey = "metalHUD"
     private static let x87BackendKey = "x87Backend"
@@ -89,7 +103,7 @@ final class LauncherModel: ObservableObject {
         }
     }
 
-    var canPlay: Bool { status.canPlay && !phase.isBusy }
+    var canPlay: Bool { status.canPlay && phase.allowsPlay && !isStarting }
     var needsInstall: Bool { !status.canPlay }
 
     /// What the ⌥ menu's environment settings come to, read at the moment a
@@ -152,18 +166,20 @@ final class LauncherModel: ObservableObject {
         }
     }
 
+    /// Starts a client, beside any already running: each one is a window of
+    /// its own in the same prefix, started with the settings of the moment.
     func play() {
         guard canPlay else { return }
-        let paths = self.paths
-        let hud = metalHUD
-        let options = launchOptions
-        let keyboard = GameKeyboardSettings(commandShortcuts: commandShortcuts)
-        let x87 = x87Backend
-        start(.running) { [reporter] in
-            try await GameRunner(
-                paths: paths, reporter: reporter, metalHUD: hud, options: options,
-                keyboard: keyboard, x87: x87
-            ).play()
+        let runner = GameRunner(
+            paths: paths, reporter: reporter, metalHUD: metalHUD, options: launchOptions,
+            keyboard: GameKeyboardSettings(commandShortcuts: commandShortcuts), x87: x87Backend)
+        let id = UUID()
+        if games.isEmpty { failure = nil }
+        phase = .running
+        holdPlay()
+        games[id] = Task { [weak self] in
+            let outcome = await Outcome.of { try await runner.play() }
+            self?.gameEnded(id, outcome)
         }
     }
 
@@ -219,14 +235,14 @@ final class LauncherModel: ObservableObject {
         job?.cancel()
     }
 
-    /// Stops a running game: wineserver -k takes the whole prefix down, so a
-    /// client that stopped responding does not linger.
+    /// Stops every running client: wineserver -k takes the whole prefix down,
+    /// so one that stopped responding does not linger.
     func quitGame() {
         guard phase == .running else { return }
         let paths = self.paths
         Task {
             await GameRunner(paths: paths, reporter: reporter).quit()
-            job?.cancel()
+            for game in games.values { game.cancel() }
         }
     }
 
@@ -234,19 +250,74 @@ final class LauncherModel: ObservableObject {
         failure = nil
         self.phase = phase
         job = Task { [weak self] in
+            let outcome = await Outcome.of(work)
+            self?.finish(with: outcome.failure)
+        }
+    }
+
+    /// The launcher stays running while another game's job is left. A launch
+    /// that failed says so in the log there and then, so a second client that
+    /// would not start does not go unnoticed beside the first. A cancellation
+    /// does not: only Quit Game causes one, it reaches every job at once, and
+    /// the last one to end reports it.
+    private func gameEnded(_ id: UUID, _ outcome: Outcome) {
+        games[id] = nil
+        releasePlay()
+        guard games.isEmpty else {
+            if case .failed(let failure) = outcome {
+                append(Strings.errorPrefix + failure, kind: .failure)
+            }
+            return
+        }
+        finish(with: outcome.failure)
+    }
+
+    /// Holds Play back for a few seconds, which covers a double click and the
+    /// first moments of the launch. It is a guard against a slip, not a lock:
+    /// pressing again afterwards opens another client, as it should.
+    private func holdPlay() {
+        isStarting = true
+        playHold?.cancel()
+        playHold = Task { [weak self] in
+            do { try await Task.sleep(for: Self.playHoldDuration) } catch { return }
+            self?.isStarting = false
+        }
+    }
+
+    /// A game's job ending — one that would not start, or the whole session —
+    /// leaves nothing to guard, and someone retrying should not have to wait.
+    private func releasePlay() {
+        playHold?.cancel()
+        playHold = nil
+        isStarting = false
+    }
+
+    /// How a job ended.
+    private enum Outcome {
+        case finished
+        case cancelled
+        case failed(String)
+
+        static func of(_ work: @Sendable () async throws -> Void) async -> Outcome {
             do {
                 try await work()
             } catch is CancellationError {
-                self?.finish(with: Strings.cancelled)
-                return
+                return .cancelled
             } catch let error as URLError where error.code == .cancelled {
-                self?.finish(with: Strings.cancelled)
-                return
+                return .cancelled
             } catch {
-                self?.finish(with: error.localizedDescription)
-                return
+                return .failed(error.localizedDescription)
             }
-            self?.finish(with: nil)
+            return .finished
+        }
+
+        /// What the status line says afterwards; nil when all went well.
+        var failure: String? {
+            switch self {
+            case .finished: nil
+            case .cancelled: Strings.cancelled
+            case .failed(let failure): failure
+            }
         }
     }
 

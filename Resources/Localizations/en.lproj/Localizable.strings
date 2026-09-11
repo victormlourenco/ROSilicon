@@ -6,6 +6,7 @@
 /* Window and buttons */
 "app.title" = "ROSilicon";
 "button.play" = "Play";
+"button.starting" = "Starting…";
 "button.install" = "Install";
 "button.repair" = "Repair";
 "button.cancel" = "Cancel";
