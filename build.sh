@@ -65,7 +65,12 @@ BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE
 # installs and runs without needing tools/ next to it.
 DXVK="$PKG/Resources/d9vk/d3d9.dll"
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
-for f in "$DXVK" "$X87_SIDECAR"; do
+# rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥. Its
+# loader reads libRuntimeRosettax87 from its own folder, so the two go in
+# together.
+ROSETTAX87_JIT="$PKG/Resources/rosettax87_jit"
+for f in "$DXVK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
+         "$ROSETTAX87_JIT/libRuntimeRosettax87" "$ROSETTAX87_JIT/LICENSE"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
 done
 
@@ -76,6 +81,13 @@ cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
+# Copied, not re-signed: the loader's own ad-hoc signature carries the debugger
+# entitlement task_for_pid needs, and the signature below seals it as a
+# resource without touching it.
+mkdir -p "$APP/Contents/Resources/rosettax87_jit"
+install -m 0755 "$ROSETTAX87_JIT/runtime_loader" "$ROSETTAX87_JIT/libRuntimeRosettax87" \
+    "$APP/Contents/Resources/rosettax87_jit/"
+cp "$ROSETTAX87_JIT/LICENSE" "$APP/Contents/Resources/rosettax87_jit/LICENSE"
 # The GPL travels with the binary: whoever gets the app gets the license.
 cp "$PKG/LICENSE" "$APP/Contents/Resources/LICENSE"
 printf 'APPL????' > "$APP/Contents/PkgInfo"

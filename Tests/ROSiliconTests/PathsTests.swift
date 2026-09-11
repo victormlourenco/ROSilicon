@@ -33,6 +33,8 @@ struct PathsTests {
         #expect(Paths.bundledWineRoot.path == Paths.bundledTools.path + "/Wine")
         #expect(Paths.dxvkDLL.path == Paths.bundledTools.path + "/d3d9.dll")
         #expect(Paths.steamStub.path == Paths.bundledTools.path + "/steam_stub.exe")
+        #expect(Paths.rosettaX87JITFolder.path == Paths.bundledTools.path + "/rosettax87_jit")
+        #expect(X87Backend.rosettaX87JIT.bundledLocation == Paths.rosettaX87JITFolder)
     }
 
     @Test func theDefaultClientURLIsAnHTTPSTarball() {
@@ -113,14 +115,71 @@ struct PathsTests {
         let environment = Paths(root: URL(filePath: "/test/root")).wineEnvironment()
         for (name, value) in ProcessInfo.processInfo.environment
         where !["WINEPREFIX", "WINELOADER", "WINESERVER", "X87_SIDECAR_PATH",
-                "DYLD_LIBRARY_PATH", "PATH"].contains(name) {
+                "ROSETTA_X87_PATH", "DYLD_LIBRARY_PATH", "PATH"].contains(name) {
             #expect(environment[name] == value)
         }
     }
 
-    @Test func x87SidecarIsSetOnlyWhenTheAppCarriesOne() {
+    // MARK: - The x87 hook
+
+    /// x87sidecar is the default, and it comes alone: Wine's loader would
+    /// otherwise be left to pick between two.
+    @Test func theDefaultX87HookIsTheSidecarAlone() {
         let environment = Paths(root: URL(filePath: "/test/root")).wineEnvironment()
         #expect(environment["X87_SIDECAR_PATH"] == Paths.x87Sidecar?.path)
+        #expect(environment["ROSETTA_X87_PATH"] == nil)
+    }
+
+    /// The loader tries X87_SIDECAR_PATH first, so choosing rosettax87_jit has
+    /// to clear it or the choice would do nothing.
+    @Test func choosingRosettaX87JITClearsTheSidecar() {
+        let environment = Paths(root: URL(filePath: "/test/root"))
+            .wineEnvironment(x87: .rosettaX87JIT)
+        #expect(environment["X87_SIDECAR_PATH"] == nil)
+        #expect(environment["ROSETTA_X87_PATH"] == Paths.rosettaX87JIT?.path)
+    }
+
+    /// Disabled means neither variable, so Wine's loader execs the client
+    /// under stock Rosetta.
+    @Test func disablingTheX87HookSetsNeither() {
+        let environment = Paths(root: URL(filePath: "/test/root"))
+            .wineEnvironment(x87: .disabled)
+        #expect(environment["X87_SIDECAR_PATH"] == nil)
+        #expect(environment["ROSETTA_X87_PATH"] == nil)
+        #expect(X87Backend.disabled.executable == nil)
+        #expect(X87Backend.disabled.bundledLocation == nil)
+    }
+
+    /// The loader reads libRuntimeRosettax87 from its own folder, so on its
+    /// own it is no hook.
+    @Test func rosettaX87JITNeedsItsRuntimeBesideTheLoader() throws {
+        let temp = try TemporaryDirectory()
+        let loader = try temp.write(to: "runtime_loader")
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: loader.path)
+        #expect(Paths.rosettaX87JIT(in: temp.url) == nil)
+
+        try temp.write(to: "libRuntimeRosettax87")
+        #expect(Paths.rosettaX87JIT(in: temp.url) == loader)
+    }
+
+    @Test func aRosettaX87JITLoaderThatCannotRunIsNoHook() throws {
+        let temp = try TemporaryDirectory()
+        try temp.write(to: "runtime_loader")
+        try temp.write(to: "libRuntimeRosettax87")
+        #expect(Paths.rosettaX87JIT(in: temp.url) == nil)
+    }
+
+    /// The raw values are what the preferences remember, so renaming a case
+    /// would quietly send someone back to the default.
+    @Test func x87HooksKeepTheNamesThePreferencesStore() {
+        #expect(X87Backend.default == .sidecar)
+        #expect(X87Backend.allCases.map(\.rawValue)
+                == ["x87sidecar", "rosettax87_jit", "disabled"])
+        #expect(X87Backend.sidecar.environmentKey == "X87_SIDECAR_PATH")
+        #expect(X87Backend.rosettaX87JIT.environmentKey == "ROSETTA_X87_PATH")
+        #expect(X87Backend.disabled.environmentKey == nil)
+        #expect(X87Backend.environmentKeys == ["X87_SIDECAR_PATH", "ROSETTA_X87_PATH"])
     }
 
     // MARK: - Errors

@@ -5,8 +5,9 @@ Silicon. One window: it installs everything and runs the game.
 
 It ships the Wine runtime from
 [WoWSilicon](https://github.com/WoWSilicon/WoWSilicon) inside the app, with
-`x87sidecar` for the client's legacy x87 floating-point code, and DXVK for
-Direct3D 9. Nothing but the game client is downloaded at install time.
+`x87sidecar` for the client's legacy x87 floating-point code (or
+[`rosettax87_jit`](#x87-translation), chosen behind ⌥), and DXVK for Direct3D 9.
+Nothing but the game client is downloaded at install time.
 
 ## Build
 
@@ -56,7 +57,7 @@ wine/              the prefix; the game lands in drive_c/Gravity/Ragnarok
 downloads/         in-progress downloads, removed when they finish
 ```
 
-That is all of it. Wine, DXVK, the Steam stub and `x87sidecar` are read where
+That is all of it. Wine, DXVK, the Steam stub and the x87 hooks are read where
 they lie inside `ROSilicon.app` — patched, signed and never written to, so the
 signature holds and the app works wherever it sits, `/Applications` included.
 The prefix links to the two Windows binaries rather than holding copies, and
@@ -87,6 +88,34 @@ Trash, after a confirmation). Holding ⌥ also reveals `WINEDEBUG` (`-all` by
 default, so Wine stays quiet) and a field for extra `NAME=value` variables
 separated by `;`. Both are remembered, applied after everything the launcher
 sets itself — so they can override it — and take effect on the next launch.
+
+## x87 translation
+
+The client does its floating-point math on the x87 stack, which Rosetta 2
+translates slowly. Wine's loader, patched for it, re-execs the 32-bit client
+under a hook that takes over that translation, and the app carries two:
+
+- **x87sidecar**, the default. Wine hands it the process's task port itself,
+  so it needs no privilege and macOS never asks for anything.
+- **rosettax87_jit**, chosen under **x87 Translation** in the `…` menu while
+  holding ⌥. It attaches with `task_for_pid`, so macOS asks for a password to
+  authorize it when the game starts.
+- **None (Stock Rosetta)**, in the same submenu: no hook at all, so the client's
+  x87 code is translated by Rosetta as Apple ships it — slower, but useful for
+  telling a hook's bug from the game's own.
+
+The choice is remembered and takes effect on the next launch — the game's, and
+that of winecfg or cmd.exe opened from the menu. Installing always uses
+x87sidecar. The launcher sets only the chosen hook's variable
+(`X87_SIDECAR_PATH` or `ROSETTA_X87_PATH`) and clears the other — both, when
+there is no hook — since the loader tries the sidecar first.
+
+rosettax87_jit is two files that must sit side by side — `runtime_loader` and
+the `libRuntimeRosettax87` it injects — kept in `Resources/rosettax87_jit/` and
+copied from WoWSilicon's bundle, with their hashes in
+`Packaging/RosettaX87JIT/rosettax87_jit-lock.json`. `build.sh` copies them into
+the app without re-signing them, so the loader keeps the debugger entitlement
+its own signature carries.
 
 ## Command-key game shortcuts
 
@@ -210,6 +239,7 @@ build.sh                 builds, assembles and signs the .app, packs the .dmg
 makeicon.swift           draws AppIcon.icns, no asset files needed
 Makefile                 names the builds; build.sh does the work
 Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
+Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
@@ -217,6 +247,7 @@ tools/steam-stub/        the Steam stub's source, and the scripts around it
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
   x87sidecar/            the x87 hook, bundled into the app
+  rosettax87_jit/        the alternative x87 hook behind ⌥, bundled into the app
   Localizations/         en.lproj, pt-BR.lproj, es.lproj
 Sources/ROSilicon/
   Paths.swift            paths, the bundled runtime, the Wine environment
@@ -228,6 +259,7 @@ Sources/ROSilicon/
   GameRunner.swift       the launch path
   GameKeyboardSettings.swift  the saved Command-shortcut choice and Wine setting
   LaunchOptions.swift    WINEDEBUG and the extra variables, as typed
+  X87Backend.swift       the choice between the two x87 hooks
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window
   ContentView.swift      the window
@@ -248,6 +280,9 @@ it. Both are useful when running outside an app bundle.
   x87 hook the runtime re-execs into; the bundled binary is that project's
   release, tracked in `Packaging/X87Sidecar/x87sidecar-lock.json`. Built on
   [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit).
+- **rosettax87_jit** — [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit)
+  — the alternative x87 hook behind ⌥; the bundled binaries are WoWSilicon's,
+  tracked in `Packaging/RosettaX87JIT/rosettax87_jit-lock.json`.
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
 - **D9VK** — [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk)
 
@@ -256,5 +291,5 @@ it. Both are useful when running outside an app bundle.
 ROSilicon is free software, licensed under the
 [GNU General Public License v3.0](LICENSE) or, at your option, any later
 version. It comes with no warranty. The components it bundles — the Wine
-runtime, `x87sidecar`, DXVK/D9VK — keep the licenses of their own projects,
+runtime, `x87sidecar`, `rosettax87_jit`, DXVK/D9VK — keep the licenses of their own projects,
 listed under [Credits](#credits).

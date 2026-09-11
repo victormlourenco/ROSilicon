@@ -25,6 +25,13 @@ final class LauncherModel: ObservableObject {
     @Published var metalHUD = UserDefaults.standard.bool(forKey: LauncherModel.metalHUDKey) {
         didSet { UserDefaults.standard.set(metalHUD, forKey: Self.metalHUDKey) }
     }
+    /// The x87 hook the game runs under, from the ⌥ menu. Remembered like the
+    /// overlay; takes effect on the next launch.
+    @Published var x87Backend = X87Backend(
+        rawValue: UserDefaults.standard.string(forKey: LauncherModel.x87BackendKey) ?? ""
+    ) ?? .default {
+        didSet { UserDefaults.standard.set(x87Backend.rawValue, forKey: Self.x87BackendKey) }
+    }
     /// Saved immediately, applied on the next Install/Repair or Play. Changing
     /// a preference must not start Wine or initialize a prefix on its own.
     @Published var commandShortcuts = GameKeyboardSettings.load(
@@ -50,6 +57,7 @@ final class LauncherModel: ObservableObject {
     private var job: Task<Void, Never>?
     private static let logLimit = 5_000
     private static let metalHUDKey = "metalHUD"
+    private static let x87BackendKey = "x87Backend"
     private static let wineDebugKey = "wineDebug"
     private static let extraEnvironmentKey = "extraEnvironment"
 
@@ -150,10 +158,11 @@ final class LauncherModel: ObservableObject {
         let hud = metalHUD
         let options = launchOptions
         let keyboard = GameKeyboardSettings(commandShortcuts: commandShortcuts)
+        let x87 = x87Backend
         start(.running) { [reporter] in
             try await GameRunner(
                 paths: paths, reporter: reporter, metalHUD: hud, options: options,
-                keyboard: keyboard
+                keyboard: keyboard, x87: x87
             ).play()
         }
     }
@@ -169,9 +178,10 @@ final class LauncherModel: ObservableObject {
         let paths = self.paths
         let reporter = self.reporter
         let options = launchOptions
+        let x87 = x87Backend
         Task {
             do {
-                try await GameRunner(paths: paths, reporter: reporter, options: options)
+                try await GameRunner(paths: paths, reporter: reporter, options: options, x87: x87)
                     .open(tool)
             } catch {
                 append(Strings.errorPrefix + error.localizedDescription, kind: .failure)

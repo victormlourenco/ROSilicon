@@ -82,6 +82,25 @@ struct Paths: Sendable {
         return FileManager.default.isExecutableFile(atPath: sidecar.path) ? sidecar : nil
     }
 
+    /// rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥:
+    /// its loader and the runtime it injects, which travel together.
+    static var rosettaX87JITFolder: URL { bundledTools.appending(path: "rosettax87_jit") }
+
+    /// rosettax87_jit's loader, nil when the app was built without it.
+    static var rosettaX87JIT: URL? { rosettaX87JIT(in: rosettaX87JITFolder) }
+
+    /// The loader in `folder`, provided libRuntimeRosettax87 is beside it: the
+    /// loader reads the runtime from its own folder, so one without the other
+    /// is no hook at all.
+    static func rosettaX87JIT(in folder: URL) -> URL? {
+        let fm = FileManager.default
+        let loader = folder.appending(path: "runtime_loader")
+        guard fm.isExecutableFile(atPath: loader.path),
+              fm.fileExists(atPath: folder.appending(path: "libRuntimeRosettax87").path)
+        else { return nil }
+        return loader
+    }
+
     /// Everything the app must carry for an install to be possible. Throws
     /// naming the first one missing, which means a build that left it out.
     static func verifyBundledTools() throws {
@@ -109,16 +128,22 @@ struct Paths: Sendable {
     }
 
     /// Environment shared by every Wine invocation — the Swift side of `wine_env`.
-    func wineEnvironment() -> [String: String] {
+    /// `x87` is the hook 32-bit programs run under; only the ⌥ menu's choice
+    /// for the game and Wine's tools ever asks for anything but the default.
+    func wineEnvironment(x87: X87Backend = .default) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["WINEPREFIX"] = prefix.path
         env["WINELOADER"] = wine.path
         env["WINESERVER"] = wineserver.path
-        // Wine's loader re-execs itself under `x87sidecar --cooperative` when
-        // this is set. That is what makes the client's legacy x87 float code
-        // fast on Apple Silicon, and unlike rosettax87 it needs no
-        // task_for_pid privilege, so macOS never asks for a password.
-        if let sidecar = Self.x87Sidecar { env["X87_SIDECAR_PATH"] = sidecar.path }
+        // Wine's loader re-execs itself under `x87sidecar --cooperative` or
+        // rosettax87_jit's `runtime_loader`, whichever is named here, and
+        // under neither when the hook is disabled. That is what makes the
+        // client's legacy x87 float code fast on Apple Silicon. The loader
+        // tries X87_SIDECAR_PATH first, so both are cleared — one inherited
+        // from whoever started the launcher included — and only the chosen
+        // one is set.
+        for key in X87Backend.environmentKeys { env[key] = nil }
+        if let key = x87.environmentKey, let hook = x87.executable { env[key] = hook.path }
         // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
         // bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""
