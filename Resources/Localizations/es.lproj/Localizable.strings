@@ -130,8 +130,6 @@
 "log.exited_normally" = "El juego se cerró con normalidad.";
 "log.unknown_size" = "tamaño desconocido";
 
-/* Parche de wintrust */
-
 /* Errores */
 "error.prefix" = "error: ";
 "error.root_not_writable" = "No se puede escribir en %@ — revisa los permisos de la carpeta";

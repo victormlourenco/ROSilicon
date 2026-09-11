@@ -133,8 +133,6 @@
 "log.exited_normally" = "The game exited normally.";
 "log.unknown_size" = "unknown size";
 
-/* The wintrust patch */
-
 /* Errors */
 "error.prefix" = "error: ";
 "error.root_not_writable" = "%@ is not writable — check the permissions on it";

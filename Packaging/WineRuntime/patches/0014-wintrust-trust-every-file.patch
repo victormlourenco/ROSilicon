@@ -1,0 +1,17 @@
+diff --git a/dlls/wintrust/wintrust_main.c b/dlls/wintrust/wintrust_main.c
+index 2292100..aacb71a 100644
+--- a/dlls/wintrust/wintrust_main.c
++++ b/dlls/wintrust/wintrust_main.c
+@@ -670,6 +670,12 @@ LONG WINAPI WinVerifyTrust( HWND hwnd, GUID *ActionID, LPVOID ActionData )
+     TRACE("(%p, %s, %p)\n", hwnd, debugstr_guid(ActionID), ActionData);
+     dump_wintrust_data(ActionData);
+ 
++    /* ROSilicon: the Ragnarok Online client's copy protection verifies
++     * C:\windows\system32\ntdll.dll and aborts on TRUST_E_NOSIGNATURE, which
++     * Wine's own unsigned DLLs can never avoid. Report every file as trusted;
++     * WinVerifyTrustEx calls through here, so it does too. */
++    return ERROR_SUCCESS;
++
+     /* Support for known old-style callers: */
+     if (IsEqualGUID(ActionID, &published_software))
+         err = WINTRUST_PublishedSoftware(hwnd, ActionID, ActionData);

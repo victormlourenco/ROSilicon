@@ -171,9 +171,6 @@ enum Strings {
     static var logExitedNormally: String { t("log.exited_normally") }
     static var unknownSize: String { t("log.unknown_size") }
 
-    // MARK: - The wintrust patch
-
-
     // MARK: - Errors
 
     static var errorPrefix: String { t("error.prefix") }

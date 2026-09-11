@@ -26,9 +26,8 @@ struct Paths: Sendable {
 
     init(root: URL) { self.root = root }
 
-    /// Wine runs where it lies, inside the app bundle. Nothing writes to it:
-    /// `build.sh` applies the wintrust patch when it assembles the app, so the
-    /// tree under the signature is never touched afterwards.
+    /// Wine runs where it lies, inside the app bundle. Nothing writes to it, so
+    /// the tree under the signature is never touched after the build.
     var wineRoot: URL { Self.bundledWineRoot }
     var wine: URL { wineRoot.appending(path: "bin/wine") }
     var wineserver: URL { wineRoot.appending(path: "bin/wineserver") }

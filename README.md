@@ -14,6 +14,7 @@ Nothing but the game client is downloaded at install time.
 
 ```sh
 make restore        # -> .wine-runtime, the pinned Wine tree (once)
+make runtime        # -> .wine-runtime built from source instead (see below)
 make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
@@ -32,11 +33,10 @@ version is read from the `VERSION` file, and names both the bundle and the disk
 image.
 
 The runtime goes in *before* the signature, since `codesign` seals everything
-under `Resources/`, and the [wintrust patch](#the-wintrust-patch) is applied to
-it there and then — by the launcher's own code, through the `--patch-wintrust`
-flag its binary answers, so there is one implementation of the patch and not
-two. The tree in `.wine-runtime` is left untouched, and still matches the
-runtime lock `make bundle` validates it against.
+under `Resources/`. It goes in as it is, the
+[wintrust patch](#the-wintrust-patch) already built into it, so the bundle's
+copy matches the tree in `.wine-runtime` and the runtime lock `make bundle`
+validates that against.
 
 `make restore` fetches the pinned tree from the releases of the repository
 `Packaging/WineRuntime/artifact-lock.json` names, and checks it against that
@@ -174,18 +174,16 @@ The client's copy-protection component calls `WinVerifyTrust` on
 reimplementation, so the call fails with
 `TRUST_E_NOSIGNATURE` and the client aborts — a false positive by construction,
 since Wine's DLLs can never carry a Microsoft signature.
-[WintrustPatch.swift](Sources/ROSilicon/WintrustPatch.swift) rewrites the
-first bytes of the exported `WinVerifyTrust` and `WinVerifyTrustEx` to
-`return 0`, keeping the original beside each file as `wintrust.dll.wine-orig`.
+[0014-wintrust-trust-every-file.patch](Packaging/WineRuntime/patches/0014-wintrust-trust-every-file.patch)
+makes Wine's `WinVerifyTrust` return `ERROR_SUCCESS` for every file, and
+`WinVerifyTrustEx` with it, since it calls through `WinVerifyTrust`.
 
-`build.sh` applies it once, to the runtime it bundles, through the launcher's
-own `--patch-wintrust` flag — so the app ships patched and the launcher never
-patches anything. This Wine copies its DLLs into each prefix rather than
-symlinking them, and loads the prefix's copy in preference to the runtime's, so
-a prefix created from that runtime is born patched too. The launcher neither
-applies nor reports it — there is nothing for it to decide. The way back is to
-rebuild the app from the untouched tree in `.wine-runtime`, or to put the
-`wintrust.dll.wine-orig` kept beside each patched DLL back by hand.
+It is one of the runtime's patches, built into `wintrust.dll` from source, so
+nothing is patched after the fact: not by `build.sh`, and never by the
+launcher. This Wine copies its DLLs into each prefix rather than symlinking
+them, and loads the prefix's copy in preference to the runtime's, so a prefix
+created from that runtime is born with it too. The launcher neither applies nor
+reports it — there is nothing for it to decide.
 
 ## The Steam stub
 
@@ -220,14 +218,22 @@ names a cross-compiler other than `i686-w64-mingw32-gcc`.
 
 ## The Wine runtime
 
-The **Wine runtime** workflow,
-[.github/workflows/wine-runtime.yml](.github/workflows/wine-runtime.yml), builds
-it, run by hand from the Actions tab: it fetches the Wine commit
-`Packaging/WineRuntime/runtime-lock.json` pins, applies the patches beside it in
-order, builds, assembles and validates the tree, and uploads the archive with
-the `artifact-lock.json` that pins it. With **publish** ticked it also releases
-the archive as `wine-runtime-r<revision>`; committing that lock is what points
-`make restore` at it.
+`make runtime` builds it from source into `.wine-runtime`, which must not exist
+yet. It restores the runtime `artifact-lock.json` pins as the base, fetches the
+Wine commit `Packaging/WineRuntime/runtime-lock.json` pins, applies the patches
+beside it in order, builds, then assembles and validates the tree. It takes a
+few minutes, and leaves its working trees in `.build/wine-runtime`. It needs
+Apple Silicon with Rosetta 2, Xcode, and:
+
+```sh
+brew install bison mingw-w64 freetype gnutls xz
+```
+
+`make release-runtime` publishes that tree as this repository's GitHub release
+`wine-runtime-r<runtimeRevision>`, tagged at the commit checked out (which must
+be pushed), and pins it in `artifact-lock.json`. Committing that lock is what
+points `make restore`, and the next build, at it. A new runtime gets a new
+`runtimeRevision` in `runtime-lock.json` before it is built.
 
 Everything below the launcher is x86_64, but Homebrew stopped building Intel
 bottles in September 2026, so the runtime is built on Apple Silicon under
@@ -244,19 +250,6 @@ it — after the `CFBundleName` of the Info.plist embedded in its loader.
 [0013-loader-name-the-app-rosilicon.patch](Packaging/WineRuntime/patches/0013-loader-name-the-app-rosilicon.patch)
 makes that ROSilicon (`com.rosilicon.wine`), and `validate.sh` refuses a tree
 without it. The process itself is still `wine` to macOS, as it always was.
-
-To build one here instead, on Apple Silicon with Rosetta 2:
-
-```sh
-brew install bison mingw-w64 freetype gnutls xz jq
-tools/wine-runtime/restore.sh --no-validate --runtime /tmp/base
-tools/wine-runtime/fetch-source.sh --output /tmp/wine-src
-tools/wine-runtime/build.sh --source /tmp/wine-src --build /tmp/wine-build \
-    --install /tmp/wine-install --libs /tmp/base/lib/external
-tools/wine-runtime/assemble.sh --wine-root /tmp/wine-install \
-    --mtld3d-root /tmp/base/lib --external-root /tmp/base/lib/external \
-    --output .wine-runtime
-```
 
 ## Languages
 
@@ -283,7 +276,6 @@ Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
-.github/workflows/       the workflow that builds and releases the Wine runtime
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
 Resources/
@@ -296,7 +288,6 @@ Sources/ROSilicon/
   Shell.swift            subprocesses with streamed output and cancellation
   Rosetta.swift          whether Rosetta 2 is installed on this Mac
   Downloader.swift       resumable ranged downloads, retries, md5
-  WintrustPatch.swift    the signature-check workaround
   Installer.swift        the install stages
   GameRunner.swift       the launch path
   GameKeyboardSettings.swift  the saved Command-shortcut choice and Wine setting
@@ -305,8 +296,7 @@ Sources/ROSilicon/
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window
   ContentView.swift      the window
-  LauncherApp.swift      the window's scene and menu commands
-  main.swift             the entry point, and the --patch-wintrust flag
+  LauncherApp.swift      the entry point: the window's scene and menu commands
   Strings.swift          every word the launcher shows
 ```
 
