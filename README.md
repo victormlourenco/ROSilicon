@@ -203,6 +203,49 @@ Command+A/C/V/X/Z in-game. Also check that turning the option off persists after
 restarting the launcher, repairing, or reinstalling the client. Game input needs
 manual verification; a successful registry write alone does not prove it.
 
+## Function keys
+
+The client reads F1–F12 as its hotkey bars, but a Mac left as it comes sends
+brightness, volume and the rest from that row instead — so every skill key does
+something other than the skill. Flipping the Mac's own setting works, and it
+stays flipped: the media keys are then gone from every other app until it is
+flipped back.
+
+**Use F1–F12 as Function Keys in Game** is in the `…` menu without holding
+Option. It borrows that setting instead: the top row sends F1–F12 for as long
+as a client is open, and goes back to whatever it was the moment the last one
+closes. Hold `fn` for brightness and volume while the game runs. It is **off**
+by default — the setting is one for the whole Mac, not just the game, so it is
+not one to take without being asked — and the choice is remembered between
+launcher sessions (`functionKeys` in the launcher's preferences). Turning it on
+or off mid-game lands right away.
+
+The setting is `IOHIDSystem`'s `HIDFKeyMode` parameter, reached the way
+[Fluor](https://github.com/Pyroh/Fluor) reaches it — its `FKeyManager`, in turn
+derived from `fntoggle`. Neither reading nor writing it needs any privilege:
+the parameter connection is one macOS hands to whoever asks, which is how
+System Settings' own checkbox gets there. Nothing is installed for this — no
+helper, no login item, no accessibility or input-monitoring permission.
+
+What the launcher borrows it remembers, and it never borrows what it cannot
+give back:
+
+- A Mac already on standard function keys is left alone, and nothing is put
+  back afterwards — it was never changed.
+- A mode that cannot be read, or that is not one of the two the launcher knows,
+  is not touched at all: a value it has no case for is one it cannot promise to
+  restore.
+- Two clients at once share one borrow. The mode restored is the one from
+  before the first of them, and the last to close is what restores it.
+- Quitting the launcher mid-game restores it on the way out, synchronously,
+  before the process goes.
+
+The write is live only, which is the floor under all of that: macOS keeps the
+reader's own choice in `com.apple.keyboard.fnState`, and setting the HID
+parameter does not touch it. A launcher killed outright, with no chance to put
+anything back, still loses to the next login — and **System Settings › Keyboard**
+puts it right at any time.
+
 ## Discord
 
 While a game runs, the Discord app shows it as **Playing Ragnarok Online**, with
@@ -358,6 +401,7 @@ Sources/ROSilicon/
   Installer.swift        the install stages
   GameRunner.swift       the launch path
   GameKeyboardSettings.swift  the saved Command-shortcut choice and Wine setting
+  FunctionKeys.swift     the Mac's F1–F12 mode, borrowed while the game runs
   LaunchOptions.swift    WINEDEBUG and the extra variables, as typed
   X87Backend.swift       the choice between the two x87 hooks
   DiscordPresence.swift  the game's activity in the Discord app, over its local socket
@@ -384,6 +428,9 @@ it. Both are useful when running outside an app bundle.
 - **rosettax87_jit** — [Lifeisawful/rosettax87_jit](https://github.com/Lifeisawful/rosettax87_jit)
   — the alternative x87 hook behind ⌥; the bundled binaries are WoWSilicon's,
   tracked in `Packaging/RosettaX87JIT/rosettax87_jit-lock.json`.
+- **Fluor** — [Pyroh/Fluor](https://github.com/Pyroh/Fluor) — how the function
+  key mode is read and written, from its `FKeyManager` (MIT), which in turn
+  derives from `fntoggle`. No code is bundled; only the approach is borrowed.
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
 - **D9VK** — [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk)
 

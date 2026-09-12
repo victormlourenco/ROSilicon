@@ -27,6 +27,8 @@
 "menu.x87_backend.disabled" = "None (Stock Rosetta)";
 "menu.command_shortcuts" = "Use ⌘ for Game Shortcuts";
 "help.command_shortcuts" = "Pass ⌘A/C/V/X/Z to the game as Alt shortcuts instead of Mac editing commands. Use Control for text editing. Applies on the next game launch; turn off to restore Mac editing commands.";
+"menu.function_keys" = "Use F1–F12 as Function Keys in Game";
+"help.function_keys" = "While the game runs, the top row sends F1–F12 for the hotkey bars instead of brightness, volume and the rest; hold fn for those. This is the same Mac-wide setting System Settings has, borrowed for as long as a client is open and put back the moment the last one closes.";
 "menu.discord_presence" = "Show Game Activity in Discord";
 "help.discord_presence" = "While the game runs, the Discord app shows you playing Ragnarok Online, and for how long. Needs the Discord app open on this Mac; who sees it is up to Discord's Activity Privacy settings. Takes effect right away.";
 "menu.wine_debug" = "Wine Debug Channels (WINEDEBUG)…";
@@ -150,6 +152,10 @@
 "log.x87_disabled" = "No accelerated x87 translation: the client's x87 code runs under stock Rosetta, more slowly.";
 "log.command_shortcuts_on" = "Game Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
 "log.command_shortcuts_off" = "Game Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
+"log.function_keys_standard" = "Function keys: F1–F12 for the game, restored when it closes";
+"log.function_keys_restored" = "Function keys: back to the Mac's own setting";
+"log.function_keys_not_restored" = "Function keys: could not be put back — check System Settings › Keyboard";
+"log.function_keys_unavailable" = "Function keys: this Mac would not let the setting be changed, leaving it alone";
 "log.discord_presence" = "Discord shows Ragnarok Online as your activity.";
 "log.discord_presence_refused" = "Discord refused the game activity: %@";
 "log.wine_debug" = "WINEDEBUG=%@";

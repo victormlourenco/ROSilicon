@@ -24,6 +24,8 @@
 "menu.x87_backend.disabled" = "Ninguna (Rosetta estándar)";
 "menu.command_shortcuts" = "Usar ⌘ para los atajos del juego";
 "help.command_shortcuts" = "Envía ⌘A/C/V/X/Z al juego como atajos con Alt en lugar de comandos de edición del Mac. Usa Control para editar texto. Se aplica al volver a iniciar el juego; desactívalo para restaurar los comandos de edición del Mac.";
+"menu.function_keys" = "Usar F1–F12 como teclas de función en el juego";
+"help.function_keys" = "Mientras el juego está abierto, la fila superior envía F1–F12 para las barras de atajos en lugar del brillo, el volumen y lo demás; mantén fn para esos. Es el mismo ajuste de todo el Mac que hay en Ajustes del Sistema, tomado prestado mientras haya un cliente abierto y devuelto en cuanto se cierra el último.";
 "menu.discord_presence" = "Mostrar la actividad del juego en Discord";
 "help.discord_presence" = "Mientras el juego está abierto, la app de Discord muestra que estás jugando a Ragnarok Online y desde hace cuánto. Necesita la app de Discord abierta en este Mac; quién lo ve depende de los ajustes de Privacidad de la actividad de Discord. Se aplica al instante.";
 "menu.wine_debug" = "Canales de depuración de Wine (WINEDEBUG)…";
@@ -147,6 +149,10 @@
 "log.x87_disabled" = "Sin traducción x87 acelerada: el código x87 del cliente corre con el Rosetta estándar, más lento.";
 "log.command_shortcuts_on" = "Atajos del juego con Command activados: menú Edición del Mac desactivado para Ragexe.exe.";
 "log.command_shortcuts_off" = "Atajos del juego con Command desactivados: comandos de edición del Mac restaurados para Ragexe.exe.";
+"log.function_keys_standard" = "Teclas de función: F1–F12 para el juego, se restaurarán al cerrarlo";
+"log.function_keys_restored" = "Teclas de función: de vuelta al ajuste propio del Mac";
+"log.function_keys_not_restored" = "Teclas de función: no se pudieron restaurar — revisa Ajustes del Sistema › Teclado";
+"log.function_keys_unavailable" = "Teclas de función: este Mac no permitió cambiar el ajuste, se deja como está";
 "log.discord_presence" = "Discord muestra Ragnarok Online como tu actividad.";
 "log.discord_presence_refused" = "Discord rechazó la actividad del juego: %@";
 "log.wine_debug" = "WINEDEBUG=%@";
