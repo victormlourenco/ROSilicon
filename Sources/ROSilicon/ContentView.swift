@@ -136,6 +136,8 @@ struct ContentView: View {
             Toggle(Strings.menuCommandShortcuts, isOn: $model.commandShortcuts)
                 .disabled(model.phase.isBusy)
                 .help(Strings.commandShortcutsHelp)
+            Toggle(Strings.menuFunctionKeys, isOn: $model.functionKeys)
+                .help(Strings.functionKeysHelp)
             Toggle(Strings.menuDiscordPresence, isOn: $model.discordPresence)
                 .help(Strings.discordPresenceHelp)
             Divider()

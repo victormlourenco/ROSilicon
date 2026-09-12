@@ -42,6 +42,8 @@ enum Strings {
     static var menuX87Disabled: String { t("menu.x87_backend.disabled") }
     static var menuCommandShortcuts: String { t("menu.command_shortcuts") }
     static var commandShortcutsHelp: String { t("help.command_shortcuts") }
+    static var menuFunctionKeys: String { t("menu.function_keys") }
+    static var functionKeysHelp: String { t("help.function_keys") }
     static var menuDiscordPresence: String { t("menu.discord_presence") }
     static var discordPresenceHelp: String { t("help.discord_presence") }
     static var menuWineDebug: String { t("menu.wine_debug") }
@@ -195,6 +197,10 @@ enum Strings {
     static var logX87Disabled: String { t("log.x87_disabled") }
     static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
     static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
+    static var logFunctionKeysStandard: String { t("log.function_keys_standard") }
+    static var logFunctionKeysRestored: String { t("log.function_keys_restored") }
+    static var logFunctionKeysNotRestored: String { t("log.function_keys_not_restored") }
+    static var logFunctionKeysUnavailable: String { t("log.function_keys_unavailable") }
     static var logDiscordPresence: String { t("log.discord_presence") }
     static func logDiscordPresenceRefused(_ message: String) -> String {
         t("log.discord_presence_refused", message)

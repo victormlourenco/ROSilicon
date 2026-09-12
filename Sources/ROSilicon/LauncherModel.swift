@@ -49,6 +49,17 @@ final class LauncherModel: ObservableObject {
             GameKeyboardSettings(commandShortcuts: commandShortcuts).save(to: .standard)
         }
     }
+    /// Holds the Mac's top row on F1–F12 while a client is open, for the
+    /// game's hotkey bars. Off unless asked for: it is a setting for the whole
+    /// Mac, not just the game, so it is not one to take without being told to.
+    /// Turning it off mid-game puts the keyboard back at once.
+    @Published var functionKeys = UserDefaults.standard.bool(
+        forKey: LauncherModel.functionKeysKey) {
+        didSet {
+            UserDefaults.standard.set(functionKeys, forKey: Self.functionKeysKey)
+            updateFunctionKeys()
+        }
+    }
     /// Wine's debug channels, as typed. Remembered between launches like the
     /// overlay is: someone chasing a crash keeps their channels across
     /// restarts of the launcher.
@@ -83,6 +94,7 @@ final class LauncherModel: ObservableObject {
     /// counts the time played from. Nil while no game runs.
     private var sessionStart: Date?
     private let presence = DiscordPresence()
+    private let functionKeyOverride = FunctionKeyOverride()
     /// Ends the hold on Play once `playHoldDuration` has passed.
     private var playHold: Task<Void, Never>?
     private static let playHoldDuration: Duration = .seconds(5)
@@ -93,6 +105,7 @@ final class LauncherModel: ObservableObject {
     private static let extraEnvironmentKey = "extraEnvironment"
     private static let profileKey = "profile"
     private static let discordPresenceKey = "discordPresence"
+    private static let functionKeysKey = "functionKeys"
 
     struct LogLine: Identifiable, Sendable {
         /// What the line is, so the view can colour it without matching on
@@ -220,6 +233,7 @@ final class LauncherModel: ObservableObject {
             self?.gameEnded(id, outcome)
         }
         updatePresence()
+        updateFunctionKeys()
     }
 
     /// Opens winecfg or a cmd.exe window against the prefix.
@@ -315,6 +329,7 @@ final class LauncherModel: ObservableObject {
         }
         sessionStart = nil
         updatePresence()
+        updateFunctionKeys()
         finish(with: outcome.failure)
     }
 
@@ -389,6 +404,20 @@ final class LauncherModel: ObservableObject {
             presence.show(since: sessionStart, reporter: reporter)
         } else {
             presence.clear()
+        }
+    }
+
+    // MARK: - Function keys
+
+    /// Borrows the Mac's function key mode while a client is open and the
+    /// choice is on, and gives it back otherwise. Called whenever either
+    /// changes, so switching the toggle mid-game lands right away; both
+    /// directions are no-ops when there is nothing to do.
+    private func updateFunctionKeys() {
+        if functionKeys, sessionStart != nil {
+            functionKeyOverride.engage(.standard, reporter: reporter)
+        } else {
+            functionKeyOverride.release(reporter: reporter)
         }
     }
 
