@@ -22,8 +22,11 @@ make bundle         # -> validates the Wine runtime, then the app and the .dmg
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
 
-Needs Xcode (or the Swift toolchain), and mingw-w64 once for the
-[Steam stub](#the-steam-stub); macOS 14+, Apple Silicon, Rosetta 2. The
+Needs Xcode 26 or newer — the interface is built on Liquid Glass, which only
+exists from the macOS 26 SDK — and mingw-w64 once for the
+[Steam stub](#the-steam-stub); Apple Silicon and Rosetta 2. That is what builds
+it; what it *runs* on is still macOS 14 and up, where it falls back to a frosted
+material. The
 script builds the package, assembles the bundle — the Wine runtime from
 `.wine-runtime` included — draws the icon and ad-hoc signs it, without the
 hardened runtime, so the launcher can pass `DYLD_LIBRARY_PATH` down to Wine. Set

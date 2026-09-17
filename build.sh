@@ -58,7 +58,33 @@ command -v swift >/dev/null 2>&1 || {
 }
 
 echo "==> building (release)"
-swift build -c release --package-path "$PKG"
+# macOS chooses a window's appearance from the SDK the binary says it was
+# linked against, and SwiftPM writes the deployment target into that field
+# rather than the real SDK — so the app is handed the pre-26 look: the old
+# smaller window buttons, and legacy styling for the standard controls. The
+# deployment target is still what Package.swift asks for; only the SDK the
+# binary reports is corrected, to the one actually building it.
+MIN_MACOS="$(swift package --package-path "$PKG" dump-package | tr -d ' \n' \
+    | sed -n 's/.*"platformName":"macos","version":"\([0-9.]*\)".*/\1/p')"
+if [[ -z "$MIN_MACOS" ]]; then
+    echo "error: could not read the macOS deployment target from Package.swift" >&2
+    exit 1
+fi
+SDK_MACOS="$(xcrun --show-sdk-version --sdk macosx)"
+# The interface is built on Liquid Glass, which arrives in the macOS 26 SDK. An
+# older Xcode cannot compile this at all — the symbols are not there to refer
+# to, guarded by an availability check or not — so say which SDK is missing
+# rather than leaving a page of "cannot find 'glassEffect'" to read.
+SDK_MAJOR="${SDK_MACOS%%.*}"
+if [[ ! "$SDK_MAJOR" =~ ^[0-9]+$ ]] || (( SDK_MAJOR < 26 )); then
+    echo "error: the macOS ${SDK_MACOS:-?} SDK cannot build this" >&2
+    echo "       the interface needs the macOS 26 SDK or newer — Xcode 26+" >&2
+    echo "       (the app still runs on macOS $MIN_MACOS and up)" >&2
+    exit 1
+fi
+swift build -c release --package-path "$PKG" \
+    -Xlinker -platform_version -Xlinker macos \
+    -Xlinker "$MIN_MACOS" -Xlinker "$SDK_MACOS"
 BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE"
 
 # DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
