@@ -7,7 +7,8 @@
 #
 # The runner is Apple Silicon — the app is arm64-only — and the job needs
 # roughly: mingw-w64 from Homebrew for the Steam stub, and the pinned Wine
-# runtime downloaded by `make restore`. Nothing else is fetched.
+# runtime downloaded by `make restore`. Nothing else is fetched. It also has to
+# carry the macOS 26 SDK or newer; `build.sh` refuses an older one.
 
 name: Release
 
@@ -43,7 +44,11 @@ concurrency:
 
 jobs:
   release:
-    runs-on: macos-15
+    # macos-26 or newer: the interface is built on Liquid Glass, which only
+    # exists from the macOS 26 SDK, and the SDK the runner has is also the
+    # one the built app reports — an older image would not compile this, and
+    # would hand the app the pre-26 look if it did.
+    runs-on: macos-26
     # The Finder is driven over AppleScript to lay the .dmg window out; it backs
     # off on its own when it is not allowed to, but the ceiling keeps a wedged
     # one from holding the runner all day.
