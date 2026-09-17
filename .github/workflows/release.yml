@@ -1,0 +1,180 @@
+# Cuts a release: stamps VERSION, builds the app and the disk image the same way
+# `make bundle` does on a laptop, tags the commit that carries the new VERSION,
+# and publishes the .dmg as the GitHub release named after it.
+#
+# Run it from the Actions tab. `bump` picks the next version off the VERSION
+# file; `version` overrides it outright when the next one is not a plain bump.
+#
+# The runner is Apple Silicon — the app is arm64-only — and the job needs
+# roughly: mingw-w64 from Homebrew for the Steam stub, and the pinned Wine
+# runtime downloaded by `make restore`. Nothing else is fetched.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Which part of the version to raise"
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+      version:
+        description: "Exact version (e.g. 0.2.0) — overrides the bump above"
+        type: string
+        default: ""
+      prerelease:
+        description: "Publish as a pre-release"
+        type: boolean
+        default: false
+      draft:
+        description: "Leave the release as a draft"
+        type: boolean
+        default: false
+
+# The tag, the push and the release all need write access to the repository.
+permissions:
+  contents: write
+
+# Two releases at once would race on the VERSION commit.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-15
+    # The Finder is driven over AppleScript to lay the .dmg window out; it backs
+    # off on its own when it is not allowed to, but the ceiling keeps a wedged
+    # one from holding the runner all day.
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          # Tags, so the next version can be checked against the ones already cut.
+          fetch-depth: 0
+
+      - name: Show the toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      # The next version, and the refusal to reuse one already released.
+      - name: Work out the version
+        id: version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUMP: ${{ inputs.bump }}
+          EXPLICIT: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          current="$(tr -d '[:space:]' < VERSION)"
+          [[ -n "$current" ]] || { echo "VERSION is empty" >&2; exit 1; }
+
+          if [[ -n "$EXPLICIT" ]]; then
+            next="$(printf '%s' "$EXPLICIT" | tr -d '[:space:]')"
+          else
+            IFS=. read -r major minor patch <<<"$current"
+            case "$BUMP" in
+              major) next="$((major + 1)).0.0" ;;
+              minor) next="$major.$((minor + 1)).0" ;;
+              patch) next="$major.$minor.$((patch + 1))" ;;
+              *) echo "unknown bump: $BUMP" >&2; exit 1 ;;
+            esac
+          fi
+
+          [[ "$next" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "not a version: $next" >&2; exit 1; }
+
+          # The tag names the release, so an existing one is a collision rather
+          # than something to overwrite.
+          if git rev-parse -q --verify "refs/tags/$next" >/dev/null; then
+            echo "tag $next already exists" >&2; exit 1
+          fi
+          if gh release view "$next" >/dev/null 2>&1; then
+            echo "release $next already exists" >&2; exit 1
+          fi
+
+          echo "version=$next" >> "$GITHUB_OUTPUT"
+          echo "dmg=ROSilicon-$next.dmg" >> "$GITHUB_OUTPUT"
+          echo "$current -> $next"
+
+      # Stamped before the build: build.sh reads it for the bundle version and
+      # for the name of the disk image. It is committed further down, once the
+      # build it describes has actually come out.
+      - name: Stamp VERSION
+        run: printf '%s' "${{ steps.version.outputs.version }}" > VERSION
+
+      - name: Install the Windows cross-compiler
+        run: brew install mingw-w64
+
+      - name: Build the Steam stub
+        run: make steam-stub
+
+      - name: Fetch the pinned Wine runtime
+        run: make restore
+
+      - name: Test
+        run: make test
+
+      # validate_wine_runtime, validate_steam_stub, then the .app and the .dmg.
+      - name: Build the app and the disk image
+        run: make bundle
+
+      - name: Check the disk image
+        id: dmg
+        run: |
+          set -euo pipefail
+          dmg="${{ steps.version.outputs.dmg }}"
+          [[ -f "$dmg" ]] || { echo "no $dmg was built" >&2; exit 1; }
+          hdiutil verify "$dmg"
+          echo "sha256=$(shasum -a 256 "$dmg" | awk '{print $1}')" >> "$GITHUB_OUTPUT"
+
+      # Kept for a run whose release is a draft, or one that fails after this.
+      - name: Keep the disk image on the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.version.outputs.dmg }}
+          path: ${{ steps.version.outputs.dmg }}
+          if-no-files-found: error
+          retention-days: 14
+
+      # The tag has to sit on a commit that carries the VERSION it names, so the
+      # bump is pushed to the branch this was dispatched from before the release
+      # points at it. A protected branch will refuse this push.
+      - name: Commit and tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "$VERSION"
+          git tag "$VERSION"
+          git push origin "HEAD:${{ github.ref_name }}"
+          git push origin "refs/tags/$VERSION"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DMG: ${{ steps.version.outputs.dmg }}
+        run: |
+          set -euo pipefail
+          gh release create "$VERSION" "$DMG" \
+            --title "$VERSION" \
+            --generate-notes \
+            ${{ inputs.prerelease && '--prerelease' || '' }} \
+            ${{ inputs.draft && '--draft' || '' }}
+
+      - name: Summary
+        run: |
+          {
+            echo "### ROSilicon ${{ steps.version.outputs.version }}"
+            echo
+            echo "- \`${{ steps.version.outputs.dmg }}\`"
+            echo "- sha256 \`${{ steps.dmg.outputs.sha256 }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
