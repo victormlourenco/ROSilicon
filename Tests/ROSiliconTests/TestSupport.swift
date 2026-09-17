@@ -7,8 +7,21 @@ import Foundation
 // best, and it will not reproduce on demand. It is not one bad test: both
 // times it was caught, fourteen tests were outstanding together — every
 // Downloader test, the two Shell ones that watch a live process, and the
-// Discord socket one. Which of them is the cause and which are merely still
-// in flight is not known.
+// Discord socket one.
+//
+// The Downloader suites are disabled, and that is a quarantine rather than a
+// cure — they are not the cause, and turning them off does not stop the hang.
+// Run alone, fifteen times, over runs as long as the whole suite takes, they
+// never stalled once. They crowd the list above because they are the slowest
+// thing here, so they are what is still in flight when the freeze lands.
+// Whatever is wrong runs alongside them.
+//
+// Left under suspicion, as the rest of that list of fourteen: the two Shell
+// tests that watch a live process, and the Discord socket one. `Shell.run`
+// holds a thread in `waitUntilExit()` for as long as its child lives, and the
+// cancellation test keeps `/bin/sleep 30` for up to thirty seconds. The next
+// cut is the mirror of the one already done: keep the Downloader suites, put
+// those three away, and see whether it still stalls.
 //
 // The suites all carry `.timeLimit` and it does not catch this. That was
 // measured, not assumed: a stalled run sat for 150 seconds against a ceiling
