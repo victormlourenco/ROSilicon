@@ -107,9 +107,16 @@ private struct TintedGlassButtonStyle: ButtonStyle {
         Surface(configuration: configuration)
     }
 
+    /// Glass has an `interactive()` mode that lights and springs under a
+    /// press, and it is no use here: it answers presses that land on the glass
+    /// itself, and inside a button style the button has already taken them. So
+    /// the motion is driven from the state the style is given instead — the
+    /// press from the configuration, the pointer from `onHover`, since a style
+    /// is told about one and not the other.
     private struct Surface: View {
         let configuration: Configuration
         @Environment(\.isEnabled) private var isEnabled
+        @State private var hovering = false
 
         var body: some View {
             configuration.label
@@ -118,12 +125,21 @@ private struct TintedGlassButtonStyle: ButtonStyle {
                 // which is what Install and Cancel beside it are.
                 .padding(.horizontal, 18)
                 .padding(.vertical, 6)
-                .glassEffect(
-                    .regular
-                        .tint(.accentColor.opacity(isEnabled ? 0.45 : 0))
-                        .interactive(),
-                    in: Capsule(style: .continuous))
+                .glassEffect(.regular.tint(tint), in: Capsule(style: .continuous))
+                .scaleEffect(configuration.isPressed ? 0.96 : 1)
                 .opacity(isEnabled ? 1 : 0.5)
+                .onHover { hovering = $0 }
+                .animation(.easeOut(duration: 0.12), value: hovering)
+                .animation(.spring(response: 0.22, dampingFraction: 0.6),
+                           value: configuration.isPressed)
+        }
+
+        /// Deeper under the pointer, deeper again under a press, and gone when
+        /// there is nothing to play.
+        private var tint: Color {
+            guard isEnabled else { return .accentColor.opacity(0) }
+            if configuration.isPressed { return .accentColor.opacity(0.70) }
+            return .accentColor.opacity(hovering ? 0.58 : 0.45)
         }
     }
 }
