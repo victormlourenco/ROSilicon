@@ -1,6 +1,27 @@
 import Foundation
 @testable import ROSilicon
 
+// A note on a hang, for whoever meets it next.
+//
+// The suite stalls now and then — once in two runs at worst, once in six at
+// best, and it will not reproduce on demand. It is not one bad test: both
+// times it was caught, fourteen tests were outstanding together — every
+// Downloader test, the two Shell ones that watch a live process, and the
+// Discord socket one. Which of them is the cause and which are merely still
+// in flight is not known.
+//
+// The suites all carry `.timeLimit` and it does not catch this. That was
+// measured, not assumed: a stalled run sat for 150 seconds against a ceiling
+// of 60 and never tripped it. A time limit races a sleeping task against the
+// test, and both want the same cooperative threads — if what is stuck is the
+// pool itself, the timeout cannot be scheduled either. The ceilings are worth
+// keeping for an ordinary slow test; they are no help here.
+//
+// What would settle it is a sampler caught on a stalled run:
+//     swift test & sleep 60; sample $(pgrep -x swiftpm-testing-helper) 5
+// Match the executable, not the command line — `pgrep -f` also finds the
+// shell you typed it into, and samples that instead.
+
 /// The repository root, found from this file rather than the working
 /// directory, so the resource-reading tests work under `swift test` and Xcode
 /// alike.
