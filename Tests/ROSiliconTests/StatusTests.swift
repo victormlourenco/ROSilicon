@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import ROSilicon
 
+@Suite(.timeLimit(.minutes(1)))
 struct StatusTests {
 
     /// `Status.State` is not Equatable, and does not need to be for the app's
@@ -196,6 +197,7 @@ struct StatusTests {
     }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct WineToolTests {
 
     /// cmd.exe goes through wineconsole because a launcher started from Finder
@@ -220,6 +222,7 @@ struct WineToolTests {
     }
 }
 
+@Suite(.timeLimit(.minutes(1)))
 struct GameRunnerTests {
 
     /// Without a Wine to run there is nothing to prepare, and it says so

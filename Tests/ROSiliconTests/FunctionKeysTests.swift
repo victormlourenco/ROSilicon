@@ -42,6 +42,7 @@ final class FakeFunctionKeys {
 /// borrowed, and borrows nothing it cannot give back: the mode outlives the
 /// process, so a mistake leaves somebody's brightness keys gone.
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct FunctionKeyOverrideTests {
 
     // MARK: - Borrowing and giving back
@@ -207,6 +208,7 @@ struct FunctionKeyOverrideTests {
 
 /// The IOKit side. Reading is safe to do for real; writing is not, so these
 /// only ever read.
+@Suite(.timeLimit(.minutes(1)))
 struct FunctionKeysTests {
 
     /// The raw values are what `IOHIDSystem` stores, not an ordering of the

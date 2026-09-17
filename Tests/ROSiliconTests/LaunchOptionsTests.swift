@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import ROSilicon
 
+@Suite(.timeLimit(.minutes(1)))
 struct LaunchOptionsTests {
 
     // MARK: - Wine's debug channels
