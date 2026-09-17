@@ -5,6 +5,7 @@ import Testing
 /// The strings files are read straight off disk rather than through `Strings`:
 /// outside an app bundle there is no strings table to look a key up in, so
 /// `Bundle.main.localizedString` hands back the key it was given.
+@Suite(.timeLimit(.minutes(1)))
 struct LocalizationTests {
     static let developmentLanguage = "en"
     static let languages = ["en", "es", "pt-BR"]

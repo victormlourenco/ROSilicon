@@ -2,6 +2,7 @@ import Foundation
 import Testing
 @testable import ROSilicon
 
+@Suite(.timeLimit(.minutes(1)))
 struct DiscordIPCTests {
     @Test func aFrameIsOpcodeThenLengthLittleEndianThenPayload() {
         let frame = DiscordIPC.encode(.frame, Data("{}".utf8))

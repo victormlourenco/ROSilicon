@@ -5,7 +5,7 @@ import Testing
 /// Serialized: the "is Wine running?" guard shells out to `pgrep -f <path>`,
 /// and two of these running at once match each other's command line — every
 /// test here would then be told Wine is running.
-@Suite(.serialized)
+@Suite(.timeLimit(.minutes(1)), .serialized)
 struct InstallerTests {
 
     private func installer(_ paths: Paths, _ recorder: RecordingReporter) -> Installer {

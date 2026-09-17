@@ -6,6 +6,7 @@ import Testing
 /// the real install folder and the user's own preferences, and a test has no
 /// business writing to either.
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct LauncherModelTests {
 
     /// Every button in the window is disabled off the back of this, so an

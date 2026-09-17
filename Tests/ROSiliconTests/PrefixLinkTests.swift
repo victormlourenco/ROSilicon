@@ -4,6 +4,7 @@ import Testing
 
 /// The links `prepare()` puts in the prefix. Every Play goes through them,
 /// the second client's included, while the first may be loading from them.
+@Suite(.timeLimit(.minutes(1)))
 struct PrefixLinkTests {
 
     /// Rewriting a link that is already right would leave a moment with no
