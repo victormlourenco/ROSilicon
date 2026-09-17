@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct ContentView: View {
@@ -11,6 +12,11 @@ struct ContentView: View {
     @State private var editor: Editor?
     @State private var newProfileName = ""
     @State private var newProfileError: String?
+    @State private var window: NSWindow?
+
+    /// What the open log adds to the window: the well itself and the padding
+    /// under it.
+    private static let logHeight: CGFloat = 185
 
     /// The sheets: the text settings behind ⌥, each of the same shape, and
     /// the name of a new profile.
@@ -21,18 +27,27 @@ struct ContentView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        // The panes float on the backdrop rather than being divided off from
+        // one another by rules, so the dividers are gone and the spacing
+        // between them does that work instead.
+        VStack(spacing: 14) {
             header
-            Divider()
-
             checklist
-            Spacer(minLength: 12)
+            Spacer(minLength: 0)
             controls
-
-            Divider()
             logSection
         }
-        .background(.background)
+        .padding(16)
+        // The floor the window may not be dragged below. It has to make room
+        // for the log when that is open: the panes are sheets that cannot be
+        // squeezed into one another, and the layout carries no slack to give up
+        // once the log takes its height. Raising this does not *grow* the
+        // window, though — see `resizeForLog`.
+        .frame(minWidth: 640, minHeight: showLog ? 450 + Self.logHeight : 450)
+        // Last, so it paints the whole window and not just the panes: a
+        // background takes no part in sizing, so it cannot disturb the minimum
+        // just set.
+        .background(GlassBackdrop())
         .confirmationDialog(
             Strings.reinstallTitle,
             isPresented: $confirmReinstall, titleVisibility: .visible
@@ -70,14 +85,38 @@ struct ContentView: View {
             Text(deleteProfileMessage)
         }
         .sheet(item: $editor) { sheet(for: $0) }
+        .background(WindowReader { window = $0 })
+        .onChange(of: showLog) { _, open in resizeForLog(open: open) }
         .onAppear {
             model.refresh()
             modifiers.watch()
         }
     }
 
+    /// A window is never resized by its content wanting more room — the minimum
+    /// above only stops it being dragged smaller — so opening the log has to
+    /// find its height somewhere, and there is none to spare. This takes it
+    /// from the bottom edge and gives it back on the way out, leaving the top
+    /// of the window where it was so the header does not move under the
+    /// pointer. A window near the bottom of the screen grows upwards instead.
+    private func resizeForLog(open: Bool) {
+        guard let window else { return }
+        let delta = Self.logHeight * (open ? 1 : -1)
+        var frame = window.frame
+        frame.size.height += delta
+        frame.origin.y -= delta
+        if let limit = window.screen?.visibleFrame.minY {
+            frame.origin.y = max(frame.origin.y, limit)
+        }
+        window.setFrame(frame, display: true, animate: true)
+    }
+
     // MARK: - Header
 
+    /// Doubles as the title bar: that is hidden, so the backdrop runs the whole
+    /// height of the window and the traffic lights sit straight on it. The row
+    /// starts clear of them, and the two menus float beside each other in one
+    /// glass container so they behave as a pair.
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "gamecontroller.fill")
@@ -86,11 +125,15 @@ struct ContentView: View {
             Text(Strings.appTitle)
                 .font(.title3.weight(.semibold))
             Spacer()
-            profileMenu
-            actionsMenu
+            GlassGroup(spacing: 10) {
+                HStack(spacing: 10) {
+                    profileMenu
+                    actionsMenu
+                }
+            }
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
+        .padding(.leading, 56)
+        .padding(.trailing, 2)
     }
 
     /// The profile the whole window is about, and where profiles are made and
@@ -121,6 +164,9 @@ struct ContentView: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .glassPill()
         .disabled(model.phase.isBusy)
         .help(Strings.profileHelp)
     }
@@ -172,6 +218,9 @@ struct ContentView: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .glassPill()
         .help(Strings.menuMore)
     }
 
@@ -180,7 +229,7 @@ struct ContentView: View {
     private var checklist: some View {
         VStack(spacing: 0) {
             ForEach(Array(model.status.items.enumerated()), id: \.element.id) { index, item in
-                if index > 0 { Divider().padding(.leading, 48) }
+                if index > 0 { Divider().padding(.leading, 44) }
                 HStack(spacing: 12) {
                     Image(systemName: symbol(item.state))
                         .font(.system(size: 15))
@@ -194,11 +243,12 @@ struct ContentView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 11)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 5)
+        .glassCard()
     }
 
     private func symbol(_ state: Status.State) -> String {
@@ -257,14 +307,17 @@ struct ContentView: View {
                 switch model.phase {
                 case .working:
                     Button(Strings.cancel) { model.cancel() }
+                        .glassButton()
                         .controlSize(.large)
                 case .running:
                     Button(Strings.quitGame) { confirmQuit = true }
+                        .glassButton()
                         .controlSize(.large)
                 case .idle:
                     Button(model.needsInstall ? Strings.install : Strings.repair) {
                         model.install()
                     }
+                    .glassButton()
                     .controlSize(.large)
                 }
                 Spacer()
@@ -274,15 +327,15 @@ struct ContentView: View {
                     playLabel
                         .frame(minWidth: 90)
                 }
-                .buttonStyle(.borderedProminent)
+                .glassButton(prominent: true)
                 .controlSize(.large)
                 .keyboardShortcut(.defaultAction)
                 .disabled(!model.canPlay)
                 .animation(.easeInOut(duration: 0.15), value: model.isStarting)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.bottom, 16)
+        .padding(16)
+        .glassCard()
     }
 
     /// A spinner in place of the triangle while a press is being held back,
@@ -335,8 +388,8 @@ struct ContentView: View {
                     Spacer()
                 }
                 .contentShape(Rectangle())
-                .padding(.horizontal, 20)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
 
@@ -353,17 +406,21 @@ struct ContentView: View {
                                     .id(line.id)
                             }
                         }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
                     }
                     .frame(height: 180)
-                    .background(Color(nsColor: .textBackgroundColor))
+                    .background(Color.primary.opacity(0.05))
+                    .clipShape(RoundedRectangle(cornerRadius: 11, style: .continuous))
+                    .padding(.horizontal, 5)
+                    .padding(.bottom, 5)
                     .onChange(of: model.log.count) {
                         if let last = model.log.last { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
             }
         }
+        .glassCard()
     }
 
     private func colour(_ kind: LauncherModel.LogLine.Kind) -> Color {
@@ -489,4 +546,20 @@ struct ContentView: View {
             newProfileError = error.localizedDescription
         }
     }
+}
+
+/// Hands back the window the view was placed in. `resizeForLog` needs it, and
+/// the key window is not it while a sheet is up.
+private struct WindowReader: NSViewRepresentable {
+    let found: (NSWindow) -> Void
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async {
+            if let window = view.window { found(window) }
+        }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {}
 }

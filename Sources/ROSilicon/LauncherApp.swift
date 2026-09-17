@@ -10,8 +10,14 @@ struct ROSiliconApp: App {
         Window("ROSilicon", id: "launcher") {
             ContentView()
                 .environmentObject(model)
-                .frame(minWidth: 640, minHeight: 560)
         }
+        // No title bar: the content view draws its own header and the backdrop
+        // the glass sits on runs the full height of the window. The traffic
+        // lights stay, so the header leaves room for them.
+        //
+        // The minimum size is the content's own, and the content view sets it —
+        // it changes with the log, which only that view knows about.
+        .windowStyle(.hiddenTitleBar)
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
