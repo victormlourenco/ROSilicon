@@ -113,10 +113,11 @@ struct ContentView: View {
 
     // MARK: - Header
 
-    /// Doubles as the title bar: that is hidden, so the backdrop runs the whole
-    /// height of the window and the traffic lights sit straight on it. The row
-    /// starts clear of them, and the two menus float beside each other in one
-    /// glass container so they behave as a pair.
+    /// The title bar is hidden, so the backdrop runs the whole height of the
+    /// window and the window's own buttons sit straight on it. They keep their
+    /// own band above this row, which is free to line up with the panes below
+    /// it rather than starting clear of them. The two menus float beside each
+    /// other in one glass container so they behave as a pair.
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: "gamecontroller.fill")
@@ -132,8 +133,6 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(.leading, 56)
-        .padding(.trailing, 2)
     }
 
     /// The profile the whole window is about, and where profiles are made and

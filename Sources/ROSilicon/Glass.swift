@@ -26,7 +26,25 @@ struct GlassBackdrop: View {
             .overlay(alignment: .bottomTrailing) {
                 bloom(.indigo, opacity: 0.24, offset: 170)
             }
+            .overlay(alignment: .topLeading) { windowButtons }
             .ignoresSafeArea()
+    }
+
+    /// A pill of glass beneath the close, minimise and zoom buttons.
+    ///
+    /// Those are AppKit's own and cannot be restyled, but with the title bar
+    /// hidden they sit directly on the backdrop with nothing under them. They
+    /// draw above anything the view puts up, so laying this where they are
+    /// gives them the same footing as every other control in the window. The
+    /// size is measured from them: they run from 10 to 61 across and 8 to 20
+    /// down, and this leaves four points around that.
+    private var windowButtons: some View {
+        Color.clear
+            .frame(width: 59, height: 20)
+            .modifier(GlassSurface(shape: Capsule(style: .continuous)))
+            .padding(.leading, 6)
+            .padding(.top, 4)
+            .allowsHitTesting(false)
     }
 
     /// A circle of colour fading to nothing, pulled out past the corner it is
