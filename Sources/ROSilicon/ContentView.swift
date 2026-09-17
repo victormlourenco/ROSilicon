@@ -162,11 +162,14 @@ struct ContentView: View {
             Label(model.profile.displayName, systemImage: "person.crop.circle")
                 .labelStyle(.titleAndIcon)
         }
-        .menuStyle(.borderlessButton)
+        .glassMenuButton()
+        .controlSize(.large)
+        // The menu is mostly a picker, which AppKit renders as a pop-up button
+        // — and that draws its chevron on a filled accent badge, far too loud
+        // for a header of quiet glass. Hiding the indicator leaves the button
+        // itself, which the icon and the hover already announce.
+        .menuIndicator(.hidden)
         .fixedSize()
-        .padding(.horizontal, 12)
-        .padding(.vertical, 7)
-        .glassPill()
         .disabled(model.phase.isBusy)
         .help(Strings.profileHelp)
     }
@@ -215,12 +218,10 @@ struct ContentView: View {
             Image(systemName: "ellipsis.circle")
                 .font(.system(size: 16))
         }
-        .menuStyle(.borderlessButton)
+        .glassMenuButton()
+        .controlSize(.large)
         .menuIndicator(.hidden)
         .fixedSize()
-        .padding(.horizontal, 11)
-        .padding(.vertical, 7)
-        .glassPill()
         .help(Strings.menuMore)
     }
 
@@ -327,8 +328,7 @@ struct ContentView: View {
                     playLabel
                         .frame(minWidth: 90)
                 }
-                .glassButton(prominent: true)
-                .controlSize(.large)
+                .glassActionButton()
                 .keyboardShortcut(.defaultAction)
                 .disabled(!model.canPlay)
                 .animation(.easeInOut(duration: 0.15), value: model.isStarting)

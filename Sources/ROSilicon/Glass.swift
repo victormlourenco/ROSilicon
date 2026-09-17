@@ -56,28 +56,74 @@ extension View {
             shape: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)))
     }
 
-    /// The same sheet drawn as a pill, for the small floating controls in the
-    /// header rather than a full-width pane.
-    func glassPill() -> some View {
-        modifier(GlassSurface(shape: Capsule(style: .continuous)))
+    /// Bordered on macOS 14 and 15, glass on 26.
+    @ViewBuilder
+    func glassButton() -> some View {
+        if #available(macOS 26, *) {
+            buttonStyle(.glass)
+        } else {
+            buttonStyle(.bordered)
+        }
     }
 
-    /// Bordered on macOS 14 and 15, glass on 26. Prominent is the one call to
-    /// action in the window — Play.
+    /// The one call to action in the window: Play.
+    ///
+    /// Not `.glassProminent`, which fills the capsule with the accent colour
+    /// until nothing shows through — beside the glass around it, it reads as a
+    /// painted button rather than a lit one. Tinting regular glass keeps the
+    /// backdrop visible through it and still leaves no doubt which button is
+    /// the one to press.
     @ViewBuilder
-    func glassButton(prominent: Bool = false) -> some View {
+    func glassActionButton() -> some View {
         if #available(macOS 26, *) {
-            if prominent {
-                buttonStyle(.glassProminent)
-            } else {
-                buttonStyle(.glass)
-            }
+            buttonStyle(TintedGlassButtonStyle())
         } else {
-            if prominent {
-                buttonStyle(.borderedProminent)
-            } else {
-                buttonStyle(.bordered)
-            }
+            buttonStyle(.borderedProminent)
+        }
+    }
+
+    /// A menu as a button rather than as a bare label. The label form has no
+    /// button behind it, so nothing answers the pointer: no hover, no press.
+    /// This gives the menus the same glass — and the same reactions — as the
+    /// buttons below them.
+    @ViewBuilder
+    func glassMenuButton() -> some View {
+        if #available(macOS 26, *) {
+            menuStyle(.button).buttonStyle(.glass)
+        } else {
+            menuStyle(.button).buttonStyle(.bordered)
+        }
+    }
+}
+
+/// Regular glass under the accent colour, mixed thinly enough to stay glass.
+///
+/// A style rather than a `glassEffect` at the call site because the button
+/// spends most of its life disabled — there is nothing to play until the game
+/// is installed — and only a view can read `isEnabled`.
+@available(macOS 26, *)
+private struct TintedGlassButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Surface(configuration: configuration)
+    }
+
+    private struct Surface: View {
+        let configuration: Configuration
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .font(.body.weight(.medium))
+                // Tuned to stand the same height as a large `.glass` button,
+                // which is what Install and Cancel beside it are.
+                .padding(.horizontal, 18)
+                .padding(.vertical, 6)
+                .glassEffect(
+                    .regular
+                        .tint(.accentColor.opacity(isEnabled ? 0.45 : 0))
+                        .interactive(),
+                    in: Capsule(style: .continuous))
+                .opacity(isEnabled ? 1 : 0.5)
         }
     }
 }
