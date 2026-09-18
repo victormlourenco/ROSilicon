@@ -95,8 +95,12 @@ X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 # loader reads libRuntimeRosettax87 from its own folder, so the two go in
 # together.
 ROSETTAX87_JIT="$PKG/Resources/rosettax87_jit"
+# The icon, as Icon Composer saves it. Both icons are built from it: macOS 26
+# reads it compiled, older macOS reads the .icns drawn from the same layer.
+ICON_DOCUMENT="$PKG/$APP_NAME.icon"
 for f in "$DXVK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
-         "$ROSETTAX87_JIT/libRuntimeRosettax87" "$ROSETTAX87_JIT/LICENSE"; do
+         "$ROSETTAX87_JIT/libRuntimeRosettax87" "$ROSETTAX87_JIT/LICENSE" \
+         "$ICON_DOCUMENT/icon.json"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
 done
 
@@ -151,7 +155,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CFBundleDisplayName</key>       <string>$APP_NAME</string>
     <key>CFBundleIdentifier</key>        <string>com.rosilicon.launcher</string>
     <key>CFBundleExecutable</key>        <string>$EXECUTABLE</string>
-    <key>CFBundleIconFile</key>          <string>AppIcon</string>
+    <key>CFBundleIconFile</key>          <string>$APP_NAME</string>
     <key>CFBundlePackageType</key>       <string>APPL</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
     <key>CFBundleVersion</key>           <string>$VERSION</string>
@@ -170,7 +174,35 @@ $(printf '        <string>%s</string>\n' "${LANGUAGES[@]}")
 PLIST
 
 echo "==> drawing the icon"
-swift "$PKG/makeicon.swift" "$APP/Contents/Resources/AppIcon.icns" >/dev/null
+swift "$PKG/makeicon.swift" "$APP/Contents/Resources/$APP_NAME.icns" \
+    "$ICON_DOCUMENT" >/dev/null
+
+# macOS 26 takes the icon from the compiled document and renders it as Liquid
+# Glass — the shape, the shadow and the specular are the system's, which is why
+# the document holds the creature and nothing else. 14 through 25 ignore
+# CFBundleIconName and read the .icns above, so the key goes in only when the
+# catalogue was actually built. actool comes with Xcode; without it the .icns
+# carries the whole job and the build still finishes.
+if ACTOOL="$(xcrun --find actool 2>/dev/null)"; then
+    echo "==> compiling $APP_NAME.icon"
+    GLASS="$(mktemp -d)"
+    "$ACTOOL" "$ICON_DOCUMENT" --compile "$GLASS" --platform macosx \
+        --minimum-deployment-target 26.0 --app-icon "$APP_NAME" \
+        --output-partial-info-plist "$GLASS/partial.plist" \
+        --output-format human-readable-text >/dev/null
+    # actool writes an .icns of its own beside the catalogue, but only at two
+    # sizes; the one drawn above is the one that ships.
+    if [[ -f "$GLASS/Assets.car" ]]; then
+        cp "$GLASS/Assets.car" "$APP/Contents/Resources/Assets.car"
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string $APP_NAME" \
+            "$APP/Contents/Info.plist" >/dev/null
+    else
+        echo "warning: actool built no catalogue; the icon will not be Liquid Glass" >&2
+    fi
+    rm -rf "$GLASS"
+else
+    echo "==> no actool; skipping the Liquid Glass icon"
+fi
 
 # Ad-hoc signature: enough for Gatekeeper to run it locally, and it must not
 # use the hardened runtime — the launcher passes DYLD_LIBRARY_PATH down to Wine.
@@ -244,7 +276,7 @@ APPLESCRIPT
     # The icon the volume wears on the desktop and in the sidebar. It goes on
     # after the Finder is done: refreshing the window with the custom-icon flag
     # already set makes the Finder delete the .icns and clear the flag again.
-    cp "$APP/Contents/Resources/AppIcon.icns" "$MOUNT/.VolumeIcon.icns"
+    cp "$APP/Contents/Resources/$APP_NAME.icns" "$MOUNT/.VolumeIcon.icns"
     if command -v SetFile >/dev/null 2>&1; then SetFile -a C "$MOUNT"; fi
 
     sync
