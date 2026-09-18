@@ -1,7 +1,6 @@
 /* Launcher ROSilicon — português (Brasil). */
 
 /* Janela e botões */
-"app.title" = "ROSilicon";
 "button.play" = "Jogar";
 "button.starting" = "Iniciando…";
 "button.install" = "Instalar";

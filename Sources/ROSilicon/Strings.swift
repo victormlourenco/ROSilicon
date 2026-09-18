@@ -18,7 +18,6 @@ enum Strings {
 
     // MARK: - Window and buttons
 
-    static var appTitle: String { t("app.title") }
     static var play: String { t("button.play") }
     static var starting: String { t("button.starting") }
     static var install: String { t("button.install") }

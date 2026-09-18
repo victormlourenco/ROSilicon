@@ -18,6 +18,12 @@ struct ContentView: View {
     /// under it.
     private static let logHeight: CGFloat = 185
 
+    /// The shortest the window may be dragged, with the log shut. It came down
+    /// by the 18 points the header gave back when it stopped reserving the
+    /// title bar's band, so the floor still sits just under the layout rather
+    /// than 18 points of air below it.
+    private static let minHeight: CGFloat = 432
+
     /// The sheets: the text settings behind ⌥, each of the same shape, and
     /// the name of a new profile.
     private enum Editor: String, Identifiable {
@@ -37,13 +43,22 @@ struct ContentView: View {
             controls
             logSection
         }
-        .padding(16)
+        .padding([.horizontal, .bottom], 16)
+        // The title bar is hidden, but it still reserves a band of its own at
+        // the top of the content. Nothing is named in the header any more, so
+        // that band was empty space sitting above the two menus: the content
+        // runs under it instead, and this padding is what holds them clear of
+        // the window's own buttons, which end 24 points down and are off to the
+        // left of them in any case.
+        .padding(.top, 30)
+        .ignoresSafeArea(.container, edges: .top)
         // The floor the window may not be dragged below. It has to make room
         // for the log when that is open: the panes are sheets that cannot be
         // squeezed into one another, and the layout carries no slack to give up
         // once the log takes its height. Raising this does not *grow* the
         // window, though — see `resizeForLog`.
-        .frame(minWidth: 640, minHeight: showLog ? 450 + Self.logHeight : 450)
+        .frame(minWidth: 640,
+               minHeight: Self.minHeight + (showLog ? Self.logHeight : 0))
         // Last, so it paints the whole window and not just the panes: a
         // background takes no part in sizing, so it cannot disturb the minimum
         // just set.
@@ -116,15 +131,11 @@ struct ContentView: View {
     /// The title bar is hidden, so the backdrop runs the whole height of the
     /// window and the window's own buttons sit straight on it. They keep their
     /// own band above this row, which is free to line up with the panes below
-    /// it rather than starting clear of them. The two menus float beside each
-    /// other in one glass container so they behave as a pair.
+    /// it rather than starting clear of them. Nothing is named here — the row
+    /// is the two menus, floating beside each other in one glass container so
+    /// they behave as a pair, held to the right by the space to their left.
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "gamecontroller.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.tint)
-            Text(Strings.appTitle)
-                .font(.title3.weight(.semibold))
             Spacer()
             GlassGroup(spacing: 10) {
                 HStack(spacing: 10) {
