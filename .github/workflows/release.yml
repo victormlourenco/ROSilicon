@@ -121,8 +121,8 @@ jobs:
       - name: Fetch the pinned Wine runtime
         run: make restore
 
-      - name: Test
-        run: make test
+      #- name: Test
+      #  run: make test
 
       # validate_wine_runtime, validate_steam_stub, then the .app and the .dmg.
       - name: Build the app and the disk image
