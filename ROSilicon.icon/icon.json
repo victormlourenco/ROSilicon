@@ -1,0 +1,45 @@
+{
+  "fill" : {
+    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+  },
+  "groups" : [
+    {
+      "layers" : [
+        {
+          "blend-mode" : "normal",
+          "fill" : "none",
+          "glass-specializations" : [
+            {
+              "value" : true
+            },
+            {
+              "appearance" : "light",
+              "value" : true
+            },
+            {
+              "idiom" : "square",
+              "value" : true
+            }
+          ],
+          "hidden" : false,
+          "image-name" : "9f15089c-dc1c-4f4f-a3f7-fe32a3ebc323.png",
+          "name" : "9f15089c-dc1c-4f4f-a3f7-fe32a3ebc323"
+        }
+      ],
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 0.5
+      },
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.3
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

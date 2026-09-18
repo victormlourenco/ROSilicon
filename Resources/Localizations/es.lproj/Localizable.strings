@@ -1,7 +1,6 @@
 /* Lanzador ROSilicon — español (Latinoamérica). */
 
 /* Ventana y botones */
-"app.title" = "ROSilicon";
 "button.play" = "Jugar";
 "button.starting" = "Iniciando…";
 "button.install" = "Instalar";
