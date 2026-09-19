@@ -6,9 +6,11 @@
 # file; `version` overrides it outright when the next one is not a plain bump.
 #
 # The runner is Apple Silicon — the app is arm64-only — and the job needs
-# roughly: mingw-w64 from Homebrew for the Steam stub, and the pinned Wine
-# runtime downloaded by `make restore`. Nothing else is fetched. It also has to
-# carry the macOS 26 SDK or newer; `build.sh` refuses an older one.
+# roughly: mingw-w64 from Homebrew for the Steam stub, meson, ninja and glslang
+# on top of it for DXVK, the pinned Wine runtime downloaded by `make restore`,
+# and the DXVK commit `Packaging/D9VK/source-lock.json` pins, cloned by
+# `make d9vk`. Nothing else is fetched. It also has to carry the macOS 26 SDK or
+# newer; `build.sh` refuses an older one.
 
 name: Release
 
@@ -112,11 +114,41 @@ jobs:
       - name: Stamp VERSION
         run: printf '%s' "${{ steps.version.outputs.version }}" > VERSION
 
-      - name: Install the Windows cross-compiler
-        run: brew install mingw-w64
+      # mingw-w64 cross-compiles both Windows pieces; meson, ninja and glslang
+      # are DXVK's on top of that. Homebrew's glslang still ships the
+      # glslangValidator name DXVK's meson looks for by find_program.
+      - name: Install the Windows toolchain
+        run: brew install mingw-w64 meson ninja glslang
 
       - name: Build the Steam stub
         run: make steam-stub
+
+      # Keyed on everything that decides the bytes: the pinned commit, the
+      # patches applied to it and the script that does the applying. No
+      # restore-keys, because a near miss would hand back a .dll built from
+      # different patches. The toolchain version is deliberately not in the key
+      # — a release keeps the binary that was built and validated for it, and a
+      # rebuild is a lock or patch change away.
+      - name: Cache the built DXVK
+        id: d9vk-cache
+        uses: actions/cache@v4
+        with:
+          path: .d9vk
+          key: d9vk-${{ runner.os }}-${{ hashFiles('Packaging/D9VK/source-lock.json', 'Packaging/D9VK/patches/*.patch', 'tools/d9vk/build.sh') }}
+
+      # The cache is restored with tar, which keeps the mtimes it was made with,
+      # while the checkout stamped the sources with now. A restored .d9vk would
+      # therefore look older than its own inputs and make would build it again,
+      # cache or no cache. The key already pins the commit, the patches and the
+      # script, so a hit is current by definition and can say so.
+      - name: Mark the cached DXVK current
+        if: steps.d9vk-cache.outputs.cache-hit == 'true'
+        run: touch .d9vk/d3d9.dll
+
+      # A cache hit makes this a no-op; a miss clones the pinned commit and
+      # cross-compiles it, which is the slow step of the whole job.
+      - name: Build DXVK
+        run: make d9vk
 
       - name: Fetch the pinned Wine runtime
         run: make restore
@@ -124,7 +156,9 @@ jobs:
       #- name: Test
       #  run: make test
 
-      # validate_wine_runtime, validate_steam_stub, then the .app and the .dmg.
+      # validate_wine_runtime, validate_steam_stub, validate_d9vk, then the .app
+      # and the .dmg. Each build product is already in place by here, so this
+      # checks them over rather than building them.
       - name: Build the app and the disk image
         run: make bundle
 
