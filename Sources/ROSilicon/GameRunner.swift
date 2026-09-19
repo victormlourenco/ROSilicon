@@ -151,9 +151,10 @@ struct GameRunner: Sendable {
     }
 
     /// Checks the pieces are in place and links DXVK and the Steam stub, both
-    /// inside the app, into the prefix. The links are checked every launch,
-    /// so one left pointing at an app that has since moved is replaced rather
-    /// than followed. Returns the path of steam.exe inside drive_c.
+    /// inside the app, into the prefix: DXVK into the prefix's syswow64, the
+    /// stub into drive_c. The links are checked every launch, so one left
+    /// pointing at an app that has since moved is replaced rather than
+    /// followed. Returns the path of steam.exe inside drive_c.
     @discardableResult
     func prepare() throws -> URL {
         guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
@@ -175,9 +176,26 @@ struct GameRunner: Sendable {
         }
 
         let steamExe = paths.driveC.appending(path: "steam.exe")
-        try Self.link(Paths.dxvkDLL, at: paths.gameDir.appending(path: "d3d9.dll"))
+        // A prefix booted by an older Wine, or one still being bootstrapped,
+        // may not have the folder yet; the link is what has to be there.
+        try FileManager.default.createDirectory(
+            at: paths.syswow64, withIntermediateDirectories: true)
+        try Self.link(Paths.dxvkDLL, at: paths.dxvkLink)
+        // After the new link, never before: between the two there is always a
+        // d3d9.dll for a client that happens to be starting.
+        Self.removeStaleLink(at: paths.legacyDXVKLink)
         try Self.link(Paths.steamStub, at: steamExe)
         return steamExe
+    }
+
+    /// Clears the link older versions put beside Ragexe.exe. The game folder
+    /// is searched before syswow64, so one left there would go on deciding
+    /// which d3d9.dll the client loads. Only a symlink is removed: a real DLL
+    /// there was put there by hand and is not the launcher's to delete.
+    static func removeStaleLink(at location: URL) {
+        let fm = FileManager.default
+        guard (try? fm.destinationOfSymbolicLink(atPath: location.path)) != nil else { return }
+        try? fm.removeItem(at: location)
     }
 
     /// `ln -sfn`: replace whatever is there with a symlink — unless it already

@@ -16,6 +16,18 @@ struct PathsTests {
         #expect(paths.downloads.path == "/test/root/downloads")
     }
 
+    /// DXVK belongs in the prefix's system folder, not beside Ragexe.exe: a
+    /// reinstall of the client rewrites the game folder, and Windows searches
+    /// it first, so the old location would outrank the new one.
+    @Test func dxvkIsLinkedIntoTheSystemFolderNotTheGameFolder() {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        #expect(paths.syswow64.path == "/test/root/wine/drive_c/windows/syswow64")
+        #expect(paths.dxvkLink.path == "/test/root/wine/drive_c/windows/syswow64/d3d9.dll")
+        #expect(paths.legacyDXVKLink.path
+            == "/test/root/wine/drive_c/Gravity/Ragnarok/d3d9.dll")
+        #expect(paths.dxvkLink != paths.legacyDXVKLink)
+    }
+
     /// Wine runs from inside the app bundle, so the launcher can live anywhere
     /// and nothing under the install folder is Wine's.
     @Test func wineIsReadFromTheBundleNotTheInstallFolder() {

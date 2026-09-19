@@ -48,6 +48,20 @@ struct Paths: Sendable {
     var gameDir: URL { driveC.appending(path: "Gravity/Ragnarok") }
     var ragexe: URL { gameDir.appending(path: "Ragexe.exe") }
 
+    /// Wine's folder for 32-bit system DLLs, where a 32-bit program looks for
+    /// d3d9.dll once its own folder holds none.
+    var syswow64: URL { driveC.appending(path: "windows/syswow64") }
+
+    /// Where DXVK is linked into the prefix: the system folder rather than the
+    /// game's, so it is not something a reinstall of the client can drop and
+    /// every 32-bit program in the prefix sees the same Direct3D 9.
+    var dxvkLink: URL { syswow64.appending(path: "d3d9.dll") }
+
+    /// Where versions up to 0.2.0 put that link, beside Ragexe.exe. Windows
+    /// searches the program's own folder first, so one left there would still
+    /// be the d3d9.dll the client loads; `prepare()` clears it.
+    var legacyDXVKLink: URL { gameDir.appending(path: "d3d9.dll") }
+
     /// True when the prefix has actually been booted, not merely created.
     ///
     /// Any wine invocation with WINEPREFIX set bootstraps the prefix, so the
@@ -75,9 +89,9 @@ struct Paths: Sendable {
     static var bundledWineRoot: URL { bundledTools.appending(path: "Wine") }
 
     /// The three helper binaries, read where they lie in the app. The prefix
-    /// links to the two Windows ones rather than holding copies; `prepare()`
-    /// rewrites those links on every launch, so they follow the app when it
-    /// moves.
+    /// links to the two Windows ones rather than holding copies — DXVK into
+    /// `syswow64`, the stub into drive_c; `prepare()` rewrites those links on
+    /// every launch, so they follow the app when it moves.
     static var dxvkDLL: URL { bundledTools.appending(path: "d3d9.dll") }
     static var steamStub: URL { bundledTools.appending(path: "steam_stub.exe") }
 
