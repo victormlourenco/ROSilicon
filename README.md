@@ -85,7 +85,10 @@ gigabytes — and then runs three stages, each skipped when it is already done:
    downloads with resume, verifies, extracts.
 
 **Play** links DXVK and the Steam stub into the prefix and starts the client
-through `steam.exe`, which is what the client expects to find running.
+through `steam.exe`, which is what the client expects to find running. DXVK is
+linked into the prefix's `windows/syswow64`, not beside `Ragexe.exe`, so
+reinstalling the client cannot drop it; a link an older version left in the
+game folder is cleared, since that folder is searched first.
 
 Play stays available while the game runs: each press opens another client in
 the same prefix, with the settings of that moment. For a few seconds after each
