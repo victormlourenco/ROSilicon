@@ -1,7 +1,7 @@
 # A thin wrapper over build.sh, which does the real work. The script cds to its
 # own folder and swift build already tracks what needs recompiling, so nearly
 # every target here is phony: make chooses nothing, it only names the builds.
-# The Steam stub is the exception — see the rule near the bottom.
+# The Steam stub and DXVK are the exceptions — see the rules near the bottom.
 #
 # APP_OUT builds somewhere other than this folder, the same as it does for
 # build.sh:  make APP_OUT=/tmp/ro dmg
@@ -11,22 +11,34 @@
 #
 # STEAM_STUB points at the folder holding the built steam_stub.exe, which
 # build.sh copies into ROSilicon.app/Contents/Resources.
+#
+# D9VK points at the folder holding the built d3d9.dll. It is the one build
+# product with a checked-in fallback: building DXVK needs a Windows
+# cross-compiler and several minutes, so an ordinary `make` uses
+# Resources/d9vk/d3d9.dll unless a build is sitting in .d9vk. `make bundle`
+# builds and checks its own either way.
 
 APP_NAME := ROSilicon
 OUT      := $(or $(APP_OUT),.)
 WINE_RUNTIME ?= $(CURDIR)/.wine-runtime
 STEAM_STUB   ?= $(CURDIR)/.steam-stub
+D9VK         ?= $(CURDIR)/.d9vk
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
 
+D9VK_DLL := $(D9VK)/d3d9.dll
+D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
+            $(wildcard Packaging/D9VK/patches/*.patch)
+
 # build.sh reads these out of the environment; unset and empty both mean "here".
-export APP_OUT WINE_RUNTIME STEAM_STUB
+export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
-        release-runtime bundle steam-stub steam-stub-toolchain
+        release-runtime bundle steam-stub steam-stub-toolchain \
+        validate_d9vk d9vk d9vk-toolchain
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -52,30 +64,34 @@ run: app
 test:
 	swift test $(if $(FILTER),--filter "$(FILTER)",)
 
-# The build products, every one of them gitignored — the Wine runtime and the
-# Steam stub included, so `make runtime` can start over. Getting the runtime
-# back takes `make restore` or `make runtime`, both slow. Only this folder's
-# copies go: a WINE_RUNTIME or STEAM_STUB pointed elsewhere is left alone.
+# The build products, every one of them gitignored — the Wine runtime, the Steam
+# stub and the built DXVK included, so `make runtime` can start over. Getting
+# the runtime back takes `make restore` or `make runtime`, both slow, and so
+# does `make d9vk`. Only this folder's copies go: a WINE_RUNTIME, STEAM_STUB or
+# D9VK pointed elsewhere is left alone.
 clean:
-	rm -rf .build .wine-runtime .steam-stub "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
+	rm -rf .build .wine-runtime .steam-stub .d9vk "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
 	@echo "make             build $(APP_NAME).app — the fast one"
 	@echo "make dmg         build the .app and the .dmg"
 	@echo "make run         build the .app and open it"
 	@echo "make test        run the test suite"
-	@echo "make bundle      check the Wine runtime, then build the .app and the .dmg"
+	@echo "make bundle      check the runtime, build and check the stub and DXVK, then the .app and the .dmg"
 	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
 	@echo "make runtime     build the Wine runtime from source into .wine-runtime"
 	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
 	@echo "make steam-stub  build the Steam stub into .steam-stub"
 	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
+	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
+	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
 	@echo "make clean       remove the build products"
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
 	@echo "STEAM_STUB=<dir>   ships a Steam stub other than .steam-stub."
+	@echo "D9VK=<dir>         ships a d3d9.dll other than .d9vk."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
@@ -119,8 +135,29 @@ steam-stub-toolchain:
 validate_steam_stub:
 	@tools/steam-stub/validate.sh --stub "$(STEAM_STUB)"
 
+# The second real file target. d3d9.dll is cross-compiled into .d9vk from the
+# source Packaging/D9VK/source-lock.json pins, with the patches beside it on
+# top, and build.sh copies it from there. Unlike the stub this is a clone and
+# several minutes of compiling, so only `make d9vk` and `make bundle` ask for
+# it: make rebuilds it when a patch or the lock is newer and leaves it alone
+# otherwise.
+$(D9VK_DLL): $(D9VK_SRC)
+	@tools/d9vk/build.sh --output "$@"
+
+d9vk: $(D9VK_DLL)
+
+# Installs the cross-compiler, meson, ninja and glslang with Homebrew, then
+# builds — separate from the build rule for the same reason the stub's is.
+d9vk-toolchain:
+	@tools/d9vk/build.sh --install --output "$(D9VK_DLL)"
+
+validate_d9vk:
+	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
+
 # The whole thing to hand to someone else: the runtime checked against the lock,
-# the stub built and checked over, then the .app and the .dmg holding it. The
-# stub is named before the check that reads it, so a first bundle builds it
-# rather than failing on its absence.
-bundle: validate_wine_runtime $(STEAM_STUB_EXE) validate_steam_stub dmg
+# the stub and DXVK built and checked over, then the .app and the .dmg holding
+# it. Each is named before the check that reads it, so a first bundle builds
+# them rather than failing on their absence. Building DXVK here is what keeps a
+# release off the checked-in fallback that an ordinary `make` is allowed to use.
+bundle: validate_wine_runtime $(STEAM_STUB_EXE) validate_steam_stub \
+        $(D9VK_DLL) validate_d9vk dmg
