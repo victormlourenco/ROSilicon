@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/K0bin/dxvk",
+  "branch": "moltenvk-version",
+  "commit": "d7e26cfa24ea5fd5d23cd38b670574010f296faf",
+  "patches": [
+    "patches/0001-d3d9-add-missing-algorithm-include.patch",
+    "patches/0002-d3d9-address-up-draws-with-firstvertex.patch"
+  ]
+}
