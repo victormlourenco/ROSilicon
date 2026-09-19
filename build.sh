@@ -6,9 +6,11 @@
 # client and can be moved anywhere once built.
 #
 # Set APP_OUT to build somewhere other than this folder and WINE_RUNTIME to take
-# the Wine tree from somewhere other than .wine-runtime. Pass --no-dmg to build
-# only the .app, and --no-wine to leave the Wine runtime out — quick for working
-# on the UI, but the resulting app cannot install.
+# the Wine tree from somewhere other than .wine-runtime. D9VK points at a folder
+# holding a d3d9.dll built by tools/d9vk/build.sh, which is used in preference
+# to the checked-in one. Pass --no-dmg to build only the .app, and --no-wine to
+# leave the Wine runtime out — quick for working on the UI, but the resulting
+# app cannot install.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -89,7 +91,20 @@ BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE
 
 # DXVK, the Steam stub and x87sidecar ride inside the bundle, so the app
 # installs and runs without needing tools/ next to it.
-DXVK="$PKG/Resources/d9vk/d3d9.dll"
+#
+# DXVK is the one build product with a checked-in fallback. Building it needs a
+# Windows cross-compiler and several minutes, so Resources/d9vk/d3d9.dll is kept
+# for builds that have neither: if `make d9vk` has produced one, that is what
+# ships, and otherwise the checked-in copy does. `make bundle` always builds and
+# validates its own, so a release never goes out on the fallback by accident.
+D9VK="${D9VK:-$PKG/.d9vk}"
+if [[ -f "$D9VK/d3d9.dll" ]]; then
+    DXVK="$D9VK/d3d9.dll"
+    DXVK_ORIGIN="built"
+else
+    DXVK="$PKG/Resources/d9vk/d3d9.dll"
+    DXVK_ORIGIN="checked in"
+fi
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 # rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥. Its
 # loader reads libRuntimeRosettax87 from its own folder, so the two go in
@@ -109,6 +124,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
+echo "    d3d9.dll ($DXVK_ORIGIN): $DXVK"
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 # Copied, not re-signed: the loader's own ad-hoc signature carries the debugger

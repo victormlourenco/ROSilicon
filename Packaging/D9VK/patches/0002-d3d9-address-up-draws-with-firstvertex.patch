@@ -1,0 +1,301 @@
+diff --git a/src/d3d9/d3d9_device.cpp b/src/d3d9/d3d9_device.cpp
+index 96b7b95..2560b8e 100644
+--- a/src/d3d9/d3d9_device.cpp
++++ b/src/d3d9/d3d9_device.cpp
+@@ -2700,14 +2700,25 @@ namespace dxvk {
+     const uint32_t dataSize = GetUPDataSize(vertexCount, VertexStreamZeroStride);
+     const uint32_t bufferSize = GetUPBufferSize(vertexCount, VertexStreamZeroStride);
+ 
+-    auto upSlice = AllocUPBuffer(bufferSize);
++    // Keeping the whole buffer bound and moving firstVertex instead of binding
++    // this draw's slice lets bindVertexBuffer bail out on the next UP draw, so
++    // a run of sprites costs no vertex buffer binds and no pipeline lookups.
++    const bool baseVertex = CanUseUPBaseVertex(VertexStreamZeroStride);
++
++    auto upSlice = AllocUPBuffer(bufferSize,
++      baseVertex ? VertexStreamZeroStride : CACHE_LINE_SIZE);
+     FillUPVertexBuffer(upSlice.mapPtr, pVertexStreamZeroData, dataSize, bufferSize);
+ 
+     EmitCs([this,
+-      cBufferSlice  = std::move(upSlice.slice),
++      cBufferSlice  = baseVertex
++                        ? DxvkBufferSlice(upSlice.slice.buffer())
++                        : std::move(upSlice.slice),
+       cPrimType     = PrimitiveType,
+       cStride       = VertexStreamZeroStride,
+-      cVertexCount  = vertexCount
++      cVertexCount  = vertexCount,
++      cFirstVertex  = baseVertex
++                        ? uint32_t(upSlice.offset / VertexStreamZeroStride)
++                        : 0u
+     ](DxvkContext* ctx) {
+       ApplyPrimitiveType(ctx, cPrimType);
+ 
+@@ -2716,8 +2727,7 @@ namespace dxvk {
+       ctx->bindVertexBuffer(0, cBufferSlice, cStride);
+       ctx->draw(
+         cVertexCount, 1,
+-        0, 0);
+-      ctx->bindVertexBuffer(0, DxvkBufferSlice(), 0);
++        cFirstVertex, 0);
+     });
+ 
+     m_state.vertexBuffers[0].vertexBuffer = nullptr;
+@@ -2755,35 +2765,59 @@ namespace dxvk {
+     const uint32_t indexSize = IndexDataFormat == D3DFMT_INDEX16 ? 2 : 4;
+     const uint32_t indicesSize = vertexCount * indexSize;
+ 
+-    const uint32_t upSize = vertexBufferSize + indicesSize;
++    const bool baseVertex = CanUseUPBaseVertex(VertexStreamZeroStride);
++
++    // The indices have to start on a multiple of their own size within the
++    // slice, and the slice itself on a multiple of both the stride and the
++    // index size, for firstIndex and vertexOffset to land where we put them.
++    const uint32_t vertexRegionSize = baseVertex
++      ? align(vertexBufferSize, indexSize)
++      : vertexBufferSize;
+ 
+-    auto upSlice = AllocUPBuffer(upSize);
++    const uint32_t upSize = vertexRegionSize + indicesSize;
++
++    auto upSlice = AllocUPBuffer(upSize, baseVertex
++      ? UPAlignment(VertexStreamZeroStride, indexSize)
++      : CACHE_LINE_SIZE);
+     uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr);
+     FillUPVertexBuffer(data, pVertexStreamZeroData, vertexDataSize, vertexBufferSize);
+-    std::memcpy(data + vertexBufferSize, pIndexData, indicesSize);
++    std::memcpy(data + vertexRegionSize, pIndexData, indicesSize);
+ 
+     EmitCs([this,
+-      cVertexSize   = vertexBufferSize,
+-      cBufferSlice  = std::move(upSlice.slice),
++      cVertexSize   = vertexRegionSize,
++      cBufferSlice  = baseVertex
++                        ? DxvkBufferSlice(upSlice.slice.buffer())
++                        : std::move(upSlice.slice),
+       cPrimType     = PrimitiveType,
+       cPrimCount    = PrimitiveCount,
+       cStride       = VertexStreamZeroStride,
+       cInstanceCount = GetInstanceCount(),
+       cIndexType    = DecodeIndexType(
+-                        static_cast<D3D9Format>(IndexDataFormat))
++                        static_cast<D3D9Format>(IndexDataFormat)),
++      cBaseVertex   = baseVertex,
++      cFirstIndex   = baseVertex
++                        ? uint32_t((upSlice.offset + vertexRegionSize) / indexSize)
++                        : 0u,
++      cVertexOffset = baseVertex
++                        ? uint32_t(upSlice.offset / VertexStreamZeroStride)
++                        : 0u
+     ](DxvkContext* ctx) {
+       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
+ 
+       ApplyPrimitiveType(ctx, cPrimType);
+ 
+-      ctx->bindVertexBuffer(0, cBufferSlice.subSlice(0, cVertexSize), cStride);
+-      ctx->bindIndexBuffer(cBufferSlice.subSlice(cVertexSize, cBufferSlice.length() - cVertexSize), cIndexType);
++      if (cBaseVertex) {
++        ctx->bindVertexBuffer(0, cBufferSlice, cStride);
++        ctx->bindIndexBuffer(cBufferSlice, cIndexType);
++      } else {
++        ctx->bindVertexBuffer(0, cBufferSlice.subSlice(0, cVertexSize), cStride);
++        ctx->bindIndexBuffer(cBufferSlice.subSlice(cVertexSize, cBufferSlice.length() - cVertexSize), cIndexType);
++      }
++
+       ctx->drawIndexed(
+         drawInfo.vertexCount, drawInfo.instanceCount,
+-        0,
+-        0, 0);
+-      ctx->bindVertexBuffer(0, DxvkBufferSlice(), 0);
+-      ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
++        cFirstIndex,
++        cVertexOffset, 0);
+     });
+ 
+     m_state.vertexBuffers[0].vertexBuffer = nullptr;
+@@ -4220,9 +4254,13 @@ namespace dxvk {
+   }
+ 
+ 
+-  D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size) {
++  D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment) {
+     constexpr VkDeviceSize UPBufferSize = 1 << 20;
+ 
++    // Keep the memcpy below cache line aligned, and satisfy whatever the caller
++    // needs on top of that.
++    alignment = std::max<VkDeviceSize>(alignment, 1);
++
+     if (unlikely(m_upBuffer == nullptr || size > UPBufferSize)) {
+       VkMemoryPropertyFlags memoryFlags
+         = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+@@ -4251,14 +4289,20 @@ namespace dxvk {
+       }
+     }
+ 
+-    VkDeviceSize alignedSize = align(size, CACHE_LINE_SIZE);
++    // Not align(): that masks off low bits and only works for powers of two,
++    // while a vertex stride is routinely something like 24 or 28.
++    VkDeviceSize offset = ((m_upBufferOffset + alignment - 1) / alignment) * alignment;
+ 
+-    if (unlikely(m_upBufferOffset + alignedSize > UPBufferSize)) {
++    if (unlikely(offset + size > UPBufferSize)) {
+       auto sliceHandle = m_upBuffer->allocSlice();
+ 
+       m_upBufferOffset = 0;
+       m_upBufferMapPtr = sliceHandle.mapPtr;
+ 
++      // Zero satisfies every alignment, and size is known to fit because
++      // anything larger than the buffer took the temporary path above.
++      offset = 0;
++
+       EmitCs([
+         cBuffer = m_upBuffer,
+         cSlice  = sliceHandle
+@@ -4268,10 +4312,11 @@ namespace dxvk {
+     }
+ 
+     D3D9BufferSlice result;
+-    result.slice = DxvkBufferSlice(m_upBuffer, m_upBufferOffset, size);
+-    result.mapPtr = reinterpret_cast<char*>(m_upBufferMapPtr) + m_upBufferOffset;
++    result.slice = DxvkBufferSlice(m_upBuffer, offset, size);
++    result.mapPtr = reinterpret_cast<char*>(m_upBufferMapPtr) + offset;
++    result.offset = offset;
+ 
+-    m_upBufferOffset += alignedSize;
++    m_upBufferOffset = align(offset + size, CACHE_LINE_SIZE);
+     return result;
+   }
+ 
+@@ -5178,7 +5223,7 @@ namespace dxvk {
+       return;
+     }
+ 
+-    auto upSlice = AllocUPBuffer(upBufferSize);
++    auto upSlice = AllocUPBuffer(upBufferSize, CACHE_LINE_SIZE);
+ 
+     // Now copy the actual data and bind it.
+     if (dynamicSysmemVBOs) {
+diff --git a/src/d3d9/d3d9_device.h b/src/d3d9/d3d9_device.h
+index f3e4696..63f8ea1 100644
+--- a/src/d3d9/d3d9_device.h
++++ b/src/d3d9/d3d9_device.h
+@@ -105,6 +105,9 @@ namespace dxvk {
+   struct D3D9BufferSlice {
+     DxvkBufferSlice slice = {};
+     void*           mapPtr = nullptr;
++    // Byte offset of the slice within its buffer. Only the UP path uses this,
++    // to turn the offset into a firstVertex/firstIndex.
++    VkDeviceSize    offset = 0;
+   };
+ 
+   struct D3D9StagingBufferMarkerPayload {
+@@ -1055,7 +1058,9 @@ namespace dxvk {
+ 
+     void DetermineConstantLayouts(bool canSWVP);
+ 
+-    D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
++    // Alignment is what the caller needs the returned offset to be a multiple
++    // of, so it can address the slice with firstVertex/firstIndex.
++    D3D9BufferSlice AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment);
+ 
+     D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
+ 
+@@ -1080,6 +1085,35 @@ namespace dxvk {
+       return (vertexCount - 1) * stride + std::max(m_state.vertexDecl->GetSize(0), stride);
+     }
+ 
++    // Whether a UP draw can keep the whole UP buffer bound and point the draw
++    // at its slice with firstVertex, rather than binding a fresh sub-slice.
++    //
++    // A declaration that reads past the stride needs the tightly sized binding
++    // FillUPVertexBuffer zero pads, because the out of range components are
++    // only read back as zero while they fall outside the bound range. Binding
++    // the whole buffer would hand them the neighbouring draw's data instead, so
++    // those keep the per-draw slice.
++    inline bool CanUseUPBaseVertex(uint32_t stride) const {
++      return m_d3d9Options.upDrawBaseVertex
++          && stride != 0
++          && m_state.vertexDecl->GetSize(0) <= stride;
++    }
++
++    // firstIndex counts whole indices and firstVertex counts whole vertices, so
++    // a slice holding both has to start on a multiple of each.
++    static inline uint32_t UPAlignment(uint32_t stride, uint32_t indexSize) {
++      uint32_t a = stride;
++      uint32_t b = indexSize;
++
++      while (b != 0) {
++        uint32_t t = a % b;
++        a = b;
++        b = t;
++      }
++
++      return (stride / a) * indexSize;
++    }
++
+     inline void FillUPVertexBuffer(void* buffer, const void* userData, uint32_t dataSize, uint32_t bufferSize) {
+       uint8_t* data = reinterpret_cast<uint8_t*>(buffer);
+       // Don't copy excess data if we don't end up needing it.
+diff --git a/src/d3d9/d3d9_options.cpp b/src/d3d9/d3d9_options.cpp
+index 9f1c85b..66b2d28 100644
+--- a/src/d3d9/d3d9_options.cpp
++++ b/src/d3d9/d3d9_options.cpp
+@@ -70,6 +70,7 @@ namespace dxvk {
+     this->longMad                       = config.getOption<bool>        ("d3d9.longMad",                       false);
+     this->tearFree                      = config.getOption<Tristate>    ("d3d9.tearFree",                      Tristate::Auto);
+     this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
++    this->upDrawBaseVertex              = config.getOption<bool>        ("d3d9.upDrawBaseVertex",              true);
+     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
+     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
+     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
+diff --git a/src/d3d9/d3d9_options.h b/src/d3d9/d3d9_options.h
+index ec85871..7706555 100644
+--- a/src/d3d9/d3d9_options.h
++++ b/src/d3d9/d3d9_options.h
+@@ -131,6 +131,11 @@ namespace dxvk {
+     /// Cached dynamic buffers: Maps all buffers in cached memory.
+     bool cachedDynamicBuffers;
+ 
++    /// Address DrawPrimitiveUP data with firstVertex/firstIndex into one
++    /// persistently bound buffer instead of binding a fresh slice per draw.
++    /// Set to False to measure the difference; it changes no rendering.
++    bool upDrawBaseVertex;
++
+     /// Use device local memory for constant buffers.
+     bool deviceLocalConstantBuffers;
+ 
+diff --git a/src/dxvk/dxvk_context.cpp b/src/dxvk/dxvk_context.cpp
+index ad7d725..58d1d59 100644
+--- a/src/dxvk/dxvk_context.cpp
++++ b/src/dxvk/dxvk_context.cpp
+@@ -137,6 +137,12 @@ namespace dxvk {
+   void DxvkContext::bindIndexBuffer(
+     const DxvkBufferSlice&      buffer,
+           VkIndexType           indexType) {
++    // Same reasoning as bindVertexBuffer below.
++    if (likely(m_state.vi.indexType == indexType
++            && m_state.vi.indexBuffer.matchesBuffer(buffer)
++            && m_state.vi.indexBuffer.matchesRange(buffer)))
++      return;
++
+     if (!m_state.vi.indexBuffer.matchesBuffer(buffer))
+       m_vbTracked.clr(MaxNumVertexBindings);
+ 
+@@ -235,6 +241,17 @@ namespace dxvk {
+           uint32_t              binding,
+     const DxvkBufferSlice&      buffer,
+           uint32_t              stride) {
++    // Back-to-back user pointer draws bind the exact same range over and over.
++    // Bailing out keeps GpDirtyVertexBuffers clear and saves the pipeline state
++    // lookup a stride change would cost. Everything that genuinely needs a
++    // rebind sets the flag itself: invalidateBuffer when the backing allocation
++    // is renamed, setInputLayout when the binding count changes, and
++    // beginRecording when the command list is rotated.
++    if (likely(m_state.vi.vertexStrides[binding] == stride
++            && m_state.vi.vertexBuffers[binding].matchesBuffer(buffer)
++            && m_state.vi.vertexBuffers[binding].matchesRange(buffer)))
++      return;
++
+     if (!m_state.vi.vertexBuffers[binding].matchesBuffer(buffer))
+       m_vbTracked.clr(binding);
+ 

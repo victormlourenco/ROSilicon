@@ -16,15 +16,19 @@ Nothing but the game client is downloaded at install time.
 make restore        # -> .wine-runtime, the pinned Wine tree (once)
 make runtime        # -> .wine-runtime built from source instead (see below)
 make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
+make d9vk           # -> .d9vk, DXVK's d3d9.dll built from source (see below)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
-make bundle         # -> validates the Wine runtime, then the app and the .dmg
+make bundle         # -> checks the runtime, builds and checks the stub and
+                    #    DXVK, then the app and the .dmg
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
 
 Needs Xcode 26 or newer — the interface is built on Liquid Glass, which only
 exists from the macOS 26 SDK — and mingw-w64 once for the
-[Steam stub](#the-steam-stub); Apple Silicon and Rosetta 2. That is what builds
+[Steam stub](#the-steam-stub), plus meson, ninja and glslang to build
+[DXVK](#dxvk), which `make bundle` does and an ordinary `make` does not;
+Apple Silicon and Rosetta 2. That is what builds
 it; what it *runs* on is still macOS 14 and up, where it falls back to a frosted
 material. The
 script builds the package, assembles the bundle — the Wine runtime from
@@ -331,6 +335,43 @@ a rebuild that changes nothing does not churn the binary the app ships.
 `STEAM_STUB` points somewhere other than `.steam-stub`, and `STEAM_STUB_CC`
 names a cross-compiler other than `i686-w64-mingw32-gcc`.
 
+## DXVK
+
+Direct3D 9 reaches the GPU through DXVK, translated to Vulkan and then to Metal
+by MoltenVK. The build is
+[K0bin/dxvk](https://github.com/K0bin/dxvk)'s `moltenvk-version` branch — the
+1.10 backend under the 2.3 D3D9 frontend, with the Metal workarounds that branch
+carries — pinned by commit in
+[Packaging/D9VK/source-lock.json](Packaging/D9VK/source-lock.json), with the
+patches in [Packaging/D9VK/patches/](Packaging/D9VK/patches/) applied on top in
+the order they are numbered. The source is not vendored; only the lock and the
+patches are.
+
+`make d9vk` clones that commit, patches it, cross-compiles a 32-bit `d3d9.dll`
+into `.d9vk` and strips it. It needs more than the Steam stub does:
+
+```sh
+make d9vk-toolchain   # brew install mingw-w64 meson ninja glslang
+```
+
+DXVK is the one build product with a checked-in fallback. A clone and several
+minutes of compiling is a lot to ask of someone who only wants to build the app,
+so `Resources/d9vk/d3d9.dll` stays in the repository: `build.sh` ships `.d9vk`'s
+copy when there is one and that one otherwise, and says which it took. `make
+bundle` builds and checks its own either way, so a release never goes out on the
+fallback by accident.
+
+`.d9vk/d3d9.dll` is the second real file target in the Makefile, rebuilt when a
+patch or the source lock is newer and left alone otherwise, so an ordinary
+`make` never runs the Windows compiler. `make clean` removes `.d9vk`, and `D9VK`
+points somewhere other than it.
+
+The patches are ours to carry, not upstream's to take back — they are aimed at
+this client. Ragnarok is fixed-function D3D9 drawing thousands of sprite quads a
+frame through `DrawPrimitiveUP`, and `d3d9.dll` is itself translated x86 running
+under Rosetta, so DXVK's own per-draw cost and the number of Vulkan calls it
+makes matter more here than they would on a native Vulkan driver.
+
 ## The Wine runtime
 
 `make runtime` builds it from source into `.wine-runtime`, which must not exist
@@ -389,12 +430,15 @@ makeicon.swift           draws AppIcon.icns, no asset files needed
 Makefile                 names the builds; build.sh does the work
 Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
+Packaging/D9VK/          the DXVK source lock, and the patches applied to it
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
+tools/d9vk/              build and validate DXVK's d3d9.dll
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
+.d9vk/                   the built d3d9.dll (gitignored, `make d9vk`)
 Resources/
-  d9vk/d3d9.dll          Direct3D 9 to Vulkan, bundled into the app
+  d9vk/d3d9.dll          Direct3D 9 to Vulkan, the fallback when .d9vk is empty
   x87sidecar/            the x87 hook, bundled into the app
   rosettax87_jit/        the alternative x87 hook behind ⌥, bundled into the app
   Localizations/         en.lproj, pt-BR.lproj, es.lproj
@@ -438,7 +482,12 @@ it. Both are useful when running outside an app bundle.
   key mode is read and written, from its `FKeyManager` (MIT), which in turn
   derives from `fntoggle`. No code is bundled; only the approach is borrowed.
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
-- **D9VK** — [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk)
+- **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk), branch
+  `moltenvk-version`, which `make d9vk` builds from the commit
+  `Packaging/D9VK/source-lock.json` pins, with our patches on top.
+  [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk) is the fork of it
+  the checked-in `Resources/d9vk/d3d9.dll` came from. Both descend from
+  [doitsujin/dxvk](https://github.com/doitsujin/dxvk).
 
 ## License
 
