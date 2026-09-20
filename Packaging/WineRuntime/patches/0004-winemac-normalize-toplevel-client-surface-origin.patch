@@ -1,5 +1,5 @@
 diff --git a/dlls/winemac.drv/window.c b/dlls/winemac.drv/window.c
-index 81d20a4..5dfce9d 100644
+index 4729c25..0da4fbd 100644
 --- a/dlls/winemac.drv/window.c
 +++ b/dlls/winemac.drv/window.c
 @@ -1105,11 +1105,13 @@ static void macdrv_client_surface_update(struct client_surface *client)
@@ -17,13 +17,13 @@ index 81d20a4..5dfce9d 100644
      macdrv_set_view_superview(surface->cocoa_view, toplevel == hwnd ? NULL : data->client_view, data->cocoa_window, NULL, NULL);
      release_win_data(data);
  }
-@@ -1150,16 +1152,18 @@ struct macdrv_client_surface *impl_from_client_surface(struct client_surface *cl
- struct client_surface *macdrv_CreateClientSurface(HWND hwnd, int pixel_format)
+@@ -1148,16 +1150,18 @@ struct macdrv_client_surface *impl_from_client_surface(struct client_surface *cl
+ struct client_surface *macdrv_CreateClientSurface(HWND hwnd, int pixel_format, BOOL raw)
  {
      struct macdrv_client_surface *surface;
 +    RECT rect;
  
-     surface = client_surface_create(sizeof(*surface), &macdrv_client_surface_funcs, hwnd);
+     surface = client_surface_create(sizeof(*surface), &macdrv_client_surface_funcs, hwnd, pixel_format, raw);
 -    surface->cocoa_view = macdrv_create_view(cgrect_from_rect(surface->client.monitor_rect));
 +    if (!surface) return NULL;
 +
