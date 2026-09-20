@@ -105,7 +105,7 @@ restore:
 	@tools/wine-runtime/restore.sh --runtime "$(WINE_RUNTIME)"
 
 # Builds the Wine runtime from source into WINE_RUNTIME, which must not exist
-# yet: several minutes on Apple Silicon, under Rosetta 2. See the README.
+# yet: several minutes on Apple Silicon, under Rosetta 2. See docs/wine-runtime.md.
 runtime:
 	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
 
