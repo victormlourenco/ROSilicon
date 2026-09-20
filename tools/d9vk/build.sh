@@ -67,7 +67,9 @@ print(lock["repository"], lock["branch"], lock["commit"])
 ' "$LOCK")
 
 CLONED=""
-cleanup() { [[ -n "$CLONED" ]] && rm -rf "$CLONED"; }
+# An if, not a &&: the trap runs last, so its status becomes the script's, and
+# a && that falls through reports 1 out of a build that succeeded.
+cleanup() { if [[ -n "$CLONED" ]]; then rm -rf "$CLONED"; fi; }
 trap cleanup EXIT
 
 # A checkout passed with --src is used as it is: it is assumed to be at the

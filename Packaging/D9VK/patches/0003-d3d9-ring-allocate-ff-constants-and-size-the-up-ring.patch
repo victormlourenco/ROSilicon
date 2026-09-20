@@ -1,0 +1,346 @@
+diff --git a/src/d3d9/d3d9_constant_buffer.cpp b/src/d3d9/d3d9_constant_buffer.cpp
+index a3248f4..ea14c14 100644
+--- a/src/d3d9/d3d9_constant_buffer.cpp
++++ b/src/d3d9/d3d9_constant_buffer.cpp
+@@ -48,10 +48,12 @@ namespace dxvk {
+     }
+ 
+     size = align(size, m_align);
++    m_allocCount++;
+ 
+     if (unlikely(m_offset + size > m_size)) {
+       m_slice = m_buffer->allocSlice();
+       m_offset = 0;
++      m_renameCount++;
+ 
+       m_device->EmitCs([
+         cBuffer = m_buffer,
+@@ -81,6 +83,9 @@ namespace dxvk {
+     if (unlikely(m_buffer == nullptr))
+       this->createBuffer();
+ 
++    m_allocCount++;
++    m_renameCount++;
++
+     m_slice = m_buffer->allocSlice();
+ 
+     m_device->EmitCs([
+diff --git a/src/d3d9/d3d9_constant_buffer.h b/src/d3d9/d3d9_constant_buffer.h
+index 22abe22..03fbb99 100644
+--- a/src/d3d9/d3d9_constant_buffer.h
++++ b/src/d3d9/d3d9_constant_buffer.h
+@@ -62,6 +62,26 @@ namespace dxvk {
+      */
+     void* AllocSlice();
+ 
++    /**
++     * \brief Number of allocations served
++     *
++     * Counts \ref Alloc and \ref AllocSlice calls alike.
++     */
++    uint64_t GetAllocCount() const {
++      return m_allocCount;
++    }
++
++    /**
++     * \brief Number of buffer renames
++     *
++     * A rename invalidates the backing allocation, which dirties every
++     * descriptor bound to it. \ref AllocSlice renames on every call;
++     * \ref Alloc only renames when the ring wraps.
++     */
++    uint64_t GetRenameCount() const {
++      return m_renameCount;
++    }
++
+   private:
+ 
+     D3D9DeviceEx*         m_device  = nullptr;
+@@ -76,6 +96,9 @@ namespace dxvk {
+     Rc<DxvkBuffer>        m_buffer  = nullptr;
+     DxvkBufferSliceHandle m_slice   = { };
+ 
++    uint64_t              m_allocCount  = 0ull;
++    uint64_t              m_renameCount = 0ull;
++
+     void createBuffer();
+ 
+     VkDeviceSize getAlignment(const Rc<DxvkDevice>& device) const;
+diff --git a/src/d3d9/d3d9_device.cpp b/src/d3d9/d3d9_device.cpp
+index 2560b8e..c697046 100644
+--- a/src/d3d9/d3d9_device.cpp
++++ b/src/d3d9/d3d9_device.cpp
+@@ -2705,6 +2705,11 @@ namespace dxvk {
+     // a run of sprites costs no vertex buffer binds and no pipeline lookups.
+     const bool baseVertex = CanUseUPBaseVertex(VertexStreamZeroStride);
+ 
++    if (unlikely(m_d3d9Options.drawStatsInterval > 0)) {
++      m_drawStats.upDraws++;
++      m_drawStats.upBaseVertexDraws += baseVertex;
++    }
++
+     auto upSlice = AllocUPBuffer(bufferSize,
+       baseVertex ? VertexStreamZeroStride : CACHE_LINE_SIZE);
+     FillUPVertexBuffer(upSlice.mapPtr, pVertexStreamZeroData, dataSize, bufferSize);
+@@ -2767,6 +2772,11 @@ namespace dxvk {
+ 
+     const bool baseVertex = CanUseUPBaseVertex(VertexStreamZeroStride);
+ 
++    if (unlikely(m_d3d9Options.drawStatsInterval > 0)) {
++      m_drawStats.upDraws++;
++      m_drawStats.upBaseVertexDraws += baseVertex;
++    }
++
+     // The indices have to start on a multiple of their own size within the
+     // slice, and the slice itself on a multiple of both the stride and the
+     // index size, for firstIndex and vertexOffset to land where we put them.
+@@ -3739,6 +3749,8 @@ namespace dxvk {
+           HWND hDestWindowOverride,
+     const RGNDATA* pDirtyRegion,
+           DWORD dwFlags) {
++    ReportDrawStats();
++
+     return m_implicitSwapchain->Present(
+       pSourceRect,
+       pDestRect,
+@@ -3748,6 +3760,57 @@ namespace dxvk {
+   }
+ 
+ 
++  void D3D9DeviceEx::ReportDrawStats() {
++    if (likely(m_d3d9Options.drawStatsInterval <= 0))
++      return;
++
++    m_drawStats.frames++;
++
++    auto now = dxvk::high_resolution_clock::now();
++
++    const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
++      now - m_drawStatsLast).count();
++
++    if (likely(elapsed < m_d3d9Options.drawStatsInterval))
++      return;
++
++    // Renames are what the counters are really about: each one invalidates a
++    // backing allocation and dirties everything bound to it. Report them per
++    // frame, next to the draws that would otherwise have caused one each.
++    const uint64_t frames = std::max<uint64_t>(m_drawStats.frames, 1);
++
++    const uint64_t ffVsAllocs  = m_vsFixedFunction.GetAllocCount()  - m_drawStats.ffVsAllocsAtLast;
++    const uint64_t ffVsRenames = m_vsFixedFunction.GetRenameCount() - m_drawStats.ffVsRenamesAtLast;
++
++    Logger::info(str::format(
++      "D3D9 draw stats over ", frames, " frames (per frame):"
++      "\n  UP draws              ", m_drawStats.upDraws / frames,
++      " (", m_drawStats.upBaseVertexDraws, " of ", m_drawStats.upDraws, " took firstVertex)"
++      "\n  UP ring wraps         ", double(m_drawStats.upWraps) / double(frames),
++      "\n  UP bytes requested    ", m_drawStats.upBytesRequested / frames,
++      "\n  UP bytes reserved     ", m_drawStats.upBytesReserved / frames,
++      " (", m_drawStats.upBytesReserved
++              ? (100 * (m_drawStats.upBytesReserved - m_drawStats.upBytesRequested))
++                 / m_drawStats.upBytesReserved
++              : 0,
++      "% padding)"
++      "\n  FF VS const uploads   ", ffVsAllocs / frames,
++      "\n  FF VS const renames   ", double(ffVsRenames) / double(frames)));
++
++    m_drawStats.ffVsAllocsAtLast  = m_vsFixedFunction.GetAllocCount();
++    m_drawStats.ffVsRenamesAtLast = m_vsFixedFunction.GetRenameCount();
++
++    m_drawStats.frames            = 0;
++    m_drawStats.upDraws           = 0;
++    m_drawStats.upBaseVertexDraws = 0;
++    m_drawStats.upBytesRequested  = 0;
++    m_drawStats.upBytesReserved   = 0;
++    m_drawStats.upWraps           = 0;
++
++    m_drawStatsLast = now;
++  }
++
++
+   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateRenderTargetEx(
+           UINT                Width,
+           UINT                Height,
+@@ -4255,7 +4318,11 @@ namespace dxvk {
+ 
+ 
+   D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment) {
+-    constexpr VkDeviceSize UPBufferSize = 1 << 20;
++    // Every wrap of this ring renames the buffer, and a rename is the one
++    // thing left that forces a vertex and index buffer rebind, so the size
++    // directly sets how often the persistently bound buffer stops being
++    // persistent. d3d9.upBufferSizeKB tunes it.
++    const VkDeviceSize UPBufferSize = m_d3d9Options.upBufferSize;
+ 
+     // Keep the memcpy below cache line aligned, and satisfy whatever the caller
+     // needs on top of that.
+@@ -4299,6 +4366,9 @@ namespace dxvk {
+       m_upBufferOffset = 0;
+       m_upBufferMapPtr = sliceHandle.mapPtr;
+ 
++      if (unlikely(m_d3d9Options.drawStatsInterval > 0))
++        m_drawStats.upWraps++;
++
+       // Zero satisfies every alignment, and size is known to fit because
+       // anything larger than the buffer took the temporary path above.
+       offset = 0;
+@@ -4316,7 +4386,14 @@ namespace dxvk {
+     result.mapPtr = reinterpret_cast<char*>(m_upBufferMapPtr) + offset;
+     result.offset = offset;
+ 
+-    m_upBufferOffset = align(offset + size, CACHE_LINE_SIZE);
++    const VkDeviceSize nextOffset = align(offset + size, CACHE_LINE_SIZE);
++
++    if (unlikely(m_d3d9Options.drawStatsInterval > 0)) {
++      m_drawStats.upBytesRequested += size;
++      m_drawStats.upBytesReserved  += nextOffset - m_upBufferOffset;
++    }
++
++    m_upBufferOffset = nextOffset;
+     return result;
+   }
+ 
+@@ -5425,10 +5502,15 @@ namespace dxvk {
+       DxsoConstantBuffers::VSClipPlanes,
+       caps::MaxClipPlanes * sizeof(D3D9ClipPlane));
+ 
++    // With the ring, this holds many uploads and only renames when it wraps,
++    // so size it like the other suballocated constant buffers rather than to
++    // the single struct AllocSlice would hand out whole.
+     m_vsFixedFunction = D3D9ConstantBuffer(this,
+       DxsoProgramType::VertexShader,
+       DxsoConstantBuffers::VSFixedFunction,
+-      sizeof(D3D9FixedFunctionVS));
++      m_d3d9Options.ffConstantRing
++        ? std::max<VkDeviceSize>(DefaultConstantBufferSize, sizeof(D3D9FixedFunctionVS))
++        : sizeof(D3D9FixedFunctionVS));
+ 
+     m_psFixedFunction = D3D9ConstantBuffer(this,
+       DxsoProgramType::PixelShader,
+@@ -7335,7 +7417,15 @@ namespace dxvk {
+     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
+       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
+ 
+-      auto mapPtr = m_vsFixedFunction.AllocSlice();
++      // Renaming the buffer here, which is what AllocSlice does, invalidates
++      // the backing allocation and so dirties the descriptor set for every
++      // draw that touches a transform. Suballocating instead keeps the same
++      // buffer bound at a new offset, which only costs a dynamic offset
++      // rebind. m_state.transforms changes per sprite, so this is the hottest
++      // constant upload in a fixed function game.
++      auto mapPtr = m_d3d9Options.ffConstantRing
++        ? m_vsFixedFunction.Alloc(sizeof(D3D9FixedFunctionVS))
++        : m_vsFixedFunction.AllocSlice();
+ 
+       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
+       auto NormalMatrix = inverse(WorldView);
+diff --git a/src/d3d9/d3d9_device.h b/src/d3d9/d3d9_device.h
+index 63f8ea1..41e9997 100644
+--- a/src/d3d9/d3d9_device.h
++++ b/src/d3d9/d3d9_device.h
+@@ -4,6 +4,8 @@
+ #include "../dxvk/dxvk_cs.h"
+ #include "../dxvk/dxvk_staging.h"
+ 
++#include "../util/util_time.h"
++
+ #include "d3d9_include.h"
+ #include "d3d9_cursor.h"
+ #include "d3d9_format.h"
+@@ -110,6 +112,23 @@ namespace dxvk {
+     VkDeviceSize    offset = 0;
+   };
+ 
++  // Counters behind d3d9.drawStatsInterval. Everything here is touched from
++  // the application thread only, so no atomics are needed.
++  struct D3D9DrawStats {
++    uint64_t frames            = 0ull;
++    uint64_t upDraws           = 0ull;
++    uint64_t upBaseVertexDraws = 0ull;
++    // Bytes the draws actually asked for, against the bytes the ring gave out
++    // once alignment and the cache line rounding are paid. The gap is how much
++    // of the ring is padding, and so how much of the wrap rate is avoidable.
++    uint64_t upBytesRequested  = 0ull;
++    uint64_t upBytesReserved   = 0ull;
++    uint64_t upWraps           = 0ull;
++
++    uint64_t ffVsAllocsAtLast  = 0ull;
++    uint64_t ffVsRenamesAtLast = 0ull;
++  };
++
+   struct D3D9StagingBufferMarkerPayload {
+     uint64_t        sequenceNumber;
+     VkDeviceSize    allocated;
+@@ -1062,6 +1081,10 @@ namespace dxvk {
+     // of, so it can address the slice with firstVertex/firstIndex.
+     D3D9BufferSlice AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment);
+ 
++    // Called once per present. Does nothing unless d3d9.drawStatsInterval is
++    // set, and logs at most once per interval when it is.
++    void ReportDrawStats();
++
+     D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
+ 
+     void EmitStagingBufferMarker();
+@@ -1307,6 +1330,9 @@ namespace dxvk {
+     VkDeviceSize                    m_upBufferOffset  = 0ull;
+     void*                           m_upBufferMapPtr  = nullptr;
+ 
++    D3D9DrawStats                   m_drawStats;
++    dxvk::high_resolution_clock::time_point m_drawStatsLast = dxvk::high_resolution_clock::now();
++
+     DxvkStagingBuffer               m_stagingBuffer;
+     VkDeviceSize                    m_stagingBufferAllocated      = 0ull;
+     VkDeviceSize                    m_stagingBufferLastAllocated  = 0ull;
+diff --git a/src/d3d9/d3d9_options.cpp b/src/d3d9/d3d9_options.cpp
+index 66b2d28..8c6cd6b 100644
+--- a/src/d3d9/d3d9_options.cpp
++++ b/src/d3d9/d3d9_options.cpp
+@@ -1,5 +1,7 @@
+ #include "../util/util_math.h"
+ 
++#include <algorithm>
++
+ #include "d3d9_options.h"
+ 
+ #include "d3d9_caps.h"
+@@ -71,6 +73,12 @@ namespace dxvk {
+     this->tearFree                      = config.getOption<Tristate>    ("d3d9.tearFree",                      Tristate::Auto);
+     this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
+     this->upDrawBaseVertex              = config.getOption<bool>        ("d3d9.upDrawBaseVertex",              true);
++    this->ffConstantRing                = config.getOption<bool>        ("d3d9.ffConstantRing",                true);
++    this->drawStatsInterval             = config.getOption<int32_t>     ("d3d9.drawStatsInterval",             0);
++
++    // Expressed in KiB so it fits an int32_t option with room to spare.
++    const int32_t upBufferSizeKB        = config.getOption<int32_t>     ("d3d9.upBufferSizeKB",                4096);
++    this->upBufferSize                  = uint32_t(std::max(upBufferSizeKB, 1024)) * 1024u;
+     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
+     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
+     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
+diff --git a/src/d3d9/d3d9_options.h b/src/d3d9/d3d9_options.h
+index 7706555..9fd1e71 100644
+--- a/src/d3d9/d3d9_options.h
++++ b/src/d3d9/d3d9_options.h
+@@ -136,6 +136,22 @@ namespace dxvk {
+     /// Set to False to measure the difference; it changes no rendering.
+     bool upDrawBaseVertex;
+ 
++    /// Size of the ring the DrawPrimitiveUP data is suballocated from, in
++    /// bytes. Every wrap renames the buffer, which is the one remaining thing
++    /// that forces a vertex and index buffer rebind, so a larger ring means
++    /// fewer rebinds. Clamped to at least 1 MiB.
++    uint32_t upBufferSize;
++
++    /// Suballocate the fixed function vertex constants from a ring instead of
++    /// renaming the buffer on every upload. A rename costs a descriptor set
++    /// allocation per draw; a ring offset does not.
++    /// Set to False to measure the difference; it changes no rendering.
++    bool ffConstantRing;
++
++    /// Log accumulated draw statistics every this many seconds. Zero, the
++    /// default, keeps the counters off entirely.
++    int32_t drawStatsInterval;
++
+     /// Use device local memory for constant buffers.
+     bool deviceLocalConstantBuffers;
+ 
