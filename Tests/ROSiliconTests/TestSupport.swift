@@ -75,6 +75,18 @@ final class TemporaryDirectory: @unchecked Sendable {
         return directory
     }
 
+    /// Lays out a prefix that looks like a finished `wineboot --init`: the
+    /// registry, the 64-bit system folder, and the 32-bit kernel32 the client
+    /// loads. All three, because a bootstrap cut short leaves the first two
+    /// without the third and the launcher must not call that ready.
+    @discardableResult
+    func makeBootedPrefix(_ folder: String = "wine") throws -> URL {
+        try write(to: "\(folder)/system.reg")
+        try makeDirectory("\(folder)/drive_c/windows/system32")
+        try write(to: "\(folder)/drive_c/windows/syswow64/kernel32.dll")
+        return url.appending(path: folder)
+    }
+
     /// Writes a file under the scratch folder, creating its parents.
     @discardableResult
     func write(_ contents: Data = Data(), to path: String) throws -> URL {

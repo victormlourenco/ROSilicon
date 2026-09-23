@@ -45,8 +45,7 @@ struct StatusTests {
 
     @Test func aBootedPrefixReadsAsReady() throws {
         let temp = try TemporaryDirectory()
-        try temp.write(to: "wine/system.reg")
-        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeBootedPrefix()
 
         let status = Status.inspect(Paths(root: temp.url))
         #expect(status.prefixReady)
@@ -70,8 +69,7 @@ struct StatusTests {
     /// is told from another's at a glance.
     @Test func anAdditionalProfilesPrefixIsNamedByItsFolder() throws {
         let temp = try TemporaryDirectory()
-        try temp.write(to: "profiles/Alt/system.reg")
-        try temp.makeDirectory("profiles/Alt/drive_c/windows/system32")
+        try temp.makeBootedPrefix("profiles/Alt")
 
         let status = Status.inspect(Paths(root: temp.url, profile: .named("Alt")))
         #expect(status.prefixReady)
@@ -163,8 +161,7 @@ struct StatusTests {
     /// a path Apple owns must not lock anyone out of a working game.
     @Test func rosettaIsReportedButNeverBlocksPlaying() throws {
         let temp = try TemporaryDirectory()
-        try temp.write(to: "wine/system.reg")
-        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeBootedPrefix()
         try temp.write(Data("MZ".utf8), to: "wine/drive_c/Gravity/Ragnarok/Ragexe.exe")
 
         var status = Status.inspect(Paths(root: temp.url))

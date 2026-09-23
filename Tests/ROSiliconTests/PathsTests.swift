@@ -72,7 +72,28 @@ struct PathsTests {
         #expect(!paths.prefixInitialized)
 
         try temp.makeDirectory("wine/drive_c/windows/system32")
+        #expect(!paths.prefixInitialized)
+
+        try temp.write(to: "wine/drive_c/windows/syswow64/kernel32.dll")
         #expect(paths.prefixInitialized)
+    }
+
+    /// wineboot fills system32 seconds before it starts on syswow64, so a
+    /// bootstrap killed in between leaves a prefix with a whole 64-bit Windows
+    /// and no 32-bit one. The client is 32-bit: calling that ready is what sent
+    /// people to "could not load kernel32.dll, status c0000135".
+    @Test func aPrefixWithNo32BitWindowsIsNotReady() throws {
+        let temp = try TemporaryDirectory()
+        let paths = Paths(root: temp.url)
+        try temp.write(to: "wine/system.reg")
+        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeDirectory("wine/drive_c/windows/syswow64")
+        #expect(!paths.prefixInitialized, "an empty syswow64 is not a booted prefix")
+
+        // What `prepare()` leaves behind on its own: the folder and the link,
+        // neither of which is Wine's doing.
+        try temp.write(to: "wine/drive_c/windows/syswow64/d3d9.dll")
+        #expect(!paths.prefixInitialized)
     }
 
     @Test func aPrefixWithSystem32ButNoRegistryIsIncomplete() throws {

@@ -132,6 +132,14 @@ struct Installer: Sendable {
         await reporter.step(Strings.stepCreatingPrefix)
         await reporter.log(Strings.logCreatingPrefix(paths.prefix.path))
         try FileManager.default.createDirectory(at: paths.prefix, withIntermediateDirectories: true)
+        // A prefix left half-built still carries the stamp that says it is as
+        // new as the runtime, and wineboot takes it at its word: it would skip
+        // the install that puts the missing DLLs back and return success
+        // having done nothing. Dropping the stamp is what turns the run below
+        // into a repair. Nothing of the user's goes with it — wineboot leaves
+        // every file that is not one of its own placeholders alone, DXVK's
+        // d3d9.dll included.
+        try? FileManager.default.removeItem(at: paths.prefixUpdateStamp)
 
         var environment = paths.wineEnvironment()
         environment["WINEDEBUG"] = "-all"
