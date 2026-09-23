@@ -18,8 +18,7 @@ struct InstallerTests {
     /// is what makes Repair cheap and safe to press.
     @Test func anInitializedPrefixIsLeftAloneAndNoWineIsStarted() async throws {
         let temp = try TemporaryDirectory()
-        try temp.write(to: "wine/system.reg")
-        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeBootedPrefix()
         let paths = Paths(root: temp.url)
         let recorder = RecordingReporter()
 
@@ -27,6 +26,26 @@ struct InstallerTests {
 
         #expect(await recorder.logs.items == [Strings.logPrefixExists(paths.prefix.path)])
         #expect(await recorder.steps.items.isEmpty, "nothing was done, so nothing to announce")
+    }
+
+    /// A prefix cut short still carries Wine's stamp saying it is as new as
+    /// the runtime, and wineboot reads that stamp and skips the install that
+    /// would fill it back in. Repair has to drop it for the boot to be worth
+    /// running at all.
+    @Test func repairingAnIncompletePrefixDropsWinesUpToDateStamp() async throws {
+        let temp = try TemporaryDirectory()
+        let paths = Paths(root: temp.url)
+        try #require(!FileManager.default.isExecutableFile(atPath: paths.wine.path),
+                     "this test only makes sense outside an assembled app bundle")
+        try temp.write(to: "wine/system.reg")
+        try temp.makeDirectory("wine/drive_c/windows/system32")
+        let stamp = try temp.write(Data("1577836800".utf8), to: "wine/.update-timestamp")
+        try #require(!paths.prefixInitialized, "the 32-bit side is missing")
+
+        // Booting fails here for want of wine; the stamp goes first either way.
+        _ = try? await installer(paths, RecordingReporter()).createPrefix()
+
+        #expect(!FileManager.default.fileExists(atPath: stamp.path))
     }
 
     /// Without the bundled runtime there is no wine to boot the prefix with,

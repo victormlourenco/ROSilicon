@@ -62,6 +62,12 @@ struct GameRunner: Sendable {
     /// alike. x87sidecar unless someone chose otherwise in the menu.
     var x87 = X87Backend.default
 
+    /// The hook that will actually run, which is none at all before macOS 26.
+    /// What the log says and what `prepare()` insists on both follow from
+    /// this rather than from the preference, so neither talks about a hook
+    /// this Mac is never going to load.
+    private var hook: X87Backend { x87.onThisMac }
+
     /// Shuts down everything in the prefix. Wine's own way of doing it, so a
     /// hung client goes down with it rather than being orphaned.
     func quit() async {
@@ -115,10 +121,16 @@ struct GameRunner: Sendable {
         // Anything but the default is said: rosettax87_jit's before the
         // password prompt appears, so it does not come out of nowhere, and no
         // hook at all so a slow game says why.
-        switch x87 {
+        switch hook {
         case .sidecar: break
         case .rosettaX87JIT: await reporter.log(Strings.logRosettaX87JIT)
-        case .disabled: await reporter.log(Strings.logX87Disabled)
+        case .disabled:
+            // Told apart, because one of the two is a choice and the other is
+            // the Mac: someone who picked a hook and got none deserves to be
+            // told why rather than left wondering.
+            await reporter.log(X87Backend.isSupportedHere
+                ? Strings.logX87Disabled
+                : Strings.logX87NeedsMacOS(X87Backend.firstSupportedMacOS))
         }
         await applyOptions(to: &environment)
 
@@ -168,8 +180,8 @@ struct GameRunner: Sendable {
         }
         // Without it Wine would quietly run the client under stock Rosetta,
         // playable but slow — not what someone who chose a hook asked for.
-        if let location = x87.bundledLocation, x87.executable == nil {
-            throw RunError.missingFile(x87.rawValue, location)
+        if let location = hook.bundledLocation, hook.executable == nil {
+            throw RunError.missingFile(hook.rawValue, location)
         }
         guard FileManager.default.fileExists(atPath: paths.gameDir.path) else {
             throw RunError.gameNotInstalled(paths.gameDir)

@@ -13,6 +13,14 @@ under a hook that takes over that translation, and the app carries two:
   x87 code is translated by Rosetta as Apple ships it — slower, but useful for
   telling a hook's bug from the game's own.
 
+Both hooks patch Rosetta's translator from outside the process, so they are
+bound to the Rosetta they were built against: **macOS 26 and later only**.
+Before that the launcher runs the client under stock Rosetta whatever the
+preferences remember, hides the **x87 Translation** submenu, skips the
+`x87sidecar --probe` on install, and says so in the log. The gate is
+`X87Backend.isSupportedHere`, and every wine the launcher starts passes
+through `Paths.wineEnvironment`, which is where it is applied.
+
 The choice is remembered and takes effect on the next launch — the game's, and
 that of winecfg or cmd.exe opened from the menu. Installing always uses
 x87sidecar. The launcher sets only the chosen hook's variable

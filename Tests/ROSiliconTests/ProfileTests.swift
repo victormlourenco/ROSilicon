@@ -29,8 +29,7 @@ struct ProfileTests {
     /// another.
     @Test func eachProfileIsInitializedOnItsOwn() throws {
         let temp = try TemporaryDirectory()
-        try temp.write(to: "wine/system.reg")
-        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeBootedPrefix()
         try temp.makeDirectory("profiles/Alt")
 
         #expect(Paths(root: temp.url).prefixInitialized)

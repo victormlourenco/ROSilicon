@@ -149,6 +149,7 @@
 "log.metal_hud" = "Metal frame-rate overlay on.";
 "log.rosettax87_jit" = "x87 code runs under rosettax87_jit — macOS asks for your password to let it attach to the game.";
 "log.x87_disabled" = "No accelerated x87 translation: the client's x87 code runs under stock Rosetta, more slowly.";
+"log.x87_needs_macos" = "Accelerated x87 translation needs macOS %d or later: the client's x87 code runs under stock Rosetta, more slowly.";
 "log.command_shortcuts_on" = "Game Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
 "log.command_shortcuts_off" = "Game Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
 "log.function_keys_standard" = "Function keys: F1–F12 for the game, restored when it closes";

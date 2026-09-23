@@ -72,7 +72,28 @@ struct PathsTests {
         #expect(!paths.prefixInitialized)
 
         try temp.makeDirectory("wine/drive_c/windows/system32")
+        #expect(!paths.prefixInitialized)
+
+        try temp.write(to: "wine/drive_c/windows/syswow64/kernel32.dll")
         #expect(paths.prefixInitialized)
+    }
+
+    /// wineboot fills system32 seconds before it starts on syswow64, so a
+    /// bootstrap killed in between leaves a prefix with a whole 64-bit Windows
+    /// and no 32-bit one. The client is 32-bit: calling that ready is what sent
+    /// people to "could not load kernel32.dll, status c0000135".
+    @Test func aPrefixWithNo32BitWindowsIsNotReady() throws {
+        let temp = try TemporaryDirectory()
+        let paths = Paths(root: temp.url)
+        try temp.write(to: "wine/system.reg")
+        try temp.makeDirectory("wine/drive_c/windows/system32")
+        try temp.makeDirectory("wine/drive_c/windows/syswow64")
+        #expect(!paths.prefixInitialized, "an empty syswow64 is not a booted prefix")
+
+        // What `prepare()` leaves behind on its own: the folder and the link,
+        // neither of which is Wine's doing.
+        try temp.write(to: "wine/drive_c/windows/syswow64/d3d9.dll")
+        #expect(!paths.prefixInitialized)
     }
 
     @Test func aPrefixWithSystem32ButNoRegistryIsIncomplete() throws {
@@ -137,7 +158,8 @@ struct PathsTests {
 
     /// x87sidecar is the default, and it comes alone: Wine's loader would
     /// otherwise be left to pick between two.
-    @Test func theDefaultX87HookIsTheSidecarAlone() {
+    @Test(.enabled(if: X87Backend.isSupportedHere, "no hook runs before macOS 26"))
+    func theDefaultX87HookIsTheSidecarAlone() {
         let environment = Paths(root: URL(filePath: "/test/root")).wineEnvironment()
         #expect(environment["X87_SIDECAR_PATH"] == Paths.x87Sidecar?.path)
         #expect(environment["ROSETTA_X87_PATH"] == nil)
@@ -145,7 +167,8 @@ struct PathsTests {
 
     /// The loader tries X87_SIDECAR_PATH first, so choosing rosettax87_jit has
     /// to clear it or the choice would do nothing.
-    @Test func choosingRosettaX87JITClearsTheSidecar() {
+    @Test(.enabled(if: X87Backend.isSupportedHere, "no hook runs before macOS 26"))
+    func choosingRosettaX87JITClearsTheSidecar() {
         let environment = Paths(root: URL(filePath: "/test/root"))
             .wineEnvironment(x87: .rosettaX87JIT)
         #expect(environment["X87_SIDECAR_PATH"] == nil)
@@ -161,6 +184,39 @@ struct PathsTests {
         #expect(environment["ROSETTA_X87_PATH"] == nil)
         #expect(X87Backend.disabled.executable == nil)
         #expect(X87Backend.disabled.bundledLocation == nil)
+    }
+
+    // MARK: - Macs too old for a hook
+
+    /// Both hooks patch Rosetta's x87 translation from outside the process,
+    /// and they are built against the Rosetta macOS 26 ships. Nothing older
+    /// runs one. Asked as a pure question, so the answer does not depend on
+    /// the Mac the tests happen to be running on.
+    @Test func theHooksNeedMacOS26() {
+        #expect(!X87Backend.isSupported(onMacOS: .init(
+            majorVersion: 14, minorVersion: 7, patchVersion: 1)))
+        #expect(!X87Backend.isSupported(onMacOS: .init(
+            majorVersion: 15, minorVersion: 0, patchVersion: 0)))
+        #expect(!X87Backend.isSupported(onMacOS: .init(
+            majorVersion: 25, minorVersion: 9, patchVersion: 9)))
+        #expect(X87Backend.isSupported(onMacOS: .init(
+            majorVersion: 26, minorVersion: 0, patchVersion: 0)))
+        #expect(X87Backend.isSupported(onMacOS: .init(
+            majorVersion: 27, minorVersion: 1, patchVersion: 0)))
+    }
+
+    /// A preference set on a newer Mac travels with the launcher — in the
+    /// same home folder, restored onto an older machine. It must not be able
+    /// to put a hook back where none can run.
+    @Test(.disabled(if: X87Backend.isSupportedHere, "this Mac can run a hook"))
+    func nothingIsHookedOnAMacOlderThanMacOS26() {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        for backend in X87Backend.allCases {
+            #expect(backend.onThisMac == .disabled)
+            let environment = paths.wineEnvironment(x87: backend)
+            #expect(environment["X87_SIDECAR_PATH"] == nil)
+            #expect(environment["ROSETTA_X87_PATH"] == nil)
+        }
     }
 
     /// The loader reads libRuntimeRosettax87 from its own folder, so on its

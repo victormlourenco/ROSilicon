@@ -62,15 +62,27 @@ struct Paths: Sendable {
     /// be the d3d9.dll the client loads; `prepare()` clears it.
     var legacyDXVKLink: URL { gameDir.appending(path: "d3d9.dll") }
 
+    /// Wine's stamp saying the prefix is as new as the runtime that booted
+    /// it. wineboot compares it against wine.inf and skips the install that
+    /// fills drive_c when the two agree — so a prefix that is stamped but
+    /// half-filled can only be repaired by dropping this first.
+    var prefixUpdateStamp: URL { prefix.appending(path: ".update-timestamp") }
+
     /// True when the prefix has actually been booted, not merely created.
     ///
     /// Any wine invocation with WINEPREFIX set bootstraps the prefix, so the
-    /// folder existing is not proof it is complete; these two are written at
-    /// the end of that bootstrap.
+    /// folder existing is not proof it is complete. The 32-bit kernel32 is
+    /// what makes the third check worth its cost: wineboot fills system32
+    /// seconds before it starts on syswow64, and a bootstrap killed in
+    /// between — a logout, a crash, a full disk — leaves a whole 64-bit
+    /// Windows with nothing to run a 32-bit program under. The client is
+    /// 32-bit, so such a prefix passed the first two checks, called itself
+    /// ready, and died with "could not load kernel32.dll, status c0000135".
     var prefixInitialized: Bool {
         let fm = FileManager.default
         return fm.fileExists(atPath: prefix.appending(path: "system.reg").path)
             && fm.fileExists(atPath: driveC.appending(path: "windows/system32").path)
+            && fm.fileExists(atPath: syswow64.appending(path: "kernel32.dll").path)
     }
 
     /// Where the app keeps everything it ships with: the Wine runtime, DXVK,
@@ -162,8 +174,14 @@ struct Paths: Sendable {
         // tries X87_SIDECAR_PATH first, so both are cleared — one inherited
         // from whoever started the launcher included — and only the chosen
         // one is set.
+        //
+        // `onThisMac` is what keeps a Mac older than macOS 26 out of the
+        // hooks. Every wine the launcher starts is given its environment
+        // here — the game, wineboot, winecfg, the registry edit — so this is
+        // the one place that has to hold for none of them to be hooked.
+        let chosen = x87.onThisMac
         for key in X87Backend.environmentKeys { env[key] = nil }
-        if let key = x87.environmentKey, let hook = x87.executable { env[key] = hook.path }
+        if let key = chosen.environmentKey, let hook = chosen.executable { env[key] = hook.path }
         // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
         // bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""
