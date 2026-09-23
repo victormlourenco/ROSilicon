@@ -114,6 +114,13 @@ struct Installer: Sendable {
 
     /// Validates the x87 hook against the Rosetta build actually installed.
     func probeSidecar() async throws {
+        // Before macOS 26 no hook runs, so there is nothing to probe and a
+        // missing one is not a reason to refuse the install: the client goes
+        // under stock Rosetta either way.
+        guard X87Backend.isSupportedHere else {
+            await reporter.log(Strings.logX87NeedsMacOS(X87Backend.firstSupportedMacOS))
+            return
+        }
         guard let sidecar = Paths.x87Sidecar else {
             throw InstallError.sidecarMissing(Paths.bundledTools)
         }

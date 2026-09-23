@@ -174,8 +174,14 @@ struct Paths: Sendable {
         // tries X87_SIDECAR_PATH first, so both are cleared — one inherited
         // from whoever started the launcher included — and only the chosen
         // one is set.
+        //
+        // `onThisMac` is what keeps a Mac older than macOS 26 out of the
+        // hooks. Every wine the launcher starts is given its environment
+        // here — the game, wineboot, winecfg, the registry edit — so this is
+        // the one place that has to hold for none of them to be hooked.
+        let chosen = x87.onThisMac
         for key in X87Backend.environmentKeys { env[key] = nil }
-        if let key = x87.environmentKey, let hook = x87.executable { env[key] = hook.path }
+        if let key = chosen.environmentKey, let hook = chosen.executable { env[key] = hook.path }
         // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
         // bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""

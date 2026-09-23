@@ -19,6 +19,29 @@ enum X87Backend: String, CaseIterable, Identifiable, Sendable {
 
     static let `default` = X87Backend.sidecar
 
+    /// The first macOS whose Rosetta the hooks are built against. Both of them
+    /// work by patching the translator from outside the process, so they are
+    /// bound to the Rosetta they were written for rather than to anything the
+    /// system promises to keep.
+    static let firstSupportedMacOS = 26
+
+    /// Whether a hook can run on `version` at all. Pure, so a test can ask
+    /// about a Mac it is not running on.
+    static func isSupported(onMacOS version: OperatingSystemVersion) -> Bool {
+        version.majorVersion >= firstSupportedMacOS
+    }
+
+    /// Whether this Mac can run a hook. Read once: it cannot change under a
+    /// running launcher.
+    static let isSupportedHere = isSupported(
+        onMacOS: ProcessInfo.processInfo.operatingSystemVersion)
+
+    /// What the choice amounts to on this Mac — itself where the hooks run,
+    /// and no hook at all before macOS 26, whatever the preferences remember.
+    /// Every path that starts a 32-bit program goes through here, so an older
+    /// Mac gets stock Rosetta even from a preference set on a newer one.
+    var onThisMac: X87Backend { Self.isSupportedHere ? self : .disabled }
+
     /// Every variable Wine's loader reads a hook from.
     static let environmentKeys = allCases.compactMap(\.environmentKey)
 

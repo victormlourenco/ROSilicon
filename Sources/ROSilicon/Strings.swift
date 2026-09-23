@@ -194,6 +194,9 @@ enum Strings {
     static var logMetalHUD: String { t("log.metal_hud") }
     static var logRosettaX87JIT: String { t("log.rosettax87_jit") }
     static var logX87Disabled: String { t("log.x87_disabled") }
+    static func logX87NeedsMacOS(_ version: Int) -> String {
+        t("log.x87_needs_macos", version)
+    }
     static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
     static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
     static var logFunctionKeysStandard: String { t("log.function_keys_standard") }

@@ -206,10 +206,15 @@ struct ContentView: View {
                 Button(Strings.menuClientURL) { editor = .clientURL }
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
-                Picker(Strings.menuX87Backend, selection: $model.x87Backend) {
-                    ForEach(X87Backend.allCases) { Text($0.menuLabel).tag($0) }
+                // Hidden rather than disabled before macOS 26: there is one
+                // outcome there, and offering three would only suggest the
+                // choice still does something.
+                if X87Backend.isSupportedHere {
+                    Picker(Strings.menuX87Backend, selection: $model.x87Backend) {
+                        ForEach(X87Backend.allCases) { Text($0.menuLabel).tag($0) }
+                    }
+                    .pickerStyle(.menu)
                 }
-                .pickerStyle(.menu)
                 Button(Strings.menuWineDebug) { editor = .wineDebug }
                 Button(Strings.menuEnvironment) { editor = .environment }
                 Divider()
