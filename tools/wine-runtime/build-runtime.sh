@@ -9,9 +9,8 @@ Builds the runtime Packaging/WineRuntime/runtime-lock.json describes, from
 source, on this Mac: restores the runtime artifact-lock.json pins as the base,
 fetches the pinned Wine, builds it with the patches (build.sh), assembles the
 tree into --output (default .wine-runtime, which must not exist yet) and
-validates it. The base lends the new tree its mtld3d and library overlays, and
-the x86_64 dylibs configure links against, so each release is built on the
-last.
+validates it. The base lends the new tree its library overlays, and the x86_64
+dylibs configure links against, so each release is built on the last.
 
 --work holds the base, the source and the build (default
 .build/wine-runtime), and is cleared first.
@@ -69,7 +68,6 @@ mkdir -p "$work"
   ${jobs[@]+"${jobs[@]}"}
 "$script_dir/assemble.sh" \
   --wine-root "$work/install" \
-  --mtld3d-root "$work/base/lib" \
   --external-root "$work/base/lib/external" \
   --output "$output"
 "$script_dir/validate.sh" --runtime "$output"

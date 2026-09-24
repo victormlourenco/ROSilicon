@@ -36,7 +36,7 @@ export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
-        validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
+        validate_steam_stub update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
         validate_d9vk d9vk d9vk-toolchain
 
@@ -97,9 +97,6 @@ help:
 validate_wine_runtime:
 	@test -d "$(WINE_RUNTIME)" || (echo "Wine runtime not found at $(WINE_RUNTIME)" >&2; exit 1)
 	@tools/wine-runtime/validate.sh --runtime "$(WINE_RUNTIME)"
-
-update-mtld3d:
-	@tools/wine-runtime/update-mtld3d.sh $(if $(TAG),--tag $(TAG),)
 
 restore:
 	@tools/wine-runtime/restore.sh --runtime "$(WINE_RUNTIME)"

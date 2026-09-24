@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: assemble.sh --wine-root PATH --mtld3d-root PATH --external-root PATH --output PATH
+Usage: assemble.sh --wine-root PATH --external-root PATH --output PATH
 
 Assembles a pinned ROSilicon Wine runtime from an installed Wine tree and
 the custom runtime overlays described by Packaging/WineRuntime/runtime-lock.json.
@@ -16,7 +16,6 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/../.." && pwd)"
 manifest="$repo_root/Packaging/WineRuntime/runtime-lock.json"
 wine_root=""
-mtld3d_root=""
 external_root=""
 output=""
 
@@ -25,11 +24,6 @@ while [[ $# -gt 0 ]]; do
     --wine-root)
       [[ $# -ge 2 ]] || usage
       wine_root="$2"
-      shift 2
-      ;;
-    --mtld3d-root)
-      [[ $# -ge 2 ]] || usage
-      mtld3d_root="$2"
       shift 2
       ;;
     --external-root)
@@ -48,7 +42,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "$wine_root" && -n "$mtld3d_root" && -n "$external_root" && -n "$output" ]] || usage
+[[ -n "$wine_root" && -n "$external_root" && -n "$output" ]] || usage
 
 for command in install_name_tool jq rsync shasum; do
   command -v "$command" >/dev/null 2>&1 || {
@@ -118,18 +112,15 @@ relocate_group() {
 }
 
 verify_group "winerosetta" "$repo_root"
-verify_group "mtld3d" "$mtld3d_root"
 verify_group "external" "$external_root"
 
 mkdir -p "$output"
 rsync -a --exclude='.DS_Store' "$wine_root/" "$output/"
 
 copy_group "winerosetta" "$repo_root"
-copy_group "mtld3d" "$mtld3d_root"
 copy_group "external" "$external_root"
 
 relocate_group "winerosetta"
-relocate_group "mtld3d"
 relocate_group "external"
 
 if [[ -f "$output/lib/external/libMoltenVK.dylib" ]]; then

@@ -124,8 +124,8 @@ lives in **[docs/](docs/)**:
   macOS Wine the bundled runtime is built from, at the commit
   `Packaging/WineRuntime/runtime-lock.json` pins.
 - **WoWSilicon** — [WoWSilicon/WoWSilicon](https://github.com/WoWSilicon/WoWSilicon)
-  — the Wine patches and runtime tooling this one's is built with, the mtld3d
-  and library overlays it carries, and the Rosetta work behind it.
+  — the Wine patches and runtime tooling this one's is built with, the library
+  overlays it carries, and the Rosetta work behind it.
 - **x87sidecar** — [athei/x87sidecar](https://github.com/athei/x87sidecar) — the
   x87 hook the runtime re-execs into; the bundled binary is that project's
   release, tracked in `Packaging/X87Sidecar/x87sidecar-lock.json`. Built on
