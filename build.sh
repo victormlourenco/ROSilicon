@@ -97,6 +97,9 @@ BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE
 # for builds that have neither: if `make d9vk` has produced one, that is what
 # ships, and otherwise the checked-in copy does. `make bundle` always builds and
 # validates its own, so a release never goes out on the fallback by accident.
+#
+# There are two, one per Vulkan driver, and each falls back on its own:
+# d3d9.dll for MoltenVK and kosmickrisp/d3d9.dll for KosmicKrisp.
 D9VK="${D9VK:-$PKG/.d9vk}"
 if [[ -f "$D9VK/d3d9.dll" ]]; then
     DXVK="$D9VK/d3d9.dll"
@@ -104,6 +107,13 @@ if [[ -f "$D9VK/d3d9.dll" ]]; then
 else
     DXVK="$PKG/Resources/d9vk/d3d9.dll"
     DXVK_ORIGIN="checked in"
+fi
+if [[ -f "$D9VK/kosmickrisp/d3d9.dll" ]]; then
+    DXVK_KK="$D9VK/kosmickrisp/d3d9.dll"
+    DXVK_KK_ORIGIN="built"
+else
+    DXVK_KK="$PKG/Resources/d9vk/kosmickrisp/d3d9.dll"
+    DXVK_KK_ORIGIN="checked in"
 fi
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 # rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥. Its
@@ -113,7 +123,7 @@ ROSETTAX87_JIT="$PKG/Resources/rosettax87_jit"
 # The icon, as Icon Composer saves it. Both icons are built from it: macOS 26
 # reads it compiled, older macOS reads the .icns drawn from the same layer.
 ICON_DOCUMENT="$PKG/$APP_NAME.icon"
-for f in "$DXVK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
+for f in "$DXVK" "$DXVK_KK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
          "$ROSETTAX87_JIT/libRuntimeRosettax87" "$ROSETTAX87_JIT/LICENSE" \
          "$ICON_DOCUMENT/icon.json"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
@@ -125,6 +135,9 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 echo "    d3d9.dll ($DXVK_ORIGIN): $DXVK"
+mkdir -p "$APP/Contents/Resources/kosmickrisp"
+cp "$DXVK_KK" "$APP/Contents/Resources/kosmickrisp/d3d9.dll"
+echo "    kosmickrisp/d3d9.dll ($DXVK_KK_ORIGIN): $DXVK_KK"
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 # Copied, not re-signed: the loader's own ad-hoc signature carries the debugger

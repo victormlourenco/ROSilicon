@@ -179,6 +179,25 @@ strings -a "$secur32" | grep 'gnutls_global_init' >/dev/null || {
   exit 1
 }
 
+# Wine reaches Vulkan through the Khronos loader, and the loader a driver
+# through the manifest the app names in VK_DRIVER_FILES; see assemble.sh.
+vulkan_link="$runtime/lib/wine/x86_64-unix/libvulkan.1.dylib"
+[[ "$(readlink "$vulkan_link")" == "../../external/libvulkan.1.dylib" && -f "$vulkan_link" ]] || {
+  echo "Wine's libvulkan.1.dylib does not lead to the Vulkan loader: $vulkan_link" >&2
+  exit 1
+}
+for icd in kosmickrisp_icd.json moltenvk_icd.json; do
+  manifest_path="$runtime/share/vulkan/icd.d/$icd"
+  library="$(jq -er '.ICD.library_path' "$manifest_path" 2>/dev/null)" || {
+    echo "Vulkan driver manifest is missing or unreadable: $manifest_path" >&2
+    exit 1
+  }
+  [[ -f "$(dirname "$manifest_path")/$library" ]] || {
+    echo "Vulkan driver manifest names a missing library: $manifest_path -> $library" >&2
+    exit 1
+  }
+done
+
 # Wine's application menu is titled after the Info.plist embedded in the
 # loader (0013-loader-name-the-app-rosilicon.patch): a tree built without it
 # shows the game under whatever name its builder chose.

@@ -104,8 +104,18 @@ struct Paths: Sendable {
     /// links to the two Windows ones rather than holding copies — DXVK into
     /// `syswow64`, the stub into drive_c; `prepare()` rewrites those links on
     /// every launch, so they follow the app when it moves.
-    static var dxvkDLL: URL { bundledTools.appending(path: "d3d9.dll") }
     static var steamStub: URL { bundledTools.appending(path: "steam_stub.exe") }
+
+    /// DXVK is built once per driver: K0bin's master for KosmicKrisp, and the
+    /// patched moltenvk-version branch, with its Metal workarounds, for
+    /// MoltenVK. `prepare()` links the one the run's driver asks for, so the
+    /// menu switches the DXVK along with the driver.
+    static func dxvkDLL(for driver: VulkanDriver) -> URL {
+        switch driver {
+        case .kosmicKrisp: bundledTools.appending(path: "kosmickrisp/d3d9.dll")
+        case .moltenVK: bundledTools.appending(path: "d3d9.dll")
+        }
+    }
 
     /// The arm64 helper Wine's loader re-execs itself under. nil when the app
     /// was built without it, which is the only way it can be absent.
@@ -162,7 +172,10 @@ struct Paths: Sendable {
     /// Environment shared by every Wine invocation — the Swift side of `wine_env`.
     /// `x87` is the hook 32-bit programs run under; only the ⌥ menu's choice
     /// for the game and Wine's tools ever asks for anything but the default.
-    func wineEnvironment(x87: X87Backend = .default) -> [String: String] {
+    /// `vulkan` is the driver DXVK renders through; only the ⌥ menu's choice
+    /// ever asks for anything but the default.
+    func wineEnvironment(x87: X87Backend = .default,
+                         vulkan: VulkanDriver = .default) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["WINEPREFIX"] = prefix.path
         env["WINELOADER"] = wine.path
@@ -182,8 +195,14 @@ struct Paths: Sendable {
         let chosen = x87.onThisMac
         for key in X87Backend.environmentKeys { env[key] = nil }
         if let key = chosen.environmentKey, let hook = chosen.executable { env[key] = hook.path }
-        // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
-        // bundle keeps them here rather than relying on a system copy.
+        // Wine's Vulkan is the Khronos loader, and this is the one driver it
+        // loads — here, so wineboot and winecfg see the same GPU the game does.
+        // `onThisMac` for the same reason the hook's is: a preference carried
+        // from a newer Mac must not name KosmicKrisp where it cannot run.
+        for key in VulkanDriver.inheritedKeys { env[key] = nil }
+        env["VK_DRIVER_FILES"] = wineRoot.appending(path: vulkan.onThisMac.manifest).path
+        // Wine dlopen()s freetype, gnutls, the Vulkan loader and SDL2 by leaf
+        // name; the bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""
         env["DYLD_LIBRARY_PATH"] = wineExternalLibs.path + dyld
         env["PATH"] = wineRoot.appending(path: "bin").path + ":" + (env["PATH"] ?? "/usr/bin:/bin")

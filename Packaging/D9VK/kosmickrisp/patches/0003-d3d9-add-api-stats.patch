@@ -1,0 +1,304 @@
+diff --git a/src/d3d9/d3d9_device.cpp b/src/d3d9/d3d9_device.cpp
+index 572e66e5..093e9eae 100644
+--- a/src/d3d9/d3d9_device.cpp
++++ b/src/d3d9/d3d9_device.cpp
+@@ -1643,6 +1643,9 @@ namespace dxvk {
+     if (unlikely(pRenderTarget == nullptr && RenderTargetIndex == 0))
+       return D3DERR_INVALIDCALL;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.renderTargetCalls++;
++
+     // We need to make sure the render target was created using this device.
+     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
+     if (unlikely(rt != nullptr && rt->GetDevice() != this))
+@@ -1903,6 +1906,9 @@ namespace dxvk {
+       return D3D_OK;
+ 
+     D3D9DeviceLock lock = LockDevice();
++
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.clears++;
+     BindFramebuffer();
+ 
+     // D3DCLEAR_ZBUFFER and D3DCLEAR_STENCIL are invalid flags
+@@ -2326,6 +2332,9 @@ namespace dxvk {
+     const DWORD oldValue = states[State];
+ 
+     if (likely(Value != oldValue)) {
++      if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++        m_apiStats.renderStateChanges++;
++
+       constexpr uint32_t nvidiaVendorId = uint32_t(DxvkGpuVendor::Nvidia);
+       constexpr uint32_t amdVendorId    = uint32_t(DxvkGpuVendor::Amd);
+       constexpr uint32_t intelVendorId  = uint32_t(DxvkGpuVendor::Intel);
+@@ -3032,6 +3041,9 @@ namespace dxvk {
+     if (unlikely(!PrimitiveCount))
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      CountDraw(0, PrimitiveType, PrimitiveCount, 0);
++
+     bool dynamicSysmemVBOs = false;
+ 
+     uint32_t firstIndex     = 0;
+@@ -3084,6 +3096,11 @@ namespace dxvk {
+     if (unlikely(!PrimitiveCount || !NumVertices))
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0)) {
++      CountDraw(1, PrimitiveType, PrimitiveCount, m_state.indices != nullptr
++        && GetCommonBuffer(m_state.indices)->Desc()->Format == D3D9Format::INDEX32 ? 4u : 2u);
++    }
++
+     bool dynamicSysmemVBOs = false;
+     bool dynamicSysmemIBO = false;
+ 
+@@ -3148,6 +3165,9 @@ namespace dxvk {
+     if (unlikely(!PrimitiveCount))
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      CountDraw(2, PrimitiveType, PrimitiveCount, 0);
++
+     PrepareDraw(PrimitiveType, false, false);
+ 
+     uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
+@@ -3218,6 +3238,9 @@ namespace dxvk {
+     if (unlikely(!PrimitiveCount || !NumVertices))
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      CountDraw(3, PrimitiveType, PrimitiveCount, IndexDataFormat == D3DFMT_INDEX32 ? 4u : 2u);
++
+     PrepareDraw(PrimitiveType, false, false);
+ 
+     uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
+@@ -3484,6 +3507,9 @@ namespace dxvk {
+     if (decl == m_state.vertexDecl.ptr())
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.declChanges++;
++
+     bool dirtyFFShader = decl == nullptr || m_state.vertexDecl == nullptr;
+     if (!dirtyFFShader)
+       dirtyFFShader |= decl->GetFlags()        != m_state.vertexDecl->GetFlags()
+@@ -3748,6 +3774,9 @@ namespace dxvk {
+ 
+     D3D9VertexBuffer* buffer = static_cast<D3D9VertexBuffer*>(pStreamData);
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.streamSourceCalls++;
++
+     if (unlikely(ShouldRecord())) {
+       return m_recorder->SetStreamSource(
+         StreamNumber, buffer, OffsetInBytes, Stride);
+@@ -4611,6 +4640,9 @@ namespace dxvk {
+     if (state[StateSampler][Type] == Value)
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.samplerStateChanges++;
++
+     state[StateSampler][Type] = Value;
+ 
+     const uint32_t samplerBit = 1u << StateSampler;
+@@ -4648,6 +4680,9 @@ namespace dxvk {
+     if (m_state.textures[StateSampler] == pTexture)
+       return D3D_OK;
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++      m_apiStats.textureChanges++;
++
+     auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
+     auto newTexture = GetCommonTexture(pTexture);
+ 
+@@ -4699,6 +4734,11 @@ namespace dxvk {
+     if (unlikely(ShouldRecord()))
+       return m_recorder->SetStateTransform(idx, pMatrix);
+ 
++    if (unlikely(m_d3d9Options.apiStatsInterval > 0)) {
++      m_apiStats.transformCalls++;
++      m_apiStats.transformChanges += !(m_state.transforms[idx] == ConvertMatrix(pMatrix));
++    }
++
+     m_state.transforms[idx] = ConvertMatrix(pMatrix);
+ 
+     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
+@@ -4730,6 +4770,9 @@ namespace dxvk {
+       return m_recorder->SetStateTextureStageState(Stage, Type, Value);
+ 
+     if (likely(m_state.textureStages[Stage][Type] != Value)) {
++      if (unlikely(m_d3d9Options.apiStatsInterval > 0))
++        m_apiStats.stageStateChanges++;
++
+       m_state.textureStages[Stage][Type] = Value;
+ 
+       switch (Type) {
+@@ -4808,6 +4851,54 @@ namespace dxvk {
+   }
+ 
+ 
++  void D3D9DeviceEx::CountDraw(uint32_t kind, D3DPRIMITIVETYPE primType, UINT primCount, uint32_t indexSize) {
++    m_apiStats.draws[kind]++;
++    m_apiStats.drawsByPrim[std::min<uint32_t>(uint32_t(primType), 6u)]++;
++    m_apiStats.primitives += primCount;
++    m_apiStats.index16Draws += indexSize == 2u;
++    m_apiStats.index32Draws += indexSize == 4u;
++    m_apiStats.programmableVsDraws += UseProgrammableVS();
++    m_apiStats.programmablePsDraws += UseProgrammablePS();
++  }
++
++
++  void D3D9DeviceEx::ReportApiStats() {
++    if (likely(m_d3d9Options.apiStatsInterval <= 0))
++      return;
++
++    m_apiStats.frames++;
++
++    auto now = dxvk::high_resolution_clock::now();
++    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_apiStatsLast).count();
++
++    if (likely(elapsed < 1000 * m_d3d9Options.apiStatsInterval))
++      return;
++
++    const auto& s = m_apiStats;
++    const double f = double(std::max<uint64_t>(s.frames, 1u));
++    auto pf = [f] (uint64_t v) { return str::format(uint64_t(double(v) / f + 0.5)); };
++
++    Logger::info(str::format(
++      "D3D9 API stats: ", s.frames, " frames in ", elapsed, " ms (", uint64_t(double(s.frames) * 1000.0 / double(elapsed) + 0.5), " fps), per frame:",
++      "\n  draws                 DP ", pf(s.draws[0]), ", DIP ", pf(s.draws[1]), ", DP UP ", pf(s.draws[2]), ", DIP UP ", pf(s.draws[3]),
++      "\n  by primitive          points ", pf(s.drawsByPrim[1]), ", lines ", pf(s.drawsByPrim[2]), ", line strips ", pf(s.drawsByPrim[3]),
++        ", triangles ", pf(s.drawsByPrim[4]), ", strips ", pf(s.drawsByPrim[5]), ", fans ", pf(s.drawsByPrim[6]),
++      "\n  primitives            ", pf(s.primitives),
++      "\n  indexed 16/32-bit     ", pf(s.index16Draws), " / ", pf(s.index32Draws),
++      "\n  programmable VS/PS    ", pf(s.programmableVsDraws), " / ", pf(s.programmablePsDraws),
++      "\n  vertex decl changes   ", pf(s.declChanges),
++      "\n  texture changes       ", pf(s.textureChanges),
++      "\n  SetTransform          ", pf(s.transformCalls), " (", pf(s.transformChanges), " changed a matrix)",
++      "\n  render state changes  ", pf(s.renderStateChanges),
++      "\n  stage/sampler changes ", pf(s.stageStateChanges), " / ", pf(s.samplerStateChanges),
++      "\n  SetStreamSource       ", pf(s.streamSourceCalls),
++      "\n  Clear / SetRenderTarget ", pf(s.clears), " / ", pf(s.renderTargetCalls)));
++
++    m_apiStats = D3D9ApiStats();
++    m_apiStatsLast = now;
++  }
++
++
+   D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment) {
+     constexpr VkDeviceSize UPBufferSize = 1 << 20;
+ 
+diff --git a/src/d3d9/d3d9_device.h b/src/d3d9/d3d9_device.h
+index 28bfc341..954143f4 100644
+--- a/src/d3d9/d3d9_device.h
++++ b/src/d3d9/d3d9_device.h
+@@ -22,6 +22,8 @@
+ #include "d3d9_interop.h"
+ #include "d3d9_on_12.h"
+ 
++#include "../util/util_time.h"
++
+ #include <cstdint>
+ #include <unordered_set>
+ #include "d3d9_bridge.h"
+@@ -108,6 +110,30 @@ namespace dxvk {
+     VkDeviceSize    offset = 0;
+   };
+ 
++  // Counters behind d3d9.apiStatsInterval: what the application asks of the
++  // device, per frame, to tell which paths a game actually leans on. Only
++  // touched on the application thread under the device lock.
++  struct D3D9ApiStats {
++    uint64_t frames             = 0u;
++    uint64_t draws[4]           = { };  // DP, DIP, DP UP, DIP UP
++    uint64_t drawsByPrim[7]     = { };  // by D3DPRIMITIVETYPE
++    uint64_t primitives         = 0u;
++    uint64_t index16Draws       = 0u;
++    uint64_t index32Draws       = 0u;
++    uint64_t programmableVsDraws = 0u;
++    uint64_t programmablePsDraws = 0u;
++    uint64_t declChanges        = 0u;
++    uint64_t textureChanges     = 0u;
++    uint64_t transformCalls     = 0u;
++    uint64_t transformChanges   = 0u;
++    uint64_t renderStateChanges = 0u;
++    uint64_t stageStateChanges  = 0u;
++    uint64_t samplerStateChanges = 0u;
++    uint64_t streamSourceCalls  = 0u;
++    uint64_t clears             = 0u;
++    uint64_t renderTargetCalls  = 0u;
++  };
++
+   struct D3D9TextureSlotTracking {
+     /* Pixel shaders can access 16 textures/samplers.
+      * Then there's 1 dmap texture/sampler.
+@@ -1293,6 +1319,16 @@ namespace dxvk {
+     // of, so it can address the slice with firstVertex/firstIndex.
+     D3D9BufferSlice AllocUPBuffer(VkDeviceSize size, VkDeviceSize alignment);
+ 
++  public:
++
++    // Called once per present. Does nothing unless d3d9.apiStatsInterval is
++    // set, and logs at most once per interval when it is.
++    void ReportApiStats();
++
++  private:
++
++    void CountDraw(uint32_t kind, D3DPRIMITIVETYPE primType, UINT primCount, uint32_t indexSize);
++
+     /**
+      * \brief Allocates buffer memory for resource uploads
+      */
+@@ -1625,6 +1661,9 @@ namespace dxvk {
+     VkDeviceSize                    m_upBufferOffset  = 0ull;
+     void*                           m_upBufferMapPtr  = nullptr;
+ 
++    D3D9ApiStats                    m_apiStats;
++    dxvk::high_resolution_clock::time_point m_apiStatsLast = dxvk::high_resolution_clock::now();
++
+     DxvkStagingBuffer               m_stagingBuffer;
+     Rc<sync::Fence>                 m_stagingBufferFence;
+     VkDeviceSize                    m_stagingMemorySignaled = 0ull;
+diff --git a/src/d3d9/d3d9_options.cpp b/src/d3d9/d3d9_options.cpp
+index 1ff1b704..347e8d27 100644
+--- a/src/d3d9/d3d9_options.cpp
++++ b/src/d3d9/d3d9_options.cpp
+@@ -68,6 +68,7 @@ namespace dxvk {
+     this->deviceLocalConstantBuffers    = config.getOption<Tristate>    ("d3d9.deviceLocalConstantBuffers",    Tristate::Auto);
+     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
+     this->upDrawBaseVertex              = config.getOption<bool>        ("d3d9.upDrawBaseVertex",              true);
++    this->apiStatsInterval              = config.getOption<int32_t>     ("d3d9.apiStatsInterval",              0);
+     this->forceDrawTimeBufferUpload     = config.getOption<bool>        ("d3d9.forceDrawTimeBufferUpload",     false);
+     this->ignoreDefaultBufferLockRange  = config.getOption<bool>        ("d3d9.ignoreDefaultBufferLockRange",  false);
+     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
+diff --git a/src/d3d9/d3d9_options.h b/src/d3d9/d3d9_options.h
+index f53685db..18fa19e6 100644
+--- a/src/d3d9/d3d9_options.h
++++ b/src/d3d9/d3d9_options.h
+@@ -133,6 +133,10 @@ namespace dxvk {
+     /// Set to False to measure the difference; it changes no rendering.
+     bool upDrawBaseVertex;
+ 
++    /// Log what the application asks of the device, per frame, every this
++    /// many seconds. Zero, the default, keeps the counters off.
++    int32_t apiStatsInterval;
++
+     /// Force flushing D3DPOOL_DEFAULT buffers at draw time rather than on unlock
+     /// Used to work around game bugs in source engine games like CSGO and Insurgency.
+     /// Those games write to buffers after unlocking them. Uploading on unlock leads to black
+diff --git a/src/d3d9/d3d9_swapchain.cpp b/src/d3d9/d3d9_swapchain.cpp
+index d672f115..7a91878a 100644
+--- a/src/d3d9/d3d9_swapchain.cpp
++++ b/src/d3d9/d3d9_swapchain.cpp
+@@ -112,6 +112,8 @@ namespace dxvk {
+           DWORD    dwFlags) {
+     D3D9DeviceLock lock = m_parent->LockDevice();
+ 
++    m_parent->ReportApiStats();
++
+     m_parent->SetMostRecentlyUsedSwapchain(this);
+ 
+     if (unlikely(m_parent->IsDeviceLost()))

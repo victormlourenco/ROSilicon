@@ -35,6 +35,10 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuVulkanDriver: String { t("menu.vulkan_driver") }
+    static var menuVulkanKosmicKrisp: String { t("menu.vulkan_driver.kosmickrisp") }
+    static var menuVulkanMoltenVK: String { t("menu.vulkan_driver.moltenvk") }
+    static var vulkanDriverHelp: String { t("help.vulkan_driver") }
     static var menuX87Backend: String { t("menu.x87_backend") }
     static var menuX87Sidecar: String { t("menu.x87_backend.sidecar") }
     static var menuRosettaX87JIT: String { t("menu.x87_backend.rosettax87_jit") }
@@ -192,6 +196,7 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static func logVulkanDriver(_ name: String) -> String { t("log.vulkan_driver", name) }
     static var logRosettaX87JIT: String { t("log.rosettax87_jit") }
     static var logX87Disabled: String { t("log.x87_disabled") }
     static func logX87NeedsMacOS(_ version: Int) -> String {

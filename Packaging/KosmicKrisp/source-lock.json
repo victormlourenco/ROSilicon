@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "mesa": {
+    "repository": "https://gitlab.freedesktop.org/mesa/mesa.git",
+    "branch": "main",
+    "commit": "0843a97ed558a3f992e556c52f1879d3a02cc48b",
+    "patches": [
+      "patches/0001-kk-Upload-only-the-written-dynamic-buffers-of-the-root-table.patch",
+      "patches/0002-kk-Keep-more-free-upload-BOs-per-command-pool.patch"
+    ]
+  },
+  "loader": {
+    "repository": "https://github.com/KhronosGroup/Vulkan-Loader.git",
+    "tag": "vulkan-sdk-1.4.341.0",
+    "commit": "32fcb949e253cbeb40cda7ea76122b492db579ae"
+  },
+  "headers": {
+    "repository": "https://github.com/KhronosGroup/Vulkan-Headers.git",
+    "tag": "vulkan-sdk-1.4.341.0",
+    "commit": "b5c8f996196ba4aa6d8f97e52b5d3b6e70f7e4e2"
+  }
+}

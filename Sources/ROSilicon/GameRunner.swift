@@ -61,12 +61,20 @@ struct GameRunner: Sendable {
     /// The x87 hook 32-bit programs run under, for the game and Wine's tools
     /// alike. x87sidecar unless someone chose otherwise in the menu.
     var x87 = X87Backend.default
+    /// The Vulkan driver DXVK renders through. MoltenVK unless someone chose
+    /// KosmicKrisp in the menu, and MoltenVK anyway before macOS 26.
+    var vulkan = VulkanDriver.default
 
     /// The hook that will actually run, which is none at all before macOS 26.
     /// What the log says and what `prepare()` insists on both follow from
     /// this rather than from the preference, so neither talks about a hook
     /// this Mac is never going to load.
     private var hook: X87Backend { x87.onThisMac }
+
+    /// The driver that will actually load, for the same reason: the log names
+    /// it and `prepare()` links its DXVK, and neither should follow a
+    /// preference this Mac cannot honour.
+    private var driver: VulkanDriver { vulkan.onThisMac }
 
     /// Shuts down everything in the prefix. Wine's own way of doing it, so a
     /// hung client goes down with it rather than being orphaned.
@@ -91,7 +99,7 @@ struct GameRunner: Sendable {
             throw RunError.missingFile(tool.executable, executable)
         }
 
-        var environment = paths.wineEnvironment(x87: x87)
+        var environment = paths.wineEnvironment(x87: x87, vulkan: vulkan)
         await applyOptions(to: &environment)
         await reporter.log(Strings.logOpeningTool(tool.label))
         // Nothing is logged on success: winecfg blocks until its window is
@@ -108,12 +116,16 @@ struct GameRunner: Sendable {
     func play() async throws {
         let steamExe = try prepare()
 
-        var environment = paths.wineEnvironment(x87: x87)
+        var environment = paths.wineEnvironment(x87: x87, vulkan: vulkan)
         environment["WINEDLLOVERRIDES"] = "d3d9=n,b"        // DXVK instead of Wine's D3D9
+        // Read by MoltenVK alone, and required there: the client crashes
+        // without it. KosmicKrisp ignores it.
         environment["MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS"] = "1"
         environment["DXVK_ASYNC"] = "1"
-        // DXVK renders through MoltenVK, so the overlay Metal itself draws is
-        // the one that shows the frame rate of the client.
+        await reporter.log(Strings.logVulkanDriver(driver.label))
+        // DXVK renders through KosmicKrisp or MoltenVK, both on Metal, so the
+        // overlay Metal itself draws is the one that shows the frame rate of
+        // the client.
         if metalHUD {
             environment["MTL_HUD_ENABLED"] = "1"
             await reporter.log(Strings.logMetalHUD)
@@ -172,8 +184,9 @@ struct GameRunner: Sendable {
         guard FileManager.default.isExecutableFile(atPath: paths.wine.path) else {
             throw RunError.missingWine(paths.wine)
         }
-        guard FileManager.default.fileExists(atPath: Paths.dxvkDLL.path) else {
-            throw RunError.missingFile("d3d9.dll", Paths.dxvkDLL)
+        let dxvk = Paths.dxvkDLL(for: driver)
+        guard FileManager.default.fileExists(atPath: dxvk.path) else {
+            throw RunError.missingFile("d3d9.dll", dxvk)
         }
         guard FileManager.default.fileExists(atPath: Paths.steamStub.path) else {
             throw RunError.missingFile("steam_stub.exe", Paths.steamStub)
@@ -192,7 +205,7 @@ struct GameRunner: Sendable {
         // may not have the folder yet; the link is what has to be there.
         try FileManager.default.createDirectory(
             at: paths.syswow64, withIntermediateDirectories: true)
-        try Self.link(Paths.dxvkDLL, at: paths.dxvkLink)
+        try Self.link(dxvk, at: paths.dxvkLink)
         // After the new link, never before: between the two there is always a
         // d3d9.dll for a client that happens to be starting.
         Self.removeStaleLink(at: paths.legacyDXVKLink)

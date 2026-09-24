@@ -17,6 +17,10 @@
 "menu.reinstall_client" = "Reinstalar el cliente del juego…";
 "menu.client_url" = "URL del cliente…";
 "menu.metal_hud" = "Mostrar el medidor de FPS de Metal";
+"menu.vulkan_driver" = "Controlador de Vulkan";
+"menu.vulkan_driver.kosmickrisp" = "KosmicKrisp";
+"menu.vulkan_driver.moltenvk" = "MoltenVK (por omisión)";
+"help.vulkan_driver" = "El controlador por el que DXVK dibuja; cada uno lleva su propia versión de DXVK. Se aplica la próxima vez que pulses Jugar.";
 "menu.x87_backend" = "Traducción x87";
 "menu.x87_backend.sidecar" = "x87sidecar (por omisión)";
 "menu.x87_backend.rosettax87_jit" = "rosettax87_jit (pide tu contraseña)";
@@ -144,6 +148,7 @@
 "log.removed" = "(eliminado)";
 "log.launching" = "Iniciando el cliente…";
 "log.metal_hud" = "Medidor de FPS de Metal activado.";
+"log.vulkan_driver" = "Controlador de Vulkan: %@.";
 "log.rosettax87_jit" = "El código x87 corre con rosettax87_jit — macOS pide tu contraseña para dejar que se conecte al juego.";
 "log.x87_disabled" = "Sin traducción x87 acelerada: el código x87 del cliente corre con el Rosetta estándar, más lento.";
 "log.x87_needs_macos" = "La traducción x87 acelerada necesita macOS %d o posterior: el código x87 del cliente se ejecuta con Rosetta estándar, más lentamente.";

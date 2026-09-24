@@ -5,10 +5,14 @@
 # and needs the mingw-w64 cross-compiler rather than the system clang, plus
 # meson, ninja and glslang. The source is not vendored:
 # Packaging/D9VK/source-lock.json names the repository, branch and commit, and
-# the patches beside it are applied to that commit in the order they are
-# numbered.
+# the patches it lists, relative to it, are applied to that commit in order.
+#
+# There are two locks, one per Vulkan driver: that one, the patched
+# moltenvk-version branch MoltenVK needs, and Packaging/D9VK/kosmickrisp/
+# source-lock.json, K0bin's master for KosmicKrisp.
 #
 #     build.sh                 build into .d9vk
+#     build.sh --lock PATH     build from another source lock
 #     build.sh --output PATH   write the .dll to PATH instead
 #     build.sh --src PATH      reuse an existing checkout instead of cloning
 #     build.sh --install       install the toolchain with Homebrew first
@@ -23,7 +27,6 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
 LOCK="$ROOT/Packaging/D9VK/source-lock.json"
-PATCHES="$ROOT/Packaging/D9VK/patches"
 
 OUTPUT="$ROOT/.d9vk/d3d9.dll"
 SRC=""
@@ -31,6 +34,9 @@ INSTALL=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
+        --lock)
+            [[ $# -ge 2 ]] || { echo "error: --lock needs a path" >&2; exit 1; }
+            LOCK="$2"; shift 2 ;;
         --output)
             [[ $# -ge 2 ]] || { echo "error: --output needs a path" >&2; exit 1; }
             OUTPUT="$2"; shift 2 ;;
@@ -38,7 +44,7 @@ while [[ $# -gt 0 ]]; do
             [[ $# -ge 2 ]] || { echo "error: --src needs a path" >&2; exit 1; }
             SRC="$2"; shift 2 ;;
         --install) INSTALL=1; shift ;;
-        *) echo "usage: $(basename "$0") [--output PATH] [--src PATH] [--install]" >&2; exit 1 ;;
+        *) echo "usage: $(basename "$0") [--lock PATH] [--output PATH] [--src PATH] [--install]" >&2; exit 1 ;;
     esac
 done
 
@@ -65,6 +71,17 @@ import json, sys
 lock = json.load(open(sys.argv[1]))
 print(lock["repository"], lock["branch"], lock["commit"])
 ' "$LOCK")
+# One per line, resolved against the lock's own folder. An empty list is a
+# build of the commit as it is.
+PATCHES=()
+while IFS= read -r patch; do
+    [[ -n "$patch" ]] && PATCHES+=("$patch")
+done < <(python3 -c '
+import json, os, sys
+lock = json.load(open(sys.argv[1]))
+for patch in lock.get("patches", []):
+    print(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), patch))
+' "$LOCK")
 
 CLONED=""
 # An if, not a &&: the trap runs last, so its status becomes the script's, and
@@ -85,8 +102,9 @@ else
     git -C "$SRC" checkout --quiet "$COMMIT"
     git -C "$SRC" submodule update --quiet --init --recursive --depth 1
 
-    # Numbered in order, the way Packaging/WineRuntime/patches are.
-    for patch in "$PATCHES"/*.patch; do
+    # In the lock's order, which is the order they are numbered.
+    for patch in ${PATCHES[@]+"${PATCHES[@]}"}; do
+        [[ -f "$patch" ]] || { echo "error: no patch at $patch" >&2; exit 1; }
         echo "==> applying $(basename "$patch")"
         git -C "$SRC" apply "$patch"
     done

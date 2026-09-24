@@ -9,6 +9,8 @@ make restore        # -> .wine-runtime, the pinned Wine tree (once)
 make runtime        # -> .wine-runtime built from source instead (see below)
 make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
 make d9vk           # -> .d9vk, DXVK's d3d9.dll built from source (see below)
+make kosmickrisp    # -> .kosmickrisp, the Vulkan loader and driver for the
+                    #    runtime, built from source (see kosmickrisp.md)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
 make bundle         # -> checks the runtime, builds and checks the stub and

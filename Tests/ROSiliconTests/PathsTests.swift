@@ -44,7 +44,9 @@ struct PathsTests {
 
     @Test func bundledWineRootSitsBesideTheOtherBundledTools() {
         #expect(Paths.bundledWineRoot.path == Paths.bundledTools.path + "/Wine")
-        #expect(Paths.dxvkDLL.path == Paths.bundledTools.path + "/d3d9.dll")
+        #expect(Paths.dxvkDLL(for: .moltenVK).path == Paths.bundledTools.path + "/d3d9.dll")
+        #expect(Paths.dxvkDLL(for: .kosmicKrisp).path
+            == Paths.bundledTools.path + "/kosmickrisp/d3d9.dll")
         #expect(Paths.steamStub.path == Paths.bundledTools.path + "/steam_stub.exe")
         #expect(Paths.rosettaX87JITFolder.path == Paths.bundledTools.path + "/rosettax87_jit")
         #expect(X87Backend.rosettaX87JIT.bundledLocation == Paths.rosettaX87JITFolder)
@@ -149,8 +151,41 @@ struct PathsTests {
         let environment = Paths(root: URL(filePath: "/test/root")).wineEnvironment()
         for (name, value) in ProcessInfo.processInfo.environment
         where !["WINEPREFIX", "WINELOADER", "WINESERVER", "X87_SIDECAR_PATH",
-                "ROSETTA_X87_PATH", "DYLD_LIBRARY_PATH", "PATH"].contains(name) {
+                "ROSETTA_X87_PATH", "DYLD_LIBRARY_PATH", "PATH", "VK_DRIVER_FILES",
+                "VK_ICD_FILENAMES", "VK_ADD_DRIVER_FILES"].contains(name) {
             #expect(environment[name] == value)
+        }
+    }
+
+    // MARK: - The Vulkan driver
+
+    /// The loader is handed exactly one driver, from inside the runtime, for
+    /// every wine the launcher starts.
+    @Test(arguments: VulkanDriver.allCases)
+    func wineEnvironmentNamesTheDriversManifestInTheRuntime(requested: VulkanDriver) {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        let environment = paths.wineEnvironment(vulkan: requested)
+        // What the menu asks for, once this Mac has had its say: the manifest
+        // named is always the one of the driver that will actually load.
+        let driver = requested.onThisMac
+        #expect(environment["VK_DRIVER_FILES"]
+            == paths.wineRoot.path + "/share/vulkan/icd.d/\(driver.rawValue)_icd.json")
+        for key in VulkanDriver.inheritedKeys {
+            #expect(environment[key] == nil)
+        }
+    }
+
+    /// A preference set on a newer Mac travels with the launcher, the same way
+    /// the hook's does. It must not be able to name KosmicKrisp where no GPU
+    /// can run it.
+    @Test(.disabled(if: VulkanDriver.isKosmicKrispSupportedHere,
+                    "this Mac can run KosmicKrisp"))
+    func onlyMoltenVKIsNamedOnAMacOlderThanMacOS26() {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        for driver in VulkanDriver.allCases {
+            #expect(driver.onThisMac == .moltenVK)
+            #expect(paths.wineEnvironment(vulkan: driver)["VK_DRIVER_FILES"]
+                == paths.wineRoot.appending(path: VulkanDriver.moltenVK.manifest).path)
         }
     }
 

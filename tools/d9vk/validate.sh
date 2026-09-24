@@ -74,12 +74,22 @@ for symbol in Direct3DCreate9 Direct3DCreate9Ex; do
   esac
 done
 
+# The 1.10-based moltenvk-version build says "DXVK v1.10.3-…"; master, the
+# KosmicKrisp build, carries only git describe's tag, "v3.0.2-102-g7df3596e", so
+# there DXVK_LOG_PATH, which every DXVK reads, is what says it is DXVK.
 version=""
+tag=""
+dxvk=0
 while IFS= read -r line; do
   case "$line" in
     DXVK\ v*) version="$line"; break ;;
+    DXVK_LOG_PATH) dxvk=1 ;;
+    v[0-9]*.[0-9]*-g[0-9a-f]*) [[ -n "$tag" ]] || tag="$line" ;;
   esac
 done <<< "$symbols"
+if [[ -z "$version" && "$dxvk" == 1 && -n "$tag" ]]; then
+  version="DXVK $tag"
+fi
 
 [[ -n "$version" ]] || {
   echo "d3d9.dll carries no DXVK version string, so it is not a DXVK build: $library" >&2

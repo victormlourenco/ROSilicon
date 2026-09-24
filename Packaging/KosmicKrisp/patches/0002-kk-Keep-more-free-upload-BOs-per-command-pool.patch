@@ -1,0 +1,18 @@
+diff --git a/src/kosmickrisp/vulkan/kk_cmd_pool.h b/src/kosmickrisp/vulkan/kk_cmd_pool.h
+index 479e70e..dc91b13 100644
+--- a/src/kosmickrisp/vulkan/kk_cmd_pool.h
++++ b/src/kosmickrisp/vulkan/kk_cmd_pool.h
+@@ -15,7 +15,12 @@
+ #include "util/u_dynarray.h"
+ 
+ #define KK_CMD_BO_SIZE     (1024 * 128)
+-#define KK_CMD_POOL_BO_MAX 32
++/* Free upload BOs a pool keeps for reuse; beyond this they are destroyed and
++ * the next command buffer creates new Metal heaps, each a kernel call. A
++ * workload that uploads a root table on nearly every draw goes through
++ * several MiB a frame, well past 32 BOs, so allow for 8 MiB.
++ */
++#define KK_CMD_POOL_BO_MAX 64
+ 
+ /* Recyclable command buffer BO, used for both push buffers and upload */
+ struct kk_cmd_bo {
