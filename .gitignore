@@ -18,3 +18,9 @@
 # The d3d9.dll tools/d9vk/build.sh produces (make d9vk); without one, build.sh
 # falls back to the copy checked in under Resources/d9vk
 /.d9vk/
+
+# The KosmicKrisp Vulkan drivers (feature/kosmickrisp)
+/.kosmickrisp/
+
+# Editor settings
+/.vscode/
