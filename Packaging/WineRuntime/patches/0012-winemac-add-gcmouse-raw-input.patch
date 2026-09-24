@@ -17,10 +17,9 @@ diff --git a/dlls/winemac.drv/Makefile.in b/dlls/winemac.drv/Makefile.in
 index ac705625efc..c5a7fcb439c 100644
 --- a/dlls/winemac.drv/Makefile.in
 +++ b/dlls/winemac.drv/Makefile.in
-@@ -7,6 +7,7 @@ UNIX_LIBS    = \
+@@ -7,5 +7,6 @@ UNIX_LIBS    = \
  	-framework AppKit \
  	-framework Carbon \
- 	-framework CoreVideo \
  	-framework Foundation \
 +	-weak_framework GameController \
  	-framework IOKit \
