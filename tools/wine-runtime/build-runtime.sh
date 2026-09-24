@@ -11,7 +11,9 @@ fetches the pinned Wine, builds it with the patches (build.sh), assembles the
 tree into --output (default .wine-runtime, which must not exist yet) and
 validates it. The base lends the new tree its mtld3d and library overlays, and
 the x86_64 dylibs configure links against, so each release is built on the
-last.
+last — except
+MoltenVK, which is prepared from the Khronos release the lock pins and
+overwrites the base's copy.
 
 --work holds the base, the source and the build (default
 .build/wine-runtime), and is cleared first.
@@ -60,6 +62,9 @@ rm -rf "$work"
 mkdir -p "$work"
 
 "$script_dir/restore.sh" --no-validate --runtime "$work/base"
+# Before build.sh, which wants an x86_64 MoltenVK to look at, and before
+# assemble.sh, which checks the overlays it copies against the lock.
+"$script_dir/fetch-moltenvk.sh" --output "$work/base/lib/external"
 "$script_dir/fetch-source.sh" --output "$work/source"
 "$script_dir/build.sh" \
   --source "$work/source" \
