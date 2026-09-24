@@ -44,7 +44,10 @@ struct PathsTests {
 
     @Test func bundledWineRootSitsBesideTheOtherBundledTools() {
         #expect(Paths.bundledWineRoot.path == Paths.bundledTools.path + "/Wine")
-        #expect(Paths.dxvkDLL.path == Paths.bundledTools.path + "/d3d9.dll")
+        #expect(Paths.dxvkDLL(for: .moltenVK).path == Paths.bundledTools.path + "/d3d9.dll")
+        #expect(Paths.dxvkDLL(for: .kosmicKrisp).path
+            == Paths.bundledTools.path + "/kosmickrisp/d3d9.dll")
+        #expect(Paths.dxvkDLL == Paths.dxvkDLL(for: VulkanDriver.onThisMac))
         #expect(Paths.steamStub.path == Paths.bundledTools.path + "/steam_stub.exe")
         #expect(Paths.rosettaX87JITFolder.path == Paths.bundledTools.path + "/rosettax87_jit")
         #expect(X87Backend.rosettaX87JIT.bundledLocation == Paths.rosettaX87JITFolder)

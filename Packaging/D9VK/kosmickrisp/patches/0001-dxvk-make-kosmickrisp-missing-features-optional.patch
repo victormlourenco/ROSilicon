@@ -1,0 +1,116 @@
+diff --git a/src/d3d9/d3d9_device.cpp b/src/d3d9/d3d9_device.cpp
+index 9b72bb2e..a5c9f941 100644
+--- a/src/d3d9/d3d9_device.cpp
++++ b/src/d3d9/d3d9_device.cpp
+@@ -3277,7 +3277,7 @@ namespace dxvk {
+       static bool s_errorShown = false;
+ 
+       if (!std::exchange(s_errorShown, true))
+-        Logger::err("D3D9DeviceEx::ProcessVertices: SWVP emu unsupported (vertexPipelineStoresAndAtomics)");
++        Logger::err("D3D9DeviceEx::ProcessVertices: SWVP emu unsupported (vertexPipelineStoresAndAtomics, geometryShader)");
+ 
+       return D3D_OK;
+     }
+@@ -4733,7 +4733,9 @@ namespace dxvk {
+ 
+ 
+   bool D3D9DeviceEx::SupportsSWVP() {
+-    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics;
++    // ProcessVertices is emulated with a geometry shader.
++    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics
++        && m_dxvkDevice->features().core.features.geometryShader;
+   }
+ 
+ 
+@@ -7099,7 +7101,10 @@ namespace dxvk {
+     state.setCullMode(DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE])));
+     state.setDepthClip(true);
+     state.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+-    state.setPolygonMode(DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE])));
++    // Wireframe and point fill need fillModeNonSolid; draw solid without it.
++    state.setPolygonMode(m_dxvkDevice->features().core.features.fillModeNonSolid
++      ? DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]))
++      : VK_POLYGON_MODE_FILL);
+     state.setFlatShading(m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT);
+     state.setSampleCount(m_state.renderStates[D3DRS_MULTISAMPLEANTIALIAS]
+       ? VkSampleCountFlags(0u)
+diff --git a/src/dxvk/dxvk_device_info.cpp b/src/dxvk/dxvk_device_info.cpp
+index 52f10b24..bec8070c 100644
+--- a/src/dxvk/dxvk_device_info.cpp
++++ b/src/dxvk/dxvk_device_info.cpp
+@@ -850,10 +850,10 @@ namespace dxvk {
+       ENABLE_FEATURE(core.features, depthClamp, true),
+       ENABLE_FEATURE(core.features, drawIndirectFirstInstance, false),
+       ENABLE_FEATURE(core.features, dualSrcBlend, true),
+-      ENABLE_FEATURE(core.features, fillModeNonSolid, true),
++      ENABLE_FEATURE(core.features, fillModeNonSolid, false),
+       ENABLE_FEATURE(core.features, fragmentStoresAndAtomics, true),
+       ENABLE_FEATURE(core.features, fullDrawIndexUint32, true),
+-      ENABLE_FEATURE(core.features, geometryShader, true),
++      ENABLE_FEATURE(core.features, geometryShader, false),
+       ENABLE_FEATURE(core.features, imageCubeArray, true),
+       ENABLE_FEATURE(core.features, independentBlend, true),
+       ENABLE_FEATURE(core.features, largePoints, false),
+@@ -951,7 +951,7 @@ namespace dxvk {
+       ENABLE_EXT_FEATURE(extCustomBorderColor, customBorderColorWithoutFormat, false),
+ 
+       /* Depth clip matches D3D semantics where depth clamp does not */
+-      ENABLE_EXT_FEATURE(extDepthClipEnable, depthClipEnable, true),
++      ENABLE_EXT_FEATURE(extDepthClipEnable, depthClipEnable, false),
+ 
+       /* Controls depth bias behaviour with emulated depth formats */
+       ENABLE_EXT_FEATURE(extDepthBiasControl, depthBiasControl, false),
+diff --git a/src/dxvk/dxvk_graphics.cpp b/src/dxvk/dxvk_graphics.cpp
+index 2c5334dc..1add7024 100644
+--- a/src/dxvk/dxvk_graphics.cpp
++++ b/src/dxvk/dxvk_graphics.cpp
+@@ -581,15 +581,21 @@ namespace dxvk {
+     if (rsInfo.rasterizerDiscardEnable)
+       return;
+ 
++    // Without VK_EXT_depth_clip_enable, depth clamp is the only way to
++    // turn depth clipping off, which is not quite the same thing.
++    bool hasDepthClip = device->features().extDepthClipEnable.depthClipEnable;
++
+     // Set up basic rasterization state
+-    rsInfo.depthClampEnable         = VK_TRUE;
++    rsInfo.depthClampEnable         = hasDepthClip || !state.rs.depthClipEnable();
+     rsInfo.polygonMode              = state.rs.polygonMode();
+     rsInfo.lineWidth                = 1.0f;
+ 
+-    // Set up depth clip state. Require depth clip support,
+-    // this is *not* equivalent to disabling depth clamp.
+-    rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+-    rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
++    // Set up depth clip state where the device supports it; this
++    // is *not* equivalent to disabling depth clamp.
++    if (hasDepthClip) {
++      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
++      rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
++    }
+ 
+     // Set up conservative rasterization if requested by the application.
+     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+diff --git a/src/dxvk/dxvk_shader.cpp b/src/dxvk/dxvk_shader.cpp
+index 8f6261ba..c3010b59 100644
+--- a/src/dxvk/dxvk_shader.cpp
++++ b/src/dxvk/dxvk_shader.cpp
+@@ -400,10 +400,15 @@ namespace dxvk {
+     rsInfo.polygonMode        = VK_POLYGON_MODE_FILL;
+     rsInfo.lineWidth          = 1.0f;
+ 
+-    // Only use the fixed depth clip state if we can't make it dynamic
++    // Only use the fixed depth clip state if we can't make it dynamic.
++    // Without depth clip control at all, depth clip means no depth clamp.
+     if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
+-      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+-      rsDepthClipInfo.depthClipEnable = VK_TRUE;
++      if (m_device->features().extDepthClipEnable.depthClipEnable) {
++        rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
++        rsDepthClipInfo.depthClipEnable = VK_TRUE;
++      } else {
++        rsInfo.depthClampEnable = VK_FALSE;
++      }
+     }
+ 
+     // Only the view mask is used as input, and since we do not use MultiView, it is always 0

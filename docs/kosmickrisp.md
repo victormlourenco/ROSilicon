@@ -7,6 +7,11 @@ Vulkan-on-Metal driver. It is a conformant Vulkan 1.4 implementation where
 MoltenVK is a portability subset. On an older Mac it is MoltenVK, as before:
 KosmicKrisp only drives a GPU with Metal 4, which macOS offers from 26 on.
 
+Each driver gets its own DXVK: KosmicKrisp runs K0bin/dxvk's `master`, patched
+only to do without the features KosmicKrisp lacks, and MoltenVK the patched
+`moltenvk-version` branch — see
+[DXVK](dxvk.md).
+
 ## How Wine reaches it
 
 MoltenVK exports the whole Vulkan API itself, so the runtime used to link Wine's
@@ -63,6 +68,37 @@ pins (a Mesa release, and the loader and headers of one Vulkan SDK) into
 
 `make kosmickrisp-toolchain` installs what it needs with Homebrew.
 
+## The patches it carries
+
+Mesa 26.2.3 gets three patches, listed in the source lock and kept in
+[Packaging/KosmicKrisp/patches/](../Packaging/KosmicKrisp/patches/). The first
+is Mesa main's `4a1ee1bd`, "kk: Support VK_EXT_map_memory_placed", which no
+release has yet. Without it, a 32-bit game draws a black screen.
+
+A 32-bit Windows program can only use memory Wine maps below 4 GB. Wine does
+that with `VK_EXT_map_memory_placed` where the driver has it, and otherwise by
+allocating the memory itself and importing it through
+`VK_EXT_external_memory_host` — for every allocation from a host-visible memory
+type, since it cannot know which ones will be mapped. MoltenVK has device-only
+memory types, so its images never take that path. KosmicKrisp has one memory
+type, and it is host-visible, so every image lands in imported memory, and
+KosmicKrisp cannot make a texture there: clears, draws and copies silently do
+nothing inside Wine, and natively the same thing crashes in the Metal driver. With
+placed mapping Wine never imports, and images get ordinary memory. Mesa
+[!44221](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/44221), a
+device-local-only memory type, would fix it another way. Drop the patch once
+the pinned release includes `4a1ee1bd`.
+
+The other two are ours, for speed. KosmicKrisp keeps a 2 KiB root table of
+push constants, set addresses, vertex state and dynamic buffers, and uploads
+it again on every draw that changes any of it — for a fixed-function game,
+every draw after a texture or matrix change. **0002** leaves out the 1 KiB of
+dynamic buffer slots nothing has bound, which DXVK never uses, and **0003** lets
+a command pool keep 64 free upload buffers instead of 32, since those uploads
+run to several MiB a frame and every buffer past the limit was a new Metal heap
+next frame. Together they took a test drawing 3,000 sprites, each with its own
+texture, from 4.7 ms a frame to 2.9.
+
 ## Getting it into the runtime
 
 The two dylibs are pinned by checksum in `runtime-lock.json`'s `external`
@@ -87,5 +123,9 @@ build whose checksums do not match the lock.
 On an M4 Max with macOS 27, in a runtime assembled this way, a 32-bit D3D9 test
 drew 500 fixed-function `DrawPrimitiveUP` triangles a frame for 1,500 frames
 through the shipped DXVK, once on each driver, without errors. Uncapped frame
-rates were in the same range for both and too noisy to rank either one. The
-real client is the test that counts.
+rates were in the same range for both and too noisy to rank either one. That
+test never looked at the pixels, though, and without the patch above every
+frame on KosmicKrisp was black. A test now has to read back what it drew:
+a clear and a `DrawPrimitiveUP` triangle, read with `GetRenderTargetData`, come
+back right on both drivers with the patch, and as zeros on KosmicKrisp without
+it. The real client is the test that counts.

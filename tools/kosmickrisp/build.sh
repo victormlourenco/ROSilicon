@@ -4,8 +4,8 @@
 #
 # Wine's host side runs as x86_64 under Rosetta 2, so everything it dlopen()s
 # has to be x86_64 too, and LunarG's KosmicKrisp is arm64 only. It is built
-# here from the Mesa release Packaging/KosmicKrisp/source-lock.json pins, in
-# two passes:
+# here from the Mesa release Packaging/KosmicKrisp/source-lock.json pins, with
+# the patches it lists for Mesa applied in order, in two passes:
 #
 #   1. mesa_clc and vtn_bindgen2, native arm64: build-time compilers that need
 #      LLVM, SPIRV-LLVM-Translator and libclc, which Homebrew only has as arm64.
@@ -118,6 +118,22 @@ fetch() {
 fetch mesa
 fetch loader
 fetch headers
+
+# Mesa's patches, relative to the lock. Put back to the locked commit first, so
+# a checkout kept in --work is patched exactly once; only the files the patches
+# touch change, so an incremental build stays incremental.
+git -C "$WORK/mesa" checkout --quiet -- .
+while IFS= read -r patch; do
+    [[ -n "$patch" ]] || continue
+    [[ -f "$patch" ]] || { echo "error: no patch at $patch" >&2; exit 1; }
+    echo "==> applying $(basename "$patch")"
+    git -C "$WORK/mesa" apply "$patch"
+done < <(python3 -c '
+import json, os, sys
+lock = json.load(open(sys.argv[1]))
+for patch in lock["mesa"].get("patches", []):
+    print(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), patch))
+' "$LOCK")
 
 SDK="$(xcrun --sdk macosx --show-sdk-path)"
 CLANG="$(xcrun --sdk macosx --find clang)"

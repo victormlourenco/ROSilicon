@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/K0bin/dxvk",
+  "branch": "master",
+  "commit": "7df3596eed49cb79f07c18869a1a9a8c067efe04",
+  "patches": [
+    "patches/0001-dxvk-make-kosmickrisp-missing-features-optional.patch",
+    "patches/0002-d3d9-address-up-draws-with-firstvertex.patch",
+    "patches/0003-d3d9-add-api-stats.patch",
+    "patches/0004-d3d9-skip-unchanged-transforms.patch",
+    "patches/0005-dxvk-keep-descriptor-template-default-on-32-bit.patch",
+    "patches/0006-dxvk-remember-recently-found-pipeline-variants.patch",
+    "patches/0007-dxvk-cache-recently-set-input-layouts.patch"
+  ]
+}

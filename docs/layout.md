@@ -8,7 +8,7 @@ makeicon.swift           draws AppIcon.icns, no asset files needed
 Makefile                 names the builds; build.sh does the work
 Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
-Packaging/D9VK/          the DXVK source lock, and the patches applied to it
+Packaging/D9VK/          the DXVK source locks, one per Vulkan driver, and their patches
 Packaging/KosmicKrisp/   the Mesa and Vulkan loader source lock
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
@@ -18,10 +18,11 @@ tools/publish-wiki.sh    copies wiki/ to the GitHub wiki
 wiki/                    the wiki's pages, as files; see wiki/README.md
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
-.d9vk/                   the built d3d9.dll (gitignored, `make d9vk`)
+.d9vk/                   the built d3d9.dll, and kosmickrisp/d3d9.dll (gitignored, `make d9vk`)
 .kosmickrisp/            the built loader and driver (gitignored, `make kosmickrisp`)
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, the fallback when .d9vk is empty
+  d9vk/kosmickrisp/      the same for KosmicKrisp, built from DXVK master
   x87sidecar/            the x87 hook, bundled into the app
   rosettax87_jit/        the alternative x87 hook behind ⌥, bundled into the app
   Localizations/         en.lproj, pt-BR.lproj, es.lproj

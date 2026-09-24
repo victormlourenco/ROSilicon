@@ -104,8 +104,18 @@ struct Paths: Sendable {
     /// links to the two Windows ones rather than holding copies — DXVK into
     /// `syswow64`, the stub into drive_c; `prepare()` rewrites those links on
     /// every launch, so they follow the app when it moves.
-    static var dxvkDLL: URL { bundledTools.appending(path: "d3d9.dll") }
+    static var dxvkDLL: URL { dxvkDLL(for: .onThisMac) }
     static var steamStub: URL { bundledTools.appending(path: "steam_stub.exe") }
+
+    /// DXVK is built once per driver: K0bin's master for KosmicKrisp, and the
+    /// patched moltenvk-version branch, with its Metal workarounds, for
+    /// MoltenVK.
+    static func dxvkDLL(for driver: VulkanDriver) -> URL {
+        switch driver {
+        case .kosmicKrisp: bundledTools.appending(path: "kosmickrisp/d3d9.dll")
+        case .moltenVK: bundledTools.appending(path: "d3d9.dll")
+        }
+    }
 
     /// The arm64 helper Wine's loader re-execs itself under. nil when the app
     /// was built without it, which is the only way it can be absent.

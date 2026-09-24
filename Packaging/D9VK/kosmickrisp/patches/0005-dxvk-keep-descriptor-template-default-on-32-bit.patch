@@ -1,0 +1,16 @@
+diff --git a/src/dxvk/dxvk_options.cpp b/src/dxvk/dxvk_options.cpp
+index e9aef0ed..bb797089 100644
+--- a/src/dxvk/dxvk_options.cpp
++++ b/src/dxvk/dxvk_options.cpp
+@@ -9,7 +9,10 @@ namespace dxvk {
+     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);
+     enableDescriptorHeap  = config.getOption<Tristate>("dxvk.enableDescriptorHeap",   Tristate::Auto);
+     enableDescriptorBuffer = config.getOption<Tristate>("dxvk.enableDescriptorBuffer", Tristate::Auto);
+-    enableDescriptorUpdateTemplates = config.getOption<bool>("dxvk.enableDescriptorUpdateTemplates", false);
++    // The header defaults this to on for 32-bit builds, where every
++    // VkWriteDescriptorSet a legacy update passes has to be converted to the
++    // 64-bit layout by the host; keep that default rather than overriding it.
++    enableDescriptorUpdateTemplates = config.getOption<bool>("dxvk.enableDescriptorUpdateTemplates", enableDescriptorUpdateTemplates);
+     enableUnifiedImageLayout = config.getOption<bool> ("dxvk.enableUnifiedImageLayouts", true);
+     enableImplicitResolves = config.getOption<bool>   ("dxvk.enableImplicitResolves", true);
+     enableNvRawAccessChains = config.getOption<bool>  ("dxvk.enableNvRawAccessChains", true);

@@ -143,9 +143,11 @@ lives in **[docs/](docs/)**:
   of it; `make kosmickrisp` builds both for x86_64 from
   `Packaging/KosmicKrisp/source-lock.json`. MoltenVK remains the driver before
   macOS 26.
-- **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk), branch
-  `moltenvk-version`, which `make d9vk` builds from the commit
-  `Packaging/D9VK/source-lock.json` pins, with our patches on top.
+- **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk): under
+  MoltenVK, branch `moltenvk-version`, which `make d9vk` builds from the commit
+  `Packaging/D9VK/source-lock.json` pins, with our patches on top; under
+  KosmicKrisp, `master` from `Packaging/D9VK/kosmickrisp/source-lock.json`, with
+  one patch for the Vulkan features KosmicKrisp lacks.
   [Sikarugir-App/d9vk](https://github.com/Sikarugir-App/d9vk) is the fork of it
   the checked-in `Resources/d9vk/d3d9.dll` came from. Both descend from
   [doitsujin/dxvk](https://github.com/doitsujin/dxvk).

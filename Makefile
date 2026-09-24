@@ -31,9 +31,16 @@ STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
 D9VK_DLL := $(D9VK)/d3d9.dll
 D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
             $(wildcard Packaging/D9VK/patches/*.patch)
+# The build KosmicKrisp gets: K0bin's master, with only the patch that lets it
+# run without the features KosmicKrisp lacks.
+D9VK_KK_LOCK := Packaging/D9VK/kosmickrisp/source-lock.json
+D9VK_KK_DLL  := $(D9VK)/kosmickrisp/d3d9.dll
+D9VK_KK_SRC  := tools/d9vk/build.sh $(D9VK_KK_LOCK) \
+                $(wildcard Packaging/D9VK/kosmickrisp/patches/*.patch)
 
 KOSMICKRISP_DYLIB := $(KOSMICKRISP)/libvulkan_kosmickrisp.dylib
-KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-lock.json
+KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-lock.json \
+                     $(wildcard Packaging/KosmicKrisp/patches/*.patch)
 
 # build.sh reads these out of the environment; unset and empty both mean "here".
 export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
@@ -87,7 +94,7 @@ help:
 	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
 	@echo "make steam-stub  build the Steam stub into .steam-stub"
 	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
-	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
+	@echo "make d9vk        build DXVK's d3d9.dll, one per Vulkan driver, into .d9vk"
 	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
 	@echo "make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
 	@echo "make kosmickrisp-toolchain  install the toolchain KosmicKrisp needs"
@@ -97,7 +104,7 @@ help:
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
 	@echo "STEAM_STUB=<dir>   ships a Steam stub other than .steam-stub."
-	@echo "D9VK=<dir>         ships a d3d9.dll other than .d9vk."
+	@echo "D9VK=<dir>         ships d3d9.dll (and kosmickrisp/d3d9.dll) other than .d9vk's."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
@@ -146,19 +153,25 @@ validate_steam_stub:
 # top, and build.sh copies it from there. Unlike the stub this is a clone and
 # several minutes of compiling, so only `make d9vk` and `make bundle` ask for
 # it: make rebuilds it when a patch or the lock is newer and leaves it alone
-# otherwise.
+# otherwise. There are two, one per Vulkan driver: the patched moltenvk-version
+# build in .d9vk for MoltenVK, and master in .d9vk/kosmickrisp for KosmicKrisp.
 $(D9VK_DLL): $(D9VK_SRC)
 	@tools/d9vk/build.sh --output "$@"
 
-d9vk: $(D9VK_DLL)
+$(D9VK_KK_DLL): $(D9VK_KK_SRC)
+	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$@"
+
+d9vk: $(D9VK_DLL) $(D9VK_KK_DLL)
 
 # Installs the cross-compiler, meson, ninja and glslang with Homebrew, then
 # builds — separate from the build rule for the same reason the stub's is.
 d9vk-toolchain:
 	@tools/d9vk/build.sh --install --output "$(D9VK_DLL)"
+	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$(D9VK_KK_DLL)"
 
 validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
+	@tools/d9vk/validate.sh --d9vk "$(D9VK)/kosmickrisp"
 
 # The Vulkan loader and KosmicKrisp, x86_64, from the Mesa and Khronos sources
 # Packaging/KosmicKrisp/source-lock.json pins. They are runtime inputs rather
@@ -181,4 +194,4 @@ kosmickrisp-toolchain:
 # them rather than failing on their absence. Building DXVK here is what keeps a
 # release off the checked-in fallback that an ordinary `make` is allowed to use.
 bundle: validate_wine_runtime $(STEAM_STUB_EXE) validate_steam_stub \
-        $(D9VK_DLL) validate_d9vk dmg
+        $(D9VK_DLL) $(D9VK_KK_DLL) validate_d9vk dmg
