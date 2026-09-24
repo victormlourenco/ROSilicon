@@ -149,8 +149,24 @@ struct PathsTests {
         let environment = Paths(root: URL(filePath: "/test/root")).wineEnvironment()
         for (name, value) in ProcessInfo.processInfo.environment
         where !["WINEPREFIX", "WINELOADER", "WINESERVER", "X87_SIDECAR_PATH",
-                "ROSETTA_X87_PATH", "DYLD_LIBRARY_PATH", "PATH"].contains(name) {
+                "ROSETTA_X87_PATH", "DYLD_LIBRARY_PATH", "PATH", "VK_DRIVER_FILES",
+                "VK_ICD_FILENAMES", "VK_ADD_DRIVER_FILES"].contains(name) {
             #expect(environment[name] == value)
+        }
+    }
+
+    // MARK: - The Vulkan driver
+
+    /// The loader is handed exactly one driver, from inside the runtime, for
+    /// every wine the launcher starts.
+    @Test(arguments: VulkanDriver.allCases)
+    func wineEnvironmentNamesTheDriversManifestInTheRuntime(driver: VulkanDriver) {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        let environment = paths.wineEnvironment(vulkan: driver)
+        #expect(environment["VK_DRIVER_FILES"]
+            == paths.wineRoot.path + "/share/vulkan/icd.d/\(driver.rawValue)_icd.json")
+        for key in VulkanDriver.inheritedKeys {
+            #expect(environment[key] == nil)
         }
     }
 

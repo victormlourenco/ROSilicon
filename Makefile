@@ -23,6 +23,7 @@ OUT      := $(or $(APP_OUT),.)
 WINE_RUNTIME ?= $(CURDIR)/.wine-runtime
 STEAM_STUB   ?= $(CURDIR)/.steam-stub
 D9VK         ?= $(CURDIR)/.d9vk
+KOSMICKRISP  ?= $(CURDIR)/.kosmickrisp
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
@@ -31,6 +32,9 @@ D9VK_DLL := $(D9VK)/d3d9.dll
 D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
             $(wildcard Packaging/D9VK/patches/*.patch)
 
+KOSMICKRISP_DYLIB := $(KOSMICKRISP)/libvulkan_kosmickrisp.dylib
+KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-lock.json
+
 # build.sh reads these out of the environment; unset and empty both mean "here".
 export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 
@@ -38,7 +42,7 @@ export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
-        validate_d9vk d9vk d9vk-toolchain
+        validate_d9vk d9vk d9vk-toolchain kosmickrisp kosmickrisp-toolchain
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -70,7 +74,7 @@ test:
 # does `make d9vk`. Only this folder's copies go: a WINE_RUNTIME, STEAM_STUB or
 # D9VK pointed elsewhere is left alone.
 clean:
-	rm -rf .build .wine-runtime .steam-stub .d9vk "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
+	rm -rf .build .wine-runtime .steam-stub .d9vk .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
 	@echo "make             build $(APP_NAME).app — the fast one"
@@ -85,6 +89,8 @@ help:
 	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
 	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
 	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
+	@echo "make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
+	@echo "make kosmickrisp-toolchain  install the toolchain KosmicKrisp needs"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
 	@echo "make clean       remove the build products"
 	@echo
@@ -153,6 +159,21 @@ d9vk-toolchain:
 
 validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
+
+# The Vulkan loader and KosmicKrisp, x86_64, from the Mesa and Khronos sources
+# Packaging/KosmicKrisp/source-lock.json pins. They are runtime inputs rather
+# than something build.sh copies: `make runtime` takes them from here the first
+# time, and from the published runtime it builds on after that — see
+# docs/kosmickrisp.md. A few minutes, most of them Mesa.
+$(KOSMICKRISP_DYLIB): $(KOSMICKRISP_SRC)
+	@tools/kosmickrisp/build.sh --output "$(KOSMICKRISP)"
+
+kosmickrisp: $(KOSMICKRISP_DYLIB)
+
+# Installs LLVM, libclc, SPIRV-LLVM-Translator, meson, cmake and uv with
+# Homebrew, then builds.
+kosmickrisp-toolchain:
+	@tools/kosmickrisp/build.sh --install --output "$(KOSMICKRISP)"
 
 # The whole thing to hand to someone else: the runtime checked against the lock,
 # the stub and DXVK built and checked over, then the .app and the .dmg holding

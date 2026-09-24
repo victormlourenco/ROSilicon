@@ -147,6 +147,7 @@
 "log.removed" = "(removed)";
 "log.launching" = "Launching the client…";
 "log.metal_hud" = "Metal frame-rate overlay on.";
+"log.vulkan_driver" = "Vulkan driver: %@.";
 "log.rosettax87_jit" = "x87 code runs under rosettax87_jit — macOS asks for your password to let it attach to the game.";
 "log.x87_disabled" = "No accelerated x87 translation: the client's x87 code runs under stock Rosetta, more slowly.";
 "log.x87_needs_macos" = "Accelerated x87 translation needs macOS %d or later: the client's x87 code runs under stock Rosetta, more slowly.";

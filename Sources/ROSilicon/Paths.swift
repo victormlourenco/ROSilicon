@@ -162,7 +162,9 @@ struct Paths: Sendable {
     /// Environment shared by every Wine invocation — the Swift side of `wine_env`.
     /// `x87` is the hook 32-bit programs run under; only the ⌥ menu's choice
     /// for the game and Wine's tools ever asks for anything but the default.
-    func wineEnvironment(x87: X87Backend = .default) -> [String: String] {
+    /// `vulkan` is the driver DXVK renders through, fixed for this Mac.
+    func wineEnvironment(x87: X87Backend = .default,
+                         vulkan: VulkanDriver = .onThisMac) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         env["WINEPREFIX"] = prefix.path
         env["WINELOADER"] = wine.path
@@ -182,8 +184,12 @@ struct Paths: Sendable {
         let chosen = x87.onThisMac
         for key in X87Backend.environmentKeys { env[key] = nil }
         if let key = chosen.environmentKey, let hook = chosen.executable { env[key] = hook.path }
-        // Wine dlopen()s freetype, gnutls, MoltenVK and SDL2 by leaf name; the
-        // bundle keeps them here rather than relying on a system copy.
+        // Wine's Vulkan is the Khronos loader, and this is the one driver it
+        // loads — here, so wineboot and winecfg see the same GPU the game does.
+        for key in VulkanDriver.inheritedKeys { env[key] = nil }
+        env["VK_DRIVER_FILES"] = wineRoot.appending(path: vulkan.manifest).path
+        // Wine dlopen()s freetype, gnutls, the Vulkan loader and SDL2 by leaf
+        // name; the bundle keeps them here rather than relying on a system copy.
         let dyld = env["DYLD_LIBRARY_PATH"].map { ":\($0)" } ?? ""
         env["DYLD_LIBRARY_PATH"] = wineExternalLibs.path + dyld
         env["PATH"] = wineRoot.appending(path: "bin").path + ":" + (env["PATH"] ?? "/usr/bin:/bin")

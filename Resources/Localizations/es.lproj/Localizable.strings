@@ -144,6 +144,7 @@
 "log.removed" = "(eliminado)";
 "log.launching" = "Iniciando el cliente…";
 "log.metal_hud" = "Medidor de FPS de Metal activado.";
+"log.vulkan_driver" = "Controlador de Vulkan: %@.";
 "log.rosettax87_jit" = "El código x87 corre con rosettax87_jit — macOS pide tu contraseña para dejar que se conecte al juego.";
 "log.x87_disabled" = "Sin traducción x87 acelerada: el código x87 del cliente corre con el Rosetta estándar, más lento.";
 "log.x87_needs_macos" = "La traducción x87 acelerada necesita macOS %d o posterior: el código x87 del cliente se ejecuta con Rosetta estándar, más lentamente.";

@@ -186,8 +186,9 @@ configure_environment=(
   FREETYPE_LIBS="-lfreetype"
   GNUTLS_CFLAGS="$(pkg-config --cflags gnutls)"
   GNUTLS_LIBS="-lgnutls"
-  # There is no x86_64 Vulkan loader to probe. The runtime links this name
-  # to MoltenVK in lib/wine/x86_64-unix; see assemble.sh.
+  # Named rather than probed, since the base need not carry the loader yet.
+  # The runtime links this name to the Khronos loader in
+  # lib/wine/x86_64-unix; see assemble.sh.
   ac_cv_lib_soname_vulkan="libvulkan.1.dylib"
 )
 

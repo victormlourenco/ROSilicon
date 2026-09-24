@@ -110,10 +110,14 @@ struct GameRunner: Sendable {
 
         var environment = paths.wineEnvironment(x87: x87)
         environment["WINEDLLOVERRIDES"] = "d3d9=n,b"        // DXVK instead of Wine's D3D9
+        // Read by MoltenVK alone, and required there: the client crashes
+        // without it. KosmicKrisp ignores it.
         environment["MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS"] = "1"
         environment["DXVK_ASYNC"] = "1"
-        // DXVK renders through MoltenVK, so the overlay Metal itself draws is
-        // the one that shows the frame rate of the client.
+        await reporter.log(Strings.logVulkanDriver(VulkanDriver.onThisMac.label))
+        // DXVK renders through KosmicKrisp or MoltenVK, both on Metal, so the
+        // overlay Metal itself draws is the one that shows the frame rate of
+        // the client.
         if metalHUD {
             environment["MTL_HUD_ENABLED"] = "1"
             await reporter.log(Strings.logMetalHUD)

@@ -18,3 +18,7 @@
 # The d3d9.dll tools/d9vk/build.sh produces (make d9vk); without one, build.sh
 # falls back to the copy checked in under Resources/d9vk
 /.d9vk/
+
+# The Vulkan loader and KosmicKrisp tools/kosmickrisp/build.sh produces
+# (make kosmickrisp), which make runtime takes until a published runtime has them
+/.kosmickrisp/

@@ -1,7 +1,7 @@
 # DXVK
 
 Direct3D 9 reaches the GPU through DXVK, translated to Vulkan and then to Metal
-by MoltenVK. The build is
+by [KosmicKrisp](kosmickrisp.md), or by MoltenVK before macOS 26. The build is
 [K0bin/dxvk](https://github.com/K0bin/dxvk)'s `moltenvk-version` branch — the
 1.10 backend under the 2.3 D3D9 frontend, with the Metal workarounds that branch
 carries — pinned by commit in

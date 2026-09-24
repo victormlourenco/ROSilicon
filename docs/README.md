@@ -28,5 +28,7 @@ on the launcher: how it is built, what it ships, and why each piece is there.
 - [The Wine runtime](wine-runtime.md) — how the bundled Wine is built, pinned
   and released, including the wintrust patch the client needs.
 - [DXVK](dxvk.md) — Direct3D 9 on Metal, the pinned branch and our patches.
+- [KosmicKrisp](kosmickrisp.md) — the Vulkan driver under DXVK, the loader in
+  front of it, and why both are built for x86_64 here.
 - [The Steam stub](steam-stub.md) — the stand-in the client expects to find
   running.

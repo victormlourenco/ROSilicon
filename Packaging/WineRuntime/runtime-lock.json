@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "runtimeRevision": 17,
+  "runtimeRevision": 18,
   "wine": {
     "version": "11.15",
     "repository": "https://github.com/WineAndAqua/wine.git",
@@ -99,6 +99,16 @@
         "source": "libunistring.5.dylib",
         "destination": "lib/external/libunistring.5.dylib",
         "sha256": "1c6ad5ca707d27a1a87e0dd351898366bff69a43b4cb86e1c41d66299fc29f40"
+      },
+      {
+        "source": "libvulkan.1.dylib",
+        "destination": "lib/external/libvulkan.1.dylib",
+        "sha256": "5ebcff5a5d94e8b44249753d964fa1bd559f249fc9c89d235956b6eb0a36fe07"
+      },
+      {
+        "source": "libvulkan_kosmickrisp.dylib",
+        "destination": "lib/external/libvulkan_kosmickrisp.dylib",
+        "sha256": "bafcbe80c161f9be3130338af7418f53d8bdee7c84f11780b7c92e6729956b0e"
       }
     ]
   }

@@ -26,8 +26,9 @@ Everything below the launcher is x86_64, but Homebrew stopped building Intel
 bottles in September 2026, so the runtime is built on Apple Silicon under
 Rosetta 2: Xcode's clang compiles the host side for x86_64 against headers from
 the arm64 Homebrew, and mingw-w64 compiles the Windows side as it would anywhere.
-Wine loads FreeType, GnuTLS and MoltenVK by name at run time, and configure
-learns those names by linking against x86_64 copies. Those copies, like the
+Wine loads FreeType, GnuTLS and Vulkan by name at run time, and configure
+learns the first two names by linking against x86_64 copies. The Vulkan loader
+and the drivers behind it are described in [KosmicKrisp](kosmickrisp.md). Those copies, like the
 mtld3d and library overlays assembled into the tree, come from the runtime the
 lock pinned before, so each release is built on the last one; the first was
 built on WoWSilicon's r15. The runtime targets macOS 14, like the app.

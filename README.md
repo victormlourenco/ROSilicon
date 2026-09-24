@@ -137,6 +137,12 @@ lives in **[docs/](docs/)**:
   key mode is read and written, from its `FKeyManager` (MIT), which in turn
   derives from `fntoggle`. No code is bundled; only the approach is borrowed.
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
+- **KosmicKrisp** — [Mesa](https://gitlab.freedesktop.org/mesa/mesa) — the
+  Vulkan-on-Metal driver under DXVK on macOS 26 and later, with the
+  [Khronos Vulkan loader](https://github.com/KhronosGroup/Vulkan-Loader) in front
+  of it; `make kosmickrisp` builds both for x86_64 from
+  `Packaging/KosmicKrisp/source-lock.json`. MoltenVK remains the driver before
+  macOS 26.
 - **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk), branch
   `moltenvk-version`, which `make d9vk` builds from the commit
   `Packaging/D9VK/source-lock.json` pins, with our patches on top.

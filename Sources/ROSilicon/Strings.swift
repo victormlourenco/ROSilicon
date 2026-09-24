@@ -192,6 +192,7 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static func logVulkanDriver(_ name: String) -> String { t("log.vulkan_driver", name) }
     static var logRosettaX87JIT: String { t("log.rosettax87_jit") }
     static var logX87Disabled: String { t("log.x87_disabled") }
     static func logX87NeedsMacOS(_ version: Int) -> String {
