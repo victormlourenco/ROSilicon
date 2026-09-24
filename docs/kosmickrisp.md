@@ -62,7 +62,7 @@ Wine's host side runs as x86_64 under Rosetta 2, so every library it loads has
 to be x86_64. The KosmicKrisp in LunarG's Vulkan SDK is arm64 only, and
 Homebrew's loader is arm64 only. `make kosmickrisp` builds both from the sources
 [Packaging/KosmicKrisp/source-lock.json](../Packaging/KosmicKrisp/source-lock.json)
-pins (a Mesa release, and the loader and headers of one Vulkan SDK) into
+pins (a commit of Mesa's `main`, and the loader and headers of one Vulkan SDK) into
 `.kosmickrisp`. It takes a few minutes, in three steps:
 
 1. **`mesa_clc` and `vtn_bindgen2`, arm64.** Mesa compiles part of its driver
@@ -81,36 +81,52 @@ pins (a Mesa release, and the loader and headers of one Vulkan SDK) into
 
 `make kosmickrisp-toolchain` installs what it needs with Homebrew.
 
+## Why `main` and not a release
+
+The driver is young enough that the releases are behind it. What the lock
+pinned before was 26.2.3, and the one thing a 32-bit game could not do without
+was `VK_EXT_map_memory_placed`, which landed on `main` as `4a1ee1bd` after that
+release branched:
+
+> A 32-bit Windows program can only use memory Wine maps below 4 GB. Wine does
+> that with `VK_EXT_map_memory_placed` where the driver has it, and otherwise
+> by allocating the memory itself and importing it through
+> `VK_EXT_external_memory_host` — for every allocation from a host-visible
+> memory type, since it cannot know which ones will be mapped. MoltenVK has
+> device-only memory types, so its images never take that path. KosmicKrisp has
+> one memory type, and it is host-visible, so every image lands in imported
+> memory, and KosmicKrisp cannot make a texture there: clears, draws and copies
+> silently do nothing inside Wine, and natively the same thing crashes in the
+> Metal driver. With placed mapping Wine never imports, and images get ordinary
+> memory.
+
+Carrying that as a patch was the alternative, and it is the kind of patch that
+goes stale: it is upstream's own commit, so every release it is not in is a
+release we are rewriting. Tracking `main` gets it, and the rest of the driver's
+traffic, without a patch to rebase. What a moving branch costs is that the lock
+is the only thing saying which tree a build came from — so the build fetches
+the commit itself rather than the branch, and a bump is a deliberate edit to
+the lock, not something that happens because time passed.
+
+Mesa [!44221](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/44221),
+a device-local-only memory type, would fix the same problem another way.
+
 ## The patches it carries
 
-Mesa 26.2.3 gets three patches, listed in the source lock and kept in
-[Packaging/KosmicKrisp/patches/](../Packaging/KosmicKrisp/patches/). The first
-is Mesa main's `4a1ee1bd`, "kk: Support VK_EXT_map_memory_placed", which no
-release has yet. Without it, a 32-bit game draws a black screen.
+Two, both ours and both for speed, listed in the source lock and kept in
+[Packaging/KosmicKrisp/patches/](../Packaging/KosmicKrisp/patches/).
+KosmicKrisp keeps a 2 KiB root table of push constants, set addresses, vertex
+state and dynamic buffers, and uploads it again on every draw that changes any
+of it — for a fixed-function game, every draw after a texture or matrix change.
+**0001** leaves out the 1 KiB of dynamic buffer slots nothing has bound, which
+DXVK never uses, and **0002** lets a command pool keep 64 free upload buffers
+instead of 32, since those uploads run to several MiB a frame and every buffer
+past the limit was a new Metal heap next frame. Together they took a test
+drawing 3,000 sprites, each with its own texture, from 4.7 ms a frame to 2.9.
 
-A 32-bit Windows program can only use memory Wine maps below 4 GB. Wine does
-that with `VK_EXT_map_memory_placed` where the driver has it, and otherwise by
-allocating the memory itself and importing it through
-`VK_EXT_external_memory_host` — for every allocation from a host-visible memory
-type, since it cannot know which ones will be mapped. MoltenVK has device-only
-memory types, so its images never take that path. KosmicKrisp has one memory
-type, and it is host-visible, so every image lands in imported memory, and
-KosmicKrisp cannot make a texture there: clears, draws and copies silently do
-nothing inside Wine, and natively the same thing crashes in the Metal driver. With
-placed mapping Wine never imports, and images get ordinary memory. Mesa
-[!44221](https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/44221), a
-device-local-only memory type, would fix it another way. Drop the patch once
-the pinned release includes `4a1ee1bd`.
-
-The other two are ours, for speed. KosmicKrisp keeps a 2 KiB root table of
-push constants, set addresses, vertex state and dynamic buffers, and uploads
-it again on every draw that changes any of it — for a fixed-function game,
-every draw after a texture or matrix change. **0002** leaves out the 1 KiB of
-dynamic buffer slots nothing has bound, which DXVK never uses, and **0003** lets
-a command pool keep 64 free upload buffers instead of 32, since those uploads
-run to several MiB a frame and every buffer past the limit was a new Metal heap
-next frame. Together they took a test drawing 3,000 sprites, each with its own
-texture, from 4.7 ms a frame to 2.9.
+Neither is upstream, and both are worth rechecking on a bump: `main` still
+uploads the whole root table on every dirty draw and still keeps 32 free BOs,
+which is what makes them worth carrying.
 
 ## Getting it into the runtime
 
@@ -137,8 +153,8 @@ On an M4 Max with macOS 27, in a runtime assembled this way, a 32-bit D3D9 test
 drew 500 fixed-function `DrawPrimitiveUP` triangles a frame for 1,500 frames
 through the shipped DXVK, once on each driver, without errors. Uncapped frame
 rates were in the same range for both and too noisy to rank either one. That
-test never looked at the pixels, though, and without the patch above every
-frame on KosmicKrisp was black. A test now has to read back what it drew:
-a clear and a `DrawPrimitiveUP` triangle, read with `GetRenderTargetData`, come
-back right on both drivers with the patch, and as zeros on KosmicKrisp without
-it. The real client is the test that counts.
+test never looked at the pixels, though, and on 26.2.3 — before `main` brought
+placed mapping in — every frame on KosmicKrisp was black. A test now has to
+read back what it drew: a clear and a `DrawPrimitiveUP` triangle, read with
+`GetRenderTargetData`, come back right on both drivers. The real client is the
+test that counts.

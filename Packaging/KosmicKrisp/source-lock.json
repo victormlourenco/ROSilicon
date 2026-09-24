@@ -2,12 +2,11 @@
   "schemaVersion": 1,
   "mesa": {
     "repository": "https://gitlab.freedesktop.org/mesa/mesa.git",
-    "tag": "mesa-26.2.3",
-    "commit": "31e9a6b2e95e30d84bf3177d1f497d063e59b6b2",
+    "branch": "main",
+    "commit": "0843a97ed558a3f992e556c52f1879d3a02cc48b",
     "patches": [
-      "patches/0001-kk-Support-VK_EXT_map_memory_placed.patch",
-      "patches/0002-kk-Upload-only-the-written-dynamic-buffers-of-the-root-table.patch",
-      "patches/0003-kk-Keep-more-free-upload-BOs-per-command-pool.patch"
+      "patches/0001-kk-Upload-only-the-written-dynamic-buffers-of-the-root-table.patch",
+      "patches/0002-kk-Keep-more-free-upload-BOs-per-command-pool.patch"
     ]
   },
   "loader": {

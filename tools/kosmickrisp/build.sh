@@ -98,20 +98,34 @@ fi
 mkdir -p "$WORK"
 WORK="$(cd "$WORK" && pwd)"
 
+# What the lock calls the source: a tag for the loader and the headers, a
+# branch for Mesa. Only for the line on screen — the commit is what is fetched.
+ref() { python3 -c '
+import json, sys
+source = json.load(open(sys.argv[1]))[sys.argv[2]]
+print(source.get("tag") or source.get("branch") or "?")
+' "$LOCK" "$1"; }
+
 # A checkout already at the locked commit is kept, so a --work folder makes a
 # second build incremental.
+#
+# The commit is fetched by name rather than the ref it sits on: Mesa is pinned
+# to a commit of `main`, whose tip moves on, and asking for the branch would
+# get whatever landed since. Both hosts serve a commit this way, so there is
+# one path for the branch and the tags alike, and it is the commit itself that
+# arrives rather than something checked against it afterwards.
 fetch() {
     local name="$1" dest="$WORK/$1"
-    local repo tag commit
-    repo="$(lock "$name" repository)"; tag="$(lock "$name" tag)"; commit="$(lock "$name" commit)"
+    local repo commit
+    repo="$(lock "$name" repository)"; commit="$(lock "$name" commit)"
     if [[ "$(git -C "$dest" rev-parse HEAD 2>/dev/null)" != "$commit" ]]; then
-        echo "==> cloning $repo ($tag)"
+        echo "==> fetching $repo ($(ref "$name") $commit)"
         rm -rf "$dest"
-        git -c advice.detachedHead=false clone --quiet --depth 1 --branch "$tag" "$repo" "$dest"
-        [[ "$(git -C "$dest" rev-parse HEAD)" == "$commit" ]] || {
-            echo "error: $tag of $repo is not the locked $commit" >&2
-            exit 1
-        }
+        mkdir -p "$dest"
+        git -C "$dest" init --quiet
+        git -C "$dest" remote add origin "$repo"
+        git -C "$dest" fetch --quiet --depth 1 origin "$commit"
+        git -c advice.detachedHead=false -C "$dest" checkout --quiet FETCH_HEAD
     fi
 }
 

@@ -108,7 +108,7 @@
       {
         "source": "libvulkan_kosmickrisp.dylib",
         "destination": "lib/external/libvulkan_kosmickrisp.dylib",
-        "sha256": "7efa7fd71987027a225a37d7888b9cf1c75397fcb43b0248d19cbeac75a46d43"
+        "sha256": "8e481ac8f96de045dbee09a9ee43f110fbadca60eed1f85b379b0fd6cfbe4e04"
       }
     ]
   }

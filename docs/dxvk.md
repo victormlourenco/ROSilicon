@@ -18,13 +18,13 @@ with the patches in
 [Packaging/D9VK/kosmickrisp/patches/](../Packaging/D9VK/kosmickrisp/patches/):
 
 - **0001** makes `geometryShader`, `fillModeNonSolid` and `depthClipEnable`
-  optional. Master requires all three and KosmicKrisp 26.2.3 has none (Mesa main
-  adds only the last), so unpatched it finds no adapter. Where they are used it
-  falls back: `ProcessVertices`, which emulates software vertex processing with a
-  geometry shader, becomes a no-op, as it already is without
-  `vertexPipelineStoresAndAtomics`; wireframe and point fill draw solid; and
-  depth clip is had by turning depth clamp off. `moltenvk-version` does the same
-  for the first two. Ragnarok uses none of them.
+  optional. Master requires all three, and on the `main` KosmicKrisp is now
+  built from only `depthClipEnable` is there, so unpatched it still finds no
+  adapter. Where they are used it falls back: `ProcessVertices`, which emulates
+  software vertex processing with a geometry shader, becomes a no-op; wireframe
+  and point fill draw solid; and depth clip is had by turning depth clamp off,
+  which on `main` is now the fallback that never runs. `moltenvk-version` does
+  the same for the first two. Ragnarok uses none of them.
 - **0002** is the `moltenvk-version` build's UP-draw patch, ported: every
   `DrawPrimitiveUP` used to bind its own slice of the UP buffer and unbind it
   after, and now the whole buffer stays bound and the draw moves `firstVertex`.

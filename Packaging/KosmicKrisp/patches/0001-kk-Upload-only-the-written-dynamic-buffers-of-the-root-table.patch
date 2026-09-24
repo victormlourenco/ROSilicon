@@ -1,8 +1,8 @@
 diff --git a/src/kosmickrisp/vulkan/kk_cmd_buffer.c b/src/kosmickrisp/vulkan/kk_cmd_buffer.c
-index 5360ef0..c9d5796 100644
+index 22f4bf7..422377c 100644
 --- a/src/kosmickrisp/vulkan/kk_cmd_buffer.c
 +++ b/src/kosmickrisp/vulkan/kk_cmd_buffer.c
-@@ -478,6 +478,9 @@ kk_bind_descriptor_sets(struct kk_descriptor_state *desc,
+@@ -551,6 +551,9 @@ kk_bind_descriptor_sets(struct kk_descriptor_state *desc,
     assert(dyn_buffer_start <= KK_MAX_DYNAMIC_BUFFERS);
     assert(next_dyn_offset <= info->dynamicOffsetCount);
  
@@ -12,7 +12,7 @@ index 5360ef0..c9d5796 100644
     desc->root_dirty = true;
  }
  
-@@ -700,7 +703,24 @@ kk_upload_descriptor_root(struct kk_cmd_buffer *cmd,
+@@ -773,7 +776,24 @@ kk_upload_descriptor_root(struct kk_cmd_buffer *cmd,
  
     root->addr = root_ptr.gpu;
  
@@ -39,10 +39,10 @@ index 5360ef0..c9d5796 100644
  
     return root_ptr.gpu;
 diff --git a/src/kosmickrisp/vulkan/kk_cmd_buffer.h b/src/kosmickrisp/vulkan/kk_cmd_buffer.h
-index 19928d1..7b8b447 100644
+index 46dfa33..fc80988 100644
 --- a/src/kosmickrisp/vulkan/kk_cmd_buffer.h
 +++ b/src/kosmickrisp/vulkan/kk_cmd_buffer.h
-@@ -67,6 +67,12 @@ struct kk_descriptor_state {
+@@ -71,6 +71,12 @@ struct kk_descriptor_state {
  
     uint32_t push_dirty;
     struct kk_push_descriptor_set *push[KK_MAX_SETS];

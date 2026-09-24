@@ -1,9 +1,9 @@
 diff --git a/src/kosmickrisp/vulkan/kk_cmd_pool.h b/src/kosmickrisp/vulkan/kk_cmd_pool.h
-index e24e5a2..5159a23 100644
+index 479e70e..dc91b13 100644
 --- a/src/kosmickrisp/vulkan/kk_cmd_pool.h
 +++ b/src/kosmickrisp/vulkan/kk_cmd_pool.h
-@@ -13,7 +13,12 @@
- #include "vk_command_pool.h"
+@@ -15,7 +15,12 @@
+ #include "util/u_dynarray.h"
  
  #define KK_CMD_BO_SIZE     (1024 * 128)
 -#define KK_CMD_POOL_BO_MAX 32
