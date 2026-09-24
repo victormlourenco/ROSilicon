@@ -73,7 +73,7 @@ published runtime carries them. Until then, `build-runtime.sh` fills the gap fro
 
 ```sh
 make kosmickrisp     # .kosmickrisp/libvulkan.1.dylib, libvulkan_kosmickrisp.dylib
-make runtime         # r18, with the base's MoltenVK and these two
+make runtime         # r19: Wine 11.18 on r18's base, plus these two
 ```
 
 To move to a newer Mesa or loader, change the lock, run `make kosmickrisp`,
