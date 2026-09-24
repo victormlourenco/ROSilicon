@@ -31,8 +31,8 @@ STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
 D9VK_DLL := $(D9VK)/d3d9.dll
 D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
             $(wildcard Packaging/D9VK/patches/*.patch)
-# The build KosmicKrisp gets: K0bin's master, with only the patch that lets it
-# run without the features KosmicKrisp lacks.
+# The build KosmicKrisp gets: K0bin's master, with the patch that lets it run
+# without the features KosmicKrisp lacks, and the rest for speed.
 D9VK_KK_LOCK := Packaging/D9VK/kosmickrisp/source-lock.json
 D9VK_KK_DLL  := $(D9VK)/kosmickrisp/d3d9.dll
 D9VK_KK_SRC  := tools/d9vk/build.sh $(D9VK_KK_LOCK) \

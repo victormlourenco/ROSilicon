@@ -18,8 +18,8 @@
 "menu.client_url" = "URL del cliente…";
 "menu.metal_hud" = "Mostrar el medidor de FPS de Metal";
 "menu.vulkan_driver" = "Controlador de Vulkan";
-"menu.vulkan_driver.kosmickrisp" = "KosmicKrisp (por omisión)";
-"menu.vulkan_driver.moltenvk" = "MoltenVK";
+"menu.vulkan_driver.kosmickrisp" = "KosmicKrisp";
+"menu.vulkan_driver.moltenvk" = "MoltenVK (por omisión)";
 "help.vulkan_driver" = "El controlador por el que DXVK dibuja; cada uno lleva su propia versión de DXVK. Se aplica la próxima vez que pulses Jugar.";
 "menu.x87_backend" = "Traducción x87";
 "menu.x87_backend.sidecar" = "x87sidecar (por omisión)";

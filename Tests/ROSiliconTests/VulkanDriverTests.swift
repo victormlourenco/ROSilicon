@@ -9,19 +9,16 @@ struct VulkanDriverTests {
         OperatingSystemVersion(majorVersion: major, minorVersion: 0, patchVersion: 0)
     }
 
-    @Test func kosmicKrispIsTheDriverFromMacOS26On() {
-        #expect(VulkanDriver.chosen(onMacOS: macOS(26)) == .kosmicKrisp)
-        #expect(VulkanDriver.chosen(onMacOS: macOS(27)) == .kosmicKrisp)
-    }
-
-    /// KosmicKrisp needs a Metal 4 GPU, which an older macOS never offers.
-    @Test func anOlderMacGetsMoltenVK() {
-        #expect(VulkanDriver.chosen(onMacOS: macOS(14)) == .moltenVK)
+    /// Nobody gets KosmicKrisp without asking for it, new macOS or not.
+    @Test func moltenVKIsTheDriverUnlessOneIsAskedFor() {
         #expect(VulkanDriver.chosen(onMacOS: macOS(15)) == .moltenVK)
+        #expect(VulkanDriver.chosen(onMacOS: macOS(26)) == .moltenVK)
+        #expect(VulkanDriver.chosen(onMacOS: macOS(27)) == .moltenVK)
     }
 
-    @Test func moltenVKCanBeAskedForWhereBothRun() {
-        #expect(VulkanDriver.chosen(onMacOS: macOS(26), requested: .moltenVK) == .moltenVK)
+    @Test func kosmicKrispCanBeAskedForFromMacOS26On() {
+        #expect(VulkanDriver.chosen(onMacOS: macOS(26), requested: .kosmicKrisp) == .kosmicKrisp)
+        #expect(VulkanDriver.chosen(onMacOS: macOS(27), requested: .kosmicKrisp) == .kosmicKrisp)
     }
 
     /// Asking for KosmicKrisp cannot make it run where it cannot.
@@ -29,9 +26,10 @@ struct VulkanDriverTests {
         #expect(VulkanDriver.chosen(onMacOS: macOS(15), requested: .kosmicKrisp) == .moltenVK)
     }
 
-    /// The one the menu starts on, and what `chosen` falls back to.
-    @Test func kosmicKrispIsTheDefault() {
-        #expect(VulkanDriver.default == .kosmicKrisp)
+    /// The one the menu starts on, and what `chosen` falls back to. It is
+    /// MoltenVK until KosmicKrisp beats it on the client itself.
+    @Test func moltenVKIsTheDefault() {
+        #expect(VulkanDriver.default == .moltenVK)
         #expect(VulkanDriver.chosen(onMacOS: macOS(26)) == VulkanDriver.default)
     }
 

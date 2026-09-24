@@ -101,7 +101,6 @@ Eles ficam no **menu `…`**, no canto superior direito da janela, e cada escolh
 | O download trava ou falha | Clique em **Instalar** de novo. Ele continua e confere o que já baixou. |
 | F1–F12 mudam o brilho durante o jogo | Ligue **Usar F1–F12 como teclas de função no jogo** no menu `…`. |
 | O jogo está lento, trava ou não abre | Segure **⌥ Option** com o menu `…` aberto, mude a **Tradução x87** para **Nenhuma (Rosetta padrão)** e tente de novo. É mais lento, mas separa um problema da aceleração de um problema do jogo. |
-| A tela fica preta, ou algo aparece errado | Segure **⌥ Option** com o menu `…` aberto e mude o **Driver Vulkan** para **MoltenVK**, o driver que o launcher usava antes do macOS 26. Vale a partir da próxima vez que você apertar **Jogar**. |
 
 Continua travado? Segure **⌥ Option** no menu `…`, escolha **Copiar registro** e
 [abra uma issue](https://github.com/victormlourenco/ROSilicon/issues) com ele

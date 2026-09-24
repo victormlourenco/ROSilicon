@@ -5,16 +5,21 @@ import Foundation
 ///
 /// Wine loads the Khronos loader as libvulkan.1.dylib, and the loader loads
 /// whichever driver's manifest `VK_DRIVER_FILES` names; the runtime carries
-/// both. KosmicKrisp, Mesa's conformant Vulkan-on-Metal driver, is the one the
-/// game uses. It needs a Metal 4 GPU, which macOS only offers from 26 on, so
-/// an older Mac gets MoltenVK, the driver the launcher shipped before it.
+/// both. MoltenVK is the one the game gets, as it always has been.
+/// KosmicKrisp, Mesa's conformant Vulkan-on-Metal driver, is offered beside
+/// it from macOS 26 on — the Metal 4 GPU it needs is what macOS offers from
+/// there — and is taken only when the menu asks for it.
 enum VulkanDriver: String, CaseIterable, Identifiable, Sendable {
     // The raw values are what RO_VULKAN_DRIVER takes, and what the launcher's
     // preferences remember.
     case kosmicKrisp = "kosmickrisp"
     case moltenVK = "moltenvk"
 
-    static let `default` = VulkanDriver.kosmicKrisp
+    /// MoltenVK until KosmicKrisp is the faster of the two on the client
+    /// itself: it is the driver the launcher has always shipped, and the
+    /// build of DXVK in front of it is still ahead of the one master gives
+    /// KosmicKrisp. The menu is how KosmicKrisp gets tried.
+    static let `default` = VulkanDriver.moltenVK
 
     /// The first macOS KosmicKrisp runs on.
     static let firstKosmicKrispMacOS = 26
@@ -41,7 +46,8 @@ enum VulkanDriver: String, CaseIterable, Identifiable, Sendable {
         onMacOS: ProcessInfo.processInfo.operatingSystemVersion)
 
     /// The driver for `version`, honoring `requested` where that Mac can run
-    /// it. Pure, so a test can ask about a Mac it is not running on.
+    /// it and falling back to the default where it cannot. Pure, so a test
+    /// can ask about a Mac it is not running on.
     static func chosen(onMacOS version: OperatingSystemVersion,
                        requested: VulkanDriver? = nil) -> VulkanDriver {
         guard supportsKosmicKrisp(onMacOS: version) else { return .moltenVK }
@@ -49,8 +55,8 @@ enum VulkanDriver: String, CaseIterable, Identifiable, Sendable {
     }
 
     /// What the choice amounts to on this Mac — MoltenVK before macOS 26
-    /// whatever the preferences remember, and `RO_VULKAN_DRIVER` ahead of
-    /// both. Every wine the launcher starts is given its driver through
+    /// whatever the preferences remember, since KosmicKrisp cannot run
+    /// there, and `RO_VULKAN_DRIVER` ahead of both. Every wine the launcher starts is given its driver through
     /// `wineEnvironment`, which resolves it here, so this is the one place
     /// that has to hold for no Mac to be handed a driver it cannot load.
     var onThisMac: VulkanDriver {

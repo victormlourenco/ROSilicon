@@ -101,7 +101,6 @@ elección se recuerda.
 | La descarga se atasca o falla | Pulsa **Instalar** otra vez. Reanuda y verifica lo que ya tienes. |
 | F1–F12 cambian el brillo dentro del juego | Activa **Usar F1–F12 como teclas de función en el juego** en el menú `…`. |
 | El juego va lento, se cierra o no arranca | Mantén **⌥ Option** con el menú `…` abierto, pon la **Traducción x87** en **Ninguna (Rosetta estándar)** y prueba otra vez. Es más lento, pero separa un fallo de la aceleración de un fallo del juego. |
-| La pantalla se queda en negro, o algo se dibuja mal | Mantén **⌥ Option** con el menú `…` abierto y pon el **Controlador de Vulkan** en **MoltenVK**, el que el lanzador usaba antes de macOS 26. Se aplica la próxima vez que pulses **Jugar**. |
 
 ¿Sigues atascado? Mantén **⌥ Option** en el menú `…`, elige **Copiar el
 registro** y [abre una issue](https://github.com/victormlourenco/ROSilicon/issues)

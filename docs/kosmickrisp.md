@@ -1,16 +1,22 @@
 # KosmicKrisp
 
 DXVK turns the client's Direct3D 9 into Vulkan, and a Vulkan driver turns that
-into Metal. On macOS 26 and later that driver is
+into Metal. That driver is MoltenVK, as it has always been. From macOS 26 on
+the launcher also carries
 [KosmicKrisp](https://docs.mesa3d.org/drivers/kosmickrisp.html), Mesa's
-Vulkan-on-Metal driver. It is a conformant Vulkan 1.4 implementation where
-MoltenVK is a portability subset. On an older Mac it is MoltenVK, as before:
-KosmicKrisp only drives a GPU with Metal 4, which macOS offers from 26 on.
+Vulkan-on-Metal driver — a conformant Vulkan 1.4 implementation where MoltenVK
+is a portability subset — and the ⌥ menu is how it gets picked. It only drives
+a GPU with Metal 4, which is what macOS offers from 26 on, so an older Mac is
+not offered it at all.
 
-Each driver gets its own DXVK: KosmicKrisp runs K0bin/dxvk's `master`, patched
-only to do without the features KosmicKrisp lacks, and MoltenVK the patched
-`moltenvk-version` branch — see
-[DXVK](dxvk.md).
+It is not the default yet. The point of it is the conformance, not the speed:
+on the numbers in [DXVK](dxvk.md) the `moltenvk-version` build on MoltenVK is
+still ahead of master on KosmicKrisp, because master has no dynamic uniform
+buffers to lean on there. The default moves once the real client says
+otherwise.
+
+Each driver gets its own DXVK: MoltenVK the patched `moltenvk-version` branch,
+and KosmicKrisp K0bin/dxvk's `master` — see [DXVK](dxvk.md).
 
 ## How Wine reaches it
 
@@ -35,8 +41,8 @@ drivers and a Vulkan SDK installed on the Mac cannot add one.
 `VulkanDriver.onThisMac` makes the choice, out of three things in order: the
 Mac, which has the last word — before macOS 26 it is MoltenVK whatever else
 says; `RO_VULKAN_DRIVER`; and the **Vulkan Driver** picker in the ⌥ menu,
-remembered between launches and applied to the next client started, not to one
-already running.
+which starts on MoltenVK, is remembered between launches and applies to the
+next client started, not to one already running.
 
 The picker is there for comparing the two, so it is hidden where it cannot
 decide anything: before macOS 26, and when `RO_VULKAN_DRIVER` has already named

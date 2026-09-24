@@ -61,8 +61,8 @@ struct GameRunner: Sendable {
     /// The x87 hook 32-bit programs run under, for the game and Wine's tools
     /// alike. x87sidecar unless someone chose otherwise in the menu.
     var x87 = X87Backend.default
-    /// The Vulkan driver DXVK renders through. KosmicKrisp unless someone
-    /// chose otherwise in the menu, or this Mac is too old for it.
+    /// The Vulkan driver DXVK renders through. MoltenVK unless someone chose
+    /// KosmicKrisp in the menu, and MoltenVK anyway before macOS 26.
     var vulkan = VulkanDriver.default
 
     /// The hook that will actually run, which is none at all before macOS 26.
