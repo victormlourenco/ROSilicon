@@ -30,13 +30,41 @@ Wine loads FreeType, GnuTLS and MoltenVK by name at run time, and configure
 learns those names by linking against x86_64 copies. Those copies, like the
 library overlays assembled into the tree, come from the runtime the lock pinned
 before, so each release is built on the last one; the first was built on
-WoWSilicon's r15. The runtime targets macOS 14, like the app.
+WoWSilicon's r15. MoltenVK is the exception — see below. The runtime targets
+macOS 14, like the app.
 
 Wine's Mac driver titles its application menu — and the Hide and Quit items in
 it — after the `CFBundleName` of the Info.plist embedded in its loader.
 [0013-loader-name-the-app-rosilicon.patch](../Packaging/WineRuntime/patches/0013-loader-name-the-app-rosilicon.patch)
 makes that ROSilicon (`com.rosilicon.wine`), and `validate.sh` refuses a tree
 without it. The process itself is still `wine` to macOS, as it always was.
+
+## MoltenVK
+
+Vulkan on macOS is MoltenVK, which the tree carries as
+`lib/external/libMoltenVK.dylib`, with `lib/wine/x86_64-unix/libvulkan.1.dylib`
+symlinked to it: there is no x86_64 Vulkan loader to probe, so `build.sh` tells
+configure that soname outright and `assemble.sh` makes it resolve.
+
+Unlike the other overlays it is not inherited from the previous runtime but
+rebuilt from the Khronos release `runtime-lock.json` pins — the
+`macos-privateapi` build, which is the one that carries MoltenVK's private-API
+extras. `fetch-moltenvk.sh` downloads that release, checks it against the lock,
+takes the x86_64 slice of the universal dylib, names it
+`@loader_path/libMoltenVK.dylib` and signs it ad hoc, because thinning and
+renaming both invalidate the signature it shipped with and Rosetta 2 loads
+nothing unsigned. `make runtime` does this before it builds, so a tree built
+here and a tree built anywhere else carry the same MoltenVK, down to the
+checksum the lock pins.
+
+That last part rests on the ad hoc signature being the Xcode toolchain's:
+`fetch-moltenvk.sh` checks its own output against the lock and says so if this
+Mac's Xcode disagrees with the one the pin was taken on.
+
+`make update-moltenvk` moves the pin to the latest release, or to `TAG=<tag>`.
+It only rewrites the lock — the version, the release asset's checksum and the
+prepared dylib's — and the runtime carries the new MoltenVK once it is rebuilt
+and released.
 
 ## The wintrust patch
 

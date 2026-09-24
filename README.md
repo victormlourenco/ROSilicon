@@ -136,6 +136,9 @@ lives in **[docs/](docs/)**:
 - **Fluor** — [Pyroh/Fluor](https://github.com/Pyroh/Fluor) — how the function
   key mode is read and written, from its `FKeyManager` (MIT), which in turn
   derives from `fntoggle`. No code is bundled; only the approach is borrowed.
+- **MoltenVK** — [KhronosGroup/MoltenVK](https://github.com/KhronosGroup/MoltenVK)
+  — Vulkan on Metal, which DXVK renders through; the runtime carries the
+  `macos-privateapi` release `Packaging/WineRuntime/runtime-lock.json` pins.
 - **Wintrust patch** — [alexandrephz/ragnarok-no-linux](https://gitlab.com/alexandrephz/ragnarok-no-linux)
 - **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk), branch
   `moltenvk-version`, which `make d9vk` builds from the commit

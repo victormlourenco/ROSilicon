@@ -7,13 +7,19 @@
     "branch": "wine-11.15-macos",
     "commit": "216d705494413fd74efc01c7ddac21b426b6e744"
   },
+  "moltenvk": {
+    "version": "v1.4.2",
+    "repository": "KhronosGroup/MoltenVK",
+    "asset": "MoltenVK-macos-privateapi.tar",
+    "assetSha256": "282099b522f2371a5fc1c2f0956daffb7235ee3bb28a2d0c65d8dc00397b6c1a"
+  },
   "overlays": {
     "winerosetta": [],
     "external": [
       {
         "source": "libMoltenVK.dylib",
         "destination": "lib/external/libMoltenVK.dylib",
-        "sha256": "db1a839363fd92d0ca002b2c229469710fff105583594f03066e30a9b21926b7"
+        "sha256": "3ac2eb7b1b4a69a533c6a0197a8bfb1a8869cc72a933d53b9c94f95491a59b83"
       },
       {
         "source": "libSDL2-2.0.0.dylib",

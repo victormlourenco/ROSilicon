@@ -36,7 +36,7 @@ export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
-        validate_steam_stub update-x87sidecar restore runtime \
+        validate_steam_stub update-x87sidecar update-moltenvk restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
         validate_d9vk d9vk d9vk-toolchain
 
@@ -81,6 +81,7 @@ help:
 	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
 	@echo "make runtime     build the Wine runtime from source into .wine-runtime"
 	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
+	@echo "make update-moltenvk  move the MoltenVK pin to the latest release"
 	@echo "make steam-stub  build the Steam stub into .steam-stub"
 	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
 	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
@@ -97,6 +98,11 @@ help:
 validate_wine_runtime:
 	@test -d "$(WINE_RUNTIME)" || (echo "Wine runtime not found at $(WINE_RUNTIME)" >&2; exit 1)
 	@tools/wine-runtime/validate.sh --runtime "$(WINE_RUNTIME)"
+
+# Moves the MoltenVK pin in runtime-lock.json; the runtime carries it once it
+# is rebuilt. TAG=v1.4.2 picks a release other than the latest.
+update-moltenvk:
+	@tools/wine-runtime/update-moltenvk.sh $(if $(TAG),--tag $(TAG),)
 
 restore:
 	@tools/wine-runtime/restore.sh --runtime "$(WINE_RUNTIME)"
