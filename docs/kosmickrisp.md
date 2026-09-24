@@ -32,9 +32,16 @@ share/vulkan/icd.d/moltenvk_icd.json
 `Paths.wineEnvironment` sets `VK_DRIVER_FILES` to one of the two manifests for
 every wine the launcher starts, so the loader never searches the system for
 drivers and a Vulkan SDK installed on the Mac cannot add one.
-`VulkanDriver.onThisMac` makes the choice. `RO_VULKAN_DRIVER=moltenvk` in the
-launcher's environment picks MoltenVK on a Mac that runs both, which is useful
-for comparing the two:
+`VulkanDriver.onThisMac` makes the choice, out of three things in order: the
+Mac, which has the last word — before macOS 26 it is MoltenVK whatever else
+says; `RO_VULKAN_DRIVER`; and the **Vulkan Driver** picker in the ⌥ menu,
+remembered between launches and applied to the next client started, not to one
+already running.
+
+The picker is there for comparing the two, so it is hidden where it cannot
+decide anything: before macOS 26, and when `RO_VULKAN_DRIVER` has already named
+a driver. That variable is the way to pick one from a terminal, ahead of
+whatever the menu remembers:
 
 ```sh
 RO_VULKAN_DRIVER=moltenvk open ROSilicon.app

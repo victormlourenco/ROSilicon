@@ -17,6 +17,10 @@
 "menu.reinstall_client" = "Reinstalar cliente do jogo…";
 "menu.client_url" = "URL do cliente…";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
+"menu.vulkan_driver" = "Driver Vulkan";
+"menu.vulkan_driver.kosmickrisp" = "KosmicKrisp (padrão)";
+"menu.vulkan_driver.moltenvk" = "MoltenVK";
+"help.vulkan_driver" = "O driver por onde o DXVK desenha; cada um leva sua própria versão do DXVK. Vale a partir da próxima vez que você apertar Jogar.";
 "menu.x87_backend" = "Tradução x87";
 "menu.x87_backend.sidecar" = "x87sidecar (padrão)";
 "menu.x87_backend.rosettax87_jit" = "rosettax87_jit (pede sua senha)";

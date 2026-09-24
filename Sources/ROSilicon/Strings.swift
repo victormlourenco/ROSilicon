@@ -35,6 +35,10 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuVulkanDriver: String { t("menu.vulkan_driver") }
+    static var menuVulkanKosmicKrisp: String { t("menu.vulkan_driver.kosmickrisp") }
+    static var menuVulkanMoltenVK: String { t("menu.vulkan_driver.moltenvk") }
+    static var vulkanDriverHelp: String { t("help.vulkan_driver") }
     static var menuX87Backend: String { t("menu.x87_backend") }
     static var menuX87Sidecar: String { t("menu.x87_backend.sidecar") }
     static var menuRosettaX87JIT: String { t("menu.x87_backend.rosettax87_jit") }

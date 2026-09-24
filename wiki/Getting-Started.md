@@ -98,6 +98,7 @@ remembered.
 | The download stalls or fails | Press **Install** again. It resumes and verifies what is already there. |
 | F1–F12 change the brightness in game | Turn on **Use F1–F12 as Function Keys in Game** in the `…` menu. |
 | The game is slow, crashes, or will not start | Hold **⌥ Option** while the `…` menu is open, set **x87 Translation** to **None (Stock Rosetta)** and try again. It is slower, but it separates a bug in the speed-up from a bug in the game. |
+| The screen is black, or something is drawn wrong | Hold **⌥ Option** while the `…` menu is open and set **Vulkan Driver** to **MoltenVK**, the driver the launcher used before macOS 26. It takes effect the next time you press **Play**. |
 
 Still stuck? Hold **⌥ Option** in the `…` menu, choose **Copy Log**, and
 [open an issue](https://github.com/victormlourenco/ROSilicon/issues) with it

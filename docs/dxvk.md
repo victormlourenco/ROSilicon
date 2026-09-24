@@ -54,8 +54,9 @@ many seconds:
 DXVK_CONFIG="d3d9.apiStatsInterval = 5"
 ```
 The app carries both, `d3d9.dll` and `kosmickrisp/d3d9.dll`, and links the one
-for the driver this Mac uses into the prefix on every launch, so
-`RO_VULKAN_DRIVER` switches the DXVK along with the driver.
+for the driver the run uses into the prefix on every launch, so the ⌥ menu's
+**Vulkan Driver** picker — and `RO_VULKAN_DRIVER` ahead of it — switches the
+DXVK along with the driver.
 
 `make d9vk` clones each commit, patches it where its lock lists patches,
 cross-compiles a 32-bit `d3d9.dll` into `.d9vk` (and `.d9vk/kosmickrisp`) and

@@ -47,7 +47,6 @@ struct PathsTests {
         #expect(Paths.dxvkDLL(for: .moltenVK).path == Paths.bundledTools.path + "/d3d9.dll")
         #expect(Paths.dxvkDLL(for: .kosmicKrisp).path
             == Paths.bundledTools.path + "/kosmickrisp/d3d9.dll")
-        #expect(Paths.dxvkDLL == Paths.dxvkDLL(for: VulkanDriver.onThisMac))
         #expect(Paths.steamStub.path == Paths.bundledTools.path + "/steam_stub.exe")
         #expect(Paths.rosettaX87JITFolder.path == Paths.bundledTools.path + "/rosettax87_jit")
         #expect(X87Backend.rosettaX87JIT.bundledLocation == Paths.rosettaX87JITFolder)
@@ -163,13 +162,30 @@ struct PathsTests {
     /// The loader is handed exactly one driver, from inside the runtime, for
     /// every wine the launcher starts.
     @Test(arguments: VulkanDriver.allCases)
-    func wineEnvironmentNamesTheDriversManifestInTheRuntime(driver: VulkanDriver) {
+    func wineEnvironmentNamesTheDriversManifestInTheRuntime(requested: VulkanDriver) {
         let paths = Paths(root: URL(filePath: "/test/root"))
-        let environment = paths.wineEnvironment(vulkan: driver)
+        let environment = paths.wineEnvironment(vulkan: requested)
+        // What the menu asks for, once this Mac has had its say: the manifest
+        // named is always the one of the driver that will actually load.
+        let driver = requested.onThisMac
         #expect(environment["VK_DRIVER_FILES"]
             == paths.wineRoot.path + "/share/vulkan/icd.d/\(driver.rawValue)_icd.json")
         for key in VulkanDriver.inheritedKeys {
             #expect(environment[key] == nil)
+        }
+    }
+
+    /// A preference set on a newer Mac travels with the launcher, the same way
+    /// the hook's does. It must not be able to name KosmicKrisp where no GPU
+    /// can run it.
+    @Test(.disabled(if: VulkanDriver.isKosmicKrispSupportedHere,
+                    "this Mac can run KosmicKrisp"))
+    func onlyMoltenVKIsNamedOnAMacOlderThanMacOS26() {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        for driver in VulkanDriver.allCases {
+            #expect(driver.onThisMac == .moltenVK)
+            #expect(paths.wineEnvironment(vulkan: driver)["VK_DRIVER_FILES"]
+                == paths.wineRoot.appending(path: VulkanDriver.moltenVK.manifest).path)
         }
     }
 

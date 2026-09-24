@@ -20,6 +20,10 @@
 "menu.reinstall_client" = "Reinstall Game Client…";
 "menu.client_url" = "Client URL…";
 "menu.metal_hud" = "Show Metal Frame-Rate Overlay";
+"menu.vulkan_driver" = "Vulkan Driver";
+"menu.vulkan_driver.kosmickrisp" = "KosmicKrisp (Default)";
+"menu.vulkan_driver.moltenvk" = "MoltenVK";
+"help.vulkan_driver" = "The driver DXVK renders through, each with its own build of it. Takes effect the next time you press Play.";
 "menu.x87_backend" = "x87 Translation";
 "menu.x87_backend.sidecar" = "x87sidecar (Default)";
 "menu.x87_backend.rosettax87_jit" = "rosettax87_jit (Asks for Your Password)";

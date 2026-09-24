@@ -29,6 +29,22 @@ struct VulkanDriverTests {
         #expect(VulkanDriver.chosen(onMacOS: macOS(15), requested: .kosmicKrisp) == .moltenVK)
     }
 
+    /// The one the menu starts on, and what `chosen` falls back to.
+    @Test func kosmicKrispIsTheDefault() {
+        #expect(VulkanDriver.default == .kosmicKrisp)
+        #expect(VulkanDriver.chosen(onMacOS: macOS(26)) == VulkanDriver.default)
+    }
+
+    /// Where both run and nothing names one outright, the menu's choice is
+    /// what the launcher hands the loader.
+    @Test(.enabled(if: VulkanDriver.isKosmicKrispSupportedHere && VulkanDriver.override == nil,
+                   "this Mac runs one driver, or RO_VULKAN_DRIVER already named one"))
+    func theMenusChoiceIsWhatRunsWhereBothDo() {
+        for driver in VulkanDriver.allCases {
+            #expect(driver.onThisMac == driver)
+        }
+    }
+
     /// assemble.sh writes the manifests under these names.
     @Test func manifestsLieInTheRuntimesICDFolder() {
         #expect(VulkanDriver.kosmicKrisp.manifest == "share/vulkan/icd.d/kosmickrisp_icd.json")

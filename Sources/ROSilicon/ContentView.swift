@@ -206,6 +206,17 @@ struct ContentView: View {
                 Button(Strings.menuClientURL) { editor = .clientURL }
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                // Hidden where it cannot decide anything, for the same reason
+                // the hook's picker is: before macOS 26 only MoltenVK runs,
+                // and RO_VULKAN_DRIVER, when it names one, is ahead of the
+                // menu.
+                if VulkanDriver.isKosmicKrispSupportedHere, VulkanDriver.override == nil {
+                    Picker(Strings.menuVulkanDriver, selection: $model.vulkanDriver) {
+                        ForEach(VulkanDriver.allCases) { Text($0.menuLabel).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .help(Strings.vulkanDriverHelp)
+                }
                 // Hidden rather than disabled before macOS 26: there is one
                 // outcome there, and offering three would only suggest the
                 // choice still does something.
