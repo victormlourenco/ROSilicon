@@ -15,10 +15,11 @@ struct ROSiliconApp: App {
         // the glass sits on runs the full height of the window. The traffic
         // lights stay, so the header leaves room for them.
         //
-        // The minimum size is the content's own, and the content view sets it —
-        // it changes with the log, which only that view knows about.
+        // The content view owns both the minimum size and the brief exact size
+        // used while its log opens or closes. With no maximum in steady state,
+        // the window remains freely resizable.
         .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize)
+        .windowResizability(.contentSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .appInfo) {
