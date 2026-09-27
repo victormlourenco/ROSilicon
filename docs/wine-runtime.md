@@ -38,6 +38,25 @@ it — after the `CFBundleName` of the Info.plist embedded in its loader.
 makes that ROSilicon (`com.rosilicon.wine`), and `validate.sh` refuses a tree
 without it. The process itself is still `wine` to macOS, as it always was.
 
+## Fit-to-usable-screen windowed mode
+
+[0015-winemac-advertise-fit-usable-screen-mode.patch](../Packaging/WineRuntime/patches/0015-winemac-advertise-fit-usable-screen-mode.patch)
+can add one windowed display mode for Ragnarok Setup and the game. The primary
+screen's AppKit `visibleFrame` already excludes the menu bar, notch and Dock;
+the driver asks AppKit for the content rectangle of a titled window inside that
+frame, then rounds each dimension down to an even value. This accounts for the
+current macOS title-bar geometry instead of carrying a fixed pixel allowance.
+
+The mode is enabled per Wine prefix by the launcher's
+`ROSiliconFitUsableScreenMode` value under
+`HKCU\Software\Wine\Mac Driver`. It is appended to normal Win32 display-mode
+enumeration without replacing a real CoreGraphics mode and is deduplicated if
+the Mac already exposes those dimensions. It deliberately has no matching
+`CGDisplayModeRef`, so Wine's physical/fullscreen display-switch path continues
+to reject it; use it only with the game's windowed mode. Setup remains
+responsible for selecting and saving the resolution, and ROSilicon does not
+rewrite `OptionInfo.lua`.
+
 ## The wintrust patch
 
 The client's copy-protection component calls `WinVerifyTrust` on
@@ -55,4 +74,3 @@ launcher. This Wine copies its DLLs into each prefix rather than symlinking
 them, and loads the prefix's copy in preference to the runtime's, so a prefix
 created from that runtime is born with it too. The launcher neither applies nor
 reports it — there is nothing for it to decide.
-

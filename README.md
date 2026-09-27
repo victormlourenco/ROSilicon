@@ -64,6 +64,8 @@ They are in the **`…` menu** in the top right, and each one is remembered.
 | **Use ⌘ for Game Shortcuts** | On by default. Sends ⌘A/C/V/X/Z to the game as Alt shortcuts, the way the client expects, instead of Mac editing commands. Use Control for copy and paste in chat. Takes effect the next time the game starts. |
 | **Use F1–F12 as Function Keys in Game** | Off by default. Turn it on and the top row sends F1–F12 for your hotkey bars while the game is open, instead of brightness and volume — and goes back to normal the moment you close the client. Hold `fn` for brightness and volume in the meantime. |
 | **Show Game Activity in Discord** | On by default. Your friends see **Playing Ragnarok Online** and for how long, if the Discord app is open on this Mac. |
+| **Advertise Usable-Screen Resolution** | Off by default. Check it to add one windowed mode that accounts for the primary Mac display's menu bar, notch, Dock and the Wine title bar. |
+| **Open Ragnarok Setup…** | Opens the game's own configuration tool so you can select and save the advertised resolution in windowed mode. |
 | **Profile** menu (beside `…`) | A profile is a separate installation of the game — its own client, its own settings, its own logins. Use one per account if you like; the default profile is the one you already have. |
 | **Reinstall Game Client…** | Downloads and unpacks the client again when something in the game folder is broken. Your profiles and settings stay. |
 | **Clear Installation Folder…** | Moves everything the launcher installed to the Trash, after asking. |
@@ -114,7 +116,7 @@ lives in **[docs/](docs/)**:
 
 - [Building ROSilicon](docs/building.md) and the [repository layout](docs/layout.md)
 - [How the app installs and runs the game](docs/how-it-works.md), and [profiles](docs/profiles.md)
-- [Keyboard](docs/keyboard.md), [Discord Rich Presence](docs/discord.md), [x87 translation](docs/x87-translation.md)
+- [Keyboard](docs/keyboard.md), [windowed resolution](docs/resolution.md), [Discord Rich Presence](docs/discord.md), [x87 translation](docs/x87-translation.md)
 - [The Wine runtime](docs/wine-runtime.md), [DXVK](docs/dxvk.md), [the Steam stub](docs/steam-stub.md)
 - [Languages](docs/languages.md)
 

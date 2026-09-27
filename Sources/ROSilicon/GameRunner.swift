@@ -58,6 +58,9 @@ struct GameRunner: Sendable {
     /// Untouched by default, which is the launcher's own quiet environment.
     var options = LaunchOptions()
     var keyboard = GameKeyboardSettings()
+    /// Whether the bundled Mac driver should advertise its calculated
+    /// fit-to-usable-screen windowed mode to Setup and the game.
+    var resolution = GameResolutionSettings()
     /// The x87 hook 32-bit programs run under, for the game and Wine's tools
     /// alike. x87sidecar unless someone chose otherwise in the menu.
     var x87 = X87Backend.default
@@ -134,6 +137,8 @@ struct GameRunner: Sendable {
         }
         await applyOptions(to: &environment)
 
+        try await resolution.apply(
+            wine: paths.wine, environment: environment, reporter: reporter)
         try await keyboard.apply(wine: paths.wine, environment: environment, reporter: reporter)
 
         await reporter.step(Strings.stepRunning)
@@ -147,6 +152,35 @@ struct GameRunner: Sendable {
         if Task.isCancelled { throw CancellationError() }
         guard status == 0 else { throw RunError.exited(status) }
         await reporter.log(Strings.logExitedNormally)
+    }
+
+    /// Opens the publisher's own Setup program with the same Wine prefix,
+    /// graphics path and resolution-mode setting the game will use. Setup is
+    /// responsible for saving the selected windowed resolution.
+    func openSetup() async throws {
+        _ = try prepare()
+        guard FileManager.default.fileExists(atPath: paths.setup.path) else {
+            throw RunError.missingFile("Setup.exe", paths.setup)
+        }
+
+        var environment = paths.wineEnvironment(x87: x87)
+        environment["WINEDLLOVERRIDES"] = "d3d9=n,b"
+        environment["MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS"] = "1"
+        environment["DXVK_ASYNC"] = "1"
+        await applyOptions(to: &environment)
+        try await resolution.apply(
+            wine: paths.wine, environment: environment, reporter: reporter)
+
+        await reporter.step(Strings.stepOpeningSetup)
+        await reporter.log(Strings.logOpeningTool("Setup.exe"))
+        let status = try await Shell.run(
+            paths.wine, [paths.setup.path], environment: environment,
+            currentDirectory: paths.gameDir
+        ) { line in await reporter.log(line) }
+        if Task.isCancelled { throw CancellationError() }
+        guard status == 0 else {
+            throw ProcessFailure(command: "Setup.exe", status: status, output: "")
+        }
     }
 
     /// Sets Wine's debug channels and the extra variables, last so they take

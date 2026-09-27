@@ -45,6 +45,11 @@ enum Strings {
     static var functionKeysHelp: String { t("help.function_keys") }
     static var menuDiscordPresence: String { t("menu.discord_presence") }
     static var discordPresenceHelp: String { t("help.discord_presence") }
+    static var resolutionAdvertiseUsableScreen: String {
+        t("resolution.advertise_usable_screen")
+    }
+    static var resolutionOpenSetup: String { t("resolution.open_setup") }
+    static var resolutionHelp: String { t("resolution.help") }
     static var menuWineDebug: String { t("menu.wine_debug") }
     static var menuEnvironment: String { t("menu.environment") }
     static var menuWinecfg: String { t("menu.winecfg") }
@@ -156,6 +161,7 @@ enum Strings {
     static var stepExtracting: String { t("step.extracting") }
     static func stepExtractingCount(_ files: Int) -> String { t("step.extracting_count", files) }
     static var stepRunning: String { t("step.running") }
+    static var stepOpeningSetup: String { t("step.opening_setup") }
     static var stepRemoving: String { t("step.removing") }
     static var stepRemoved: String { t("step.removed") }
     static var stepNothingToRemove: String { t("step.nothing_to_remove") }
@@ -199,6 +205,8 @@ enum Strings {
     }
     static var logCommandShortcutsOn: String { t("log.command_shortcuts_on") }
     static var logCommandShortcutsOff: String { t("log.command_shortcuts_off") }
+    static var logResolutionAdvertised: String { t("log.resolution_advertised") }
+    static var logResolutionNotAdvertised: String { t("log.resolution_not_advertised") }
     static var logFunctionKeysStandard: String { t("log.function_keys_standard") }
     static var logFunctionKeysRestored: String { t("log.function_keys_restored") }
     static var logFunctionKeysNotRestored: String { t("log.function_keys_not_restored") }

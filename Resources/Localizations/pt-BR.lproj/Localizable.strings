@@ -27,6 +27,9 @@
 "help.function_keys" = "Enquanto o jogo está aberto, a fileira de cima envia F1–F12 para as barras de atalhos em vez de brilho, volume e o resto; segure fn para esses. É o mesmo ajuste do Mac inteiro que existe em Ajustes do Sistema, emprestado enquanto houver um cliente aberto e devolvido assim que o último fecha.";
 "menu.discord_presence" = "Mostrar a atividade do jogo no Discord";
 "help.discord_presence" = "Enquanto o jogo estiver aberto, o app do Discord mostra que você está jogando Ragnarok Online, e há quanto tempo. Precisa do app do Discord aberto neste Mac; quem vê depende das configurações de Privacidade de atividades do Discord. Vale na hora.";
+"resolution.advertise_usable_screen" = "Disponibilizar resolução para a área útil";
+"resolution.open_setup" = "Abrir a configuração do Ragnarok…";
+"resolution.help" = "Disponibilizar resolução para a área útil acrescenta à lista do Wine uma resolução calculada para modo janela. Ela cabe na área útil da tela principal após descontar a altura atual da barra de título do macOS. Abra a configuração do Ragnarok, selecione-a em modo janela e salve. Desmarcar remove apenas a resolução extra; o launcher não reescreve as configurações salvas do jogo.";
 "menu.wine_debug" = "Canais de depuração do Wine (WINEDEBUG)…";
 "menu.environment" = "Variáveis de ambiente adicionais…";
 "menu.winecfg" = "Abrir a configuração do Wine (winecfg)";
@@ -113,6 +116,7 @@
 "step.extracting" = "Extraindo o cliente do jogo";
 "step.extracting_count" = "Extraindo — %d arquivos";
 "step.running" = "Em execução";
+"step.opening_setup" = "Abrindo a configuração do Ragnarok";
 "step.removing" = "Removendo a instalação";
 "step.removed" = "Instalação removida";
 "step.nothing_to_remove" = "Nada a remover";
@@ -149,6 +153,8 @@
 "log.x87_needs_macos" = "A tradução x87 acelerada precisa do macOS %d ou posterior: o código x87 do cliente roda no Rosetta padrão, mais lentamente.";
 "log.command_shortcuts_on" = "Atalhos do jogo com Command ativados: menu Editar do Mac desativado para Ragexe.exe.";
 "log.command_shortcuts_off" = "Atalhos do jogo com Command desativados: comandos de edição do Mac restaurados para Ragexe.exe.";
+"log.resolution_advertised" = "Resolução para a área útil disponibilizada neste prefixo do Wine. Selecione-a na configuração do Ragnarok e use o modo janela.";
+"log.resolution_not_advertised" = "A resolução para a área útil não está disponível neste prefixo do Wine.";
 "log.function_keys_standard" = "Teclas de função: F1–F12 para o jogo, restauradas ao fechar";
 "log.function_keys_restored" = "Teclas de função: de volta ao ajuste do próprio Mac";
 "log.function_keys_not_restored" = "Teclas de função: não foi possível restaurar — veja Ajustes do Sistema › Teclado";

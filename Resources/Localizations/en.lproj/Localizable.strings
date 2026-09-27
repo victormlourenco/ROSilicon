@@ -30,6 +30,9 @@
 "help.function_keys" = "While the game runs, the top row sends F1–F12 for the hotkey bars instead of brightness, volume and the rest; hold fn for those. This is the same Mac-wide setting System Settings has, borrowed for as long as a client is open and put back the moment the last one closes.";
 "menu.discord_presence" = "Show Game Activity in Discord";
 "help.discord_presence" = "While the game runs, the Discord app shows you playing Ragnarok Online, and for how long. Needs the Discord app open on this Mac; who sees it is up to Discord's Activity Privacy settings. Takes effect right away.";
+"resolution.advertise_usable_screen" = "Advertise Usable-Screen Resolution";
+"resolution.open_setup" = "Open Ragnarok Setup…";
+"resolution.help" = "Advertise Usable-Screen Resolution adds one calculated windowed resolution to Wine's mode list. It fits the primary display's usable area after subtracting the current macOS title-bar height. Open Ragnarok Setup, select it in windowed mode, and save. Turning this off removes only the extra advertised mode; the launcher does not rewrite the game's saved settings.";
 "menu.wine_debug" = "Wine Debug Channels (WINEDEBUG)…";
 "menu.environment" = "Additional Environment Variables…";
 "menu.winecfg" = "Open Wine Configuration (winecfg)";
@@ -116,6 +119,7 @@
 "step.extracting" = "Extracting the game client";
 "step.extracting_count" = "Extracting — %d files";
 "step.running" = "Running";
+"step.opening_setup" = "Opening Ragnarok Setup";
 "step.removing" = "Removing the installation";
 "step.removed" = "Installation removed";
 "step.nothing_to_remove" = "Nothing to remove";
@@ -152,6 +156,8 @@
 "log.x87_needs_macos" = "Accelerated x87 translation needs macOS %d or later: the client's x87 code runs under stock Rosetta, more slowly.";
 "log.command_shortcuts_on" = "Game Command shortcuts on: the Mac Edit menu is disabled for Ragexe.exe.";
 "log.command_shortcuts_off" = "Game Command shortcuts off: Mac editing commands restored for Ragexe.exe.";
+"log.resolution_advertised" = "Usable-screen resolution advertised for this Wine prefix. Select it in Ragnarok Setup and use windowed mode.";
+"log.resolution_not_advertised" = "Usable-screen resolution is not advertised for this Wine prefix.";
 "log.function_keys_standard" = "Function keys: F1–F12 for the game, restored when it closes";
 "log.function_keys_restored" = "Function keys: back to the Mac's own setting";
 "log.function_keys_not_restored" = "Function keys: could not be put back — check System Settings › Keyboard";

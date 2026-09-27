@@ -16,6 +16,28 @@ make bundle         # -> checks the runtime, builds and checks the stub and
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
 
+For integration testing beside an installed release, build the isolated QA
+flavor into a fresh output directory:
+
+```sh
+rosilicon_qa_out="$(mktemp -d /private/tmp/rosilicon-qa.XXXXXX)"
+make APP_OUT="$rosilicon_qa_out" qa-app
+```
+
+`ROSilicon QA.app` has bundle identifier `com.rosilicon.launcher.qa`, uses
+`~/Library/Application Support/ROSilicon QA`, and gives Wine a host home under
+that same root. Its preferences, HTTP storage, prefix, game files and
+`$HOME/Wine` equivalent are therefore separate from the release app. Build in
+the temporary output, inspect and verify the signature there, then deliberately
+copy that bundle to `/Applications`; the target never writes there itself.
+
+The QA root is one removable tree, but Wine still creates `dosdevices/z:`
+pointing at `/`. Never follow it while copying, inventorying or cleaning a
+prefix. Do not symlink a production game folder into QA: Setup and the patcher
+write to it. A fresh download is the strictest isolation; an independently
+verified APFS clone of only the game directory is acceptable while the game is
+stopped.
+
 Needs Xcode 26 or newer — the interface is built on Liquid Glass, which only
 exists from the macOS 26 SDK — and mingw-w64 once for the
 [Steam stub](steam-stub.md), plus meson, ninja and glslang to build
@@ -59,4 +81,3 @@ they do not launch Wine, download the client, or modify a real Wine prefix. What
 they cannot cover is checked by hand against a disposable install root (`RO_ROOT`)
 — [Keyboard](keyboard.md#verifying-by-hand) says how, for the one feature where
 a passing test proves the least.
-

@@ -183,8 +183,24 @@ strings -a "$secur32" | grep 'gnutls_global_init' >/dev/null || {
 # loader (0013-loader-name-the-app-rosilicon.patch): a tree built without it
 # shows the game under whatever name its builder chose.
 loader="$runtime/lib/wine/x86_64-unix/wine"
-strings -a "$loader" | grep -q '<string>com.rosilicon.wine</string>' || {
+# Do not use grep -q in these pipefail pipelines: after an early match it can
+# close the pipe while strings is still writing, making a valid runtime fail
+# nondeterministically with strings' SIGPIPE status.
+strings -a "$loader" | grep '<string>com.rosilicon.wine</string>' >/dev/null || {
   echo "The Wine loader is not named ROSilicon: $loader" >&2
+  exit 1
+}
+
+# The fit-to-usable-screen mode is an intentional driver feature in r18, not a
+# post-build bundle mutation. Its trace message is a stable ASCII marker in the
+# host Mac driver when 0015 was compiled in (the registry name is UTF-16 there).
+winemac="$runtime/lib/wine/x86_64-unix/winemac.so"
+[[ -f "$winemac" ]] || {
+  echo "Wine Mac driver is missing: $winemac" >&2
+  exit 1
+}
+strings -a "$winemac" | grep 'advertising ROSilicon fitting windowed mode' >/dev/null || {
+  echo "Wine Mac driver has no ROSilicon fitting windowed mode: $winemac" >&2
   exit 1
 }
 

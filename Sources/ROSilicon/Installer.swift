@@ -38,6 +38,7 @@ struct Installer: Sendable {
     let paths: Paths
     let reporter: Reporter
     var keyboard = GameKeyboardSettings()
+    var resolution = GameResolutionSettings()
 
     func installEverything(clientURL: URL, reinstallClient: Bool) async throws {
         try paths.createRoot()
@@ -57,6 +58,8 @@ struct Installer: Sendable {
         // Outside createPrefix's early return: repairs of existing prefixes
         // must apply the saved choice just like a new installation does.
         try await keyboard.apply(
+            wine: paths.wine, environment: paths.wineEnvironment(), reporter: reporter)
+        try await resolution.apply(
             wine: paths.wine, environment: paths.wineEnvironment(), reporter: reporter)
         try await installClient(from: clientURL, force: reinstallClient)
 
