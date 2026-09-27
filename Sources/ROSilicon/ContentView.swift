@@ -1,5 +1,25 @@
-import AppKit
 import SwiftUI
+
+enum LogPanelLayout {
+    /// The hard floor while the log is shut. It came down by the 18 points the
+    /// header returned when it stopped reserving the title bar's empty band.
+    static let collapsedMinimumHeight: CGFloat = 432
+
+    /// The log well's 180 points plus its five points of bottom padding.
+    static let addedHeight: CGFloat = 185
+
+    static func minimumHeight(showingLog: Bool) -> CGFloat {
+        collapsedMinimumHeight + (showingLog ? addedHeight : 0)
+    }
+
+    /// Preserve any height the person gave the window, adding or removing only
+    /// the room occupied by the log. The minimum is a fallback for the first
+    /// click, before SwiftUI has reported the window's actual content height.
+    static func targetHeight(currentHeight: CGFloat, showingLog: Bool) -> CGFloat {
+        let delta = showingLog ? addedHeight : -addedHeight
+        return max(currentHeight + delta, minimumHeight(showingLog: showingLog))
+    }
+}
 
 struct ContentView: View {
     @EnvironmentObject private var model: LauncherModel
@@ -12,17 +32,9 @@ struct ContentView: View {
     @State private var editor: Editor?
     @State private var newProfileName = ""
     @State private var newProfileError: String?
-    @State private var window: NSWindow?
-
-    /// What the open log adds to the window: the well itself and the padding
-    /// under it.
-    private static let logHeight: CGFloat = 185
-
-    /// The shortest the window may be dragged, with the log shut. It came down
-    /// by the 18 points the header gave back when it stopped reserving the
-    /// title bar's band, so the floor still sits just under the layout rather
-    /// than 18 points of air below it.
-    private static let minHeight: CGFloat = 432
+    @State private var contentSize = CGSize(
+        width: 640, height: LogPanelLayout.collapsedMinimumHeight)
+    @State private var transitionSize: CGSize?
 
     /// The sheets: the text settings behind ⌥, each of the same shape, and
     /// the name of a new profile.
@@ -52,13 +64,24 @@ struct ContentView: View {
         // left of them in any case.
         .padding(.top, 30)
         .ignoresSafeArea(.container, edges: .top)
-        // The floor the window may not be dragged below. It has to make room
-        // for the log when that is open: the panes are sheets that cannot be
-        // squeezed into one another, and the layout carries no slack to give up
-        // once the log takes its height. Raising this does not *grow* the
-        // window, though — see `resizeForLog`.
-        .frame(minWidth: 640,
-               minHeight: Self.minHeight + (showLog ? Self.logHeight : 0))
+        // In steady state this is only a floor, so the window remains freely
+        // resizable. While the log is moving, min and max briefly meet at one
+        // exact target. That lets SwiftUI resize its window in the same
+        // transaction as the disclosure instead of racing a second AppKit
+        // animation. The exact constraint is released when the animation ends.
+        .frame(minWidth: transitionSize?.width ?? 640,
+               idealWidth: transitionSize?.width,
+               maxWidth: transitionSize?.width,
+               minHeight: transitionSize?.height
+                   ?? LogPanelLayout.minimumHeight(showingLog: showLog),
+               idealHeight: transitionSize?.height,
+               maxHeight: transitionSize?.height)
+        .onGeometryChange(for: CGSize.self) { proxy in
+            proxy.size
+        } action: { size in
+            contentSize = size
+        }
+        .logWindowResizeAnchor()
         // Last, so it paints the whole window and not just the panes: a
         // background takes no part in sizing, so it cannot disturb the minimum
         // just set.
@@ -100,30 +123,10 @@ struct ContentView: View {
             Text(deleteProfileMessage)
         }
         .sheet(item: $editor) { sheet(for: $0) }
-        .background(WindowReader { window = $0 })
-        .onChange(of: showLog) { _, open in resizeForLog(open: open) }
         .onAppear {
             model.refresh()
             modifiers.watch()
         }
-    }
-
-    /// A window is never resized by its content wanting more room — the minimum
-    /// above only stops it being dragged smaller — so opening the log has to
-    /// find its height somewhere, and there is none to spare. This takes it
-    /// from the bottom edge and gives it back on the way out, leaving the top
-    /// of the window where it was so the header does not move under the
-    /// pointer. A window near the bottom of the screen grows upwards instead.
-    private func resizeForLog(open: Bool) {
-        guard let window else { return }
-        let delta = Self.logHeight * (open ? 1 : -1)
-        var frame = window.frame
-        frame.size.height += delta
-        frame.origin.y -= delta
-        if let limit = window.screen?.visibleFrame.minY {
-            frame.origin.y = max(frame.origin.y, limit)
-        }
-        window.setFrame(frame, display: true, animate: true)
     }
 
     // MARK: - Header
@@ -385,7 +388,7 @@ struct ContentView: View {
     private var logSection: some View {
         VStack(spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) { showLog.toggle() }
+                toggleLog()
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "chevron.right")
@@ -407,6 +410,7 @@ struct ContentView: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
+            .disabled(transitionSize != nil)
 
             if showLog {
                 ScrollViewReader { proxy in
@@ -436,6 +440,24 @@ struct ContentView: View {
             }
         }
         .glassCard()
+    }
+
+    private func toggleLog() {
+        guard transitionSize == nil else { return }
+        let open = !showLog
+        let target = CGSize(
+            width: max(contentSize.width, 640),
+            height: LogPanelLayout.targetHeight(
+                currentHeight: contentSize.height, showingLog: open))
+
+        withAnimation(
+            .easeInOut(duration: 0.15), completionCriteria: .removed
+        ) {
+            transitionSize = target
+            showLog = open
+        } completion: {
+            transitionSize = nil
+        }
     }
 
     private func colour(_ kind: LauncherModel.LogLine.Kind) -> Color {
@@ -563,18 +585,13 @@ struct ContentView: View {
     }
 }
 
-/// Hands back the window the view was placed in. `resizeForLog` needs it, and
-/// the key window is not it while a sheet is up.
-private struct WindowReader: NSViewRepresentable {
-    let found: (NSWindow) -> Void
-
-    func makeNSView(context: Context) -> NSView {
-        let view = NSView()
-        DispatchQueue.main.async {
-            if let window = view.window { found(window) }
+private extension View {
+    @ViewBuilder
+    func logWindowResizeAnchor() -> some View {
+        if #available(macOS 26.0, *) {
+            windowResizeAnchor(.topLeading)
+        } else {
+            self
         }
-        return view
     }
-
-    func updateNSView(_ view: NSView, context: Context) {}
 }
