@@ -1,0 +1,200 @@
+diff --git a/dlls/winemac.drv/cocoa_display.m b/dlls/winemac.drv/cocoa_display.m
+index bcabd20..02df0d6 100644
+--- a/dlls/winemac.drv/cocoa_display.m
++++ b/dlls/winemac.drv/cocoa_display.m
+@@ -47,6 +47,56 @@ static inline CGRect convert_display_rect(NSRect in_rect, NSRect primary_frame)
+ }
+ 
+ 
++/***********************************************************************
++ *              macdrv_get_fitting_windowed_mode
++ *
++ * Returns the largest even-sized client area whose titled Wine window fits
++ * within the display's AppKit usable frame. visibleFrame already excludes the
++ * menu bar, notch and Dock; NSWindow supplies the current OS's title-bar and
++ * border geometry rather than relying on a fixed allowance.
++ */
++int macdrv_get_fitting_windowed_mode(CGDirectDisplayID display_id, CGSize *size)
++{
++@autoreleasepool
++{
++    NSArray<NSScreen *> *screens = [NSScreen screens];
++
++    if (!size)
++        return -1;
++
++    for (NSScreen *screen in screens)
++    {
++        CGDirectDisplayID screen_display_id =
++            [[screen deviceDescription][@"NSScreenNumber"] unsignedIntValue];
++        NSWindowStyleMask style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable |
++                                  NSWindowStyleMaskMiniaturizable;
++        CGSize candidate;
++        NSUInteger width, height;
++
++        if (screen_display_id != display_id)
++            continue;
++
++        candidate = cgsize_win_from_mac(
++            [NSWindow contentRectForFrameRect:screen.visibleFrame styleMask:style].size);
++        if (candidate.width < 640 || candidate.height < 480 ||
++            candidate.width > 8192 || candidate.height > 8192)
++            return -1;
++
++        width = (NSUInteger)candidate.width & ~(NSUInteger)1;
++        height = (NSUInteger)candidate.height & ~(NSUInteger)1;
++        if (width < 640 || height < 480)
++            return -1;
++
++        size->width = width;
++        size->height = height;
++        return 0;
++    }
++
++    return -1;
++}
++}
++
++
+ /***********************************************************************
+  *              get_entry_property_uint32
+  *
+diff --git a/dlls/winemac.drv/display.c b/dlls/winemac.drv/display.c
+index 35d7ba8..0c7fa8b 100644
+--- a/dlls/winemac.drv/display.c
++++ b/dlls/winemac.drv/display.c
+@@ -275,6 +275,32 @@ static BOOL read_dword(HKEY hkey, const char* name, DWORD* val)
+ }
+ 
+ 
++static BOOL fit_usable_screen_mode_enabled(void)
++{
++    char buffer[offsetof(KEY_VALUE_PARTIAL_INFORMATION, Data[32])];
++    KEY_VALUE_PARTIAL_INFORMATION *value = (void *)buffer;
++    WCHAR nameW[64];
++    HKEY hkey;
++    BOOL enabled = FALSE;
++
++    /* @@ Wine registry key: HKCU\Software\Wine\Mac Driver */
++    if (!(hkey = open_hkcu_key("Software\\Wine\\Mac Driver")))
++        return FALSE;
++
++    asciiz_to_unicode(nameW, "ROSiliconFitUsableScreenMode");
++    if (query_reg_value(hkey, nameW, value, sizeof(buffer)) >= sizeof(WCHAR) &&
++        value->Type == REG_SZ)
++    {
++        const WCHAR *setting = (const WCHAR *)value->Data;
++        enabled = setting[0] == 'y' || setting[0] == 'Y' ||
++                  setting[0] == 't' || setting[0] == 'T' || setting[0] == '1';
++    }
++
++    NtClose(hkey);
++    return enabled;
++}
++
++
+ static void free_display_mode_descriptor(struct display_mode_descriptor* desc)
+ {
+     if (desc)
+@@ -811,11 +837,12 @@ LONG macdrv_ChangeDisplaySettings(LPDEVMODEW displays, LPCWSTR primary_name, HWN
+ 
+ static DEVMODEW *display_get_modes(CGDirectDisplayID display_id, int *modes_count)
+ {
+-    int default_bpp = get_default_bpp(), synth_count = 0, count, i;
++    int default_bpp = get_default_bpp(), fit_count = 0, synth_count = 0, count, i;
+     BOOL modes_has_8bpp = FALSE, modes_has_16bpp = FALSE;
+     struct display_mode_descriptor *desc;
+     DEVMODEW *devmodes;
+     CFArrayRef modes;
++    CGSize fit_size = CGSizeZero;
+ 
+     modes = copy_display_modes(display_id, TRUE);
+     if (!modes)
+@@ -832,7 +859,10 @@ static DEVMODEW *display_get_modes(CGDirectDisplayID display_id, int *modes_coun
+             modes_has_16bpp = TRUE;
+     }
+ 
+-    if (!(devmodes = calloc(count * 3, sizeof(DEVMODEW))))
++    if (display_id == CGMainDisplayID() && fit_usable_screen_mode_enabled())
++        macdrv_get_fitting_windowed_mode(display_id, &fit_size);
++
++    if (!(devmodes = calloc(count * 3 + 1, sizeof(DEVMODEW))))
+     {
+         CFRelease(modes);
+         return NULL;
+@@ -856,12 +886,44 @@ static DEVMODEW *display_get_modes(CGDirectDisplayID display_id, int *modes_coun
+     }
+     free_display_mode_descriptor(desc);
+ 
++    if (fit_size.width && fit_size.height)
++    {
++        BOOL duplicate = FALSE;
++
++        for (i = 0; i < count; i++)
++        {
++            if (devmodes[i].dmBitsPerPel == default_bpp &&
++                devmodes[i].dmPelsWidth == fit_size.width &&
++                devmodes[i].dmPelsHeight == fit_size.height)
++            {
++                duplicate = TRUE;
++                break;
++            }
++        }
++
++        if (!duplicate)
++        {
++            for (i = 0; i < count; i++)
++            {
++                if (devmodes[i].dmBitsPerPel != default_bpp)
++                    continue;
++                devmodes[count] = devmodes[i];
++                devmodes[count].dmPelsWidth = fit_size.width;
++                devmodes[count].dmPelsHeight = fit_size.height;
++                fit_count = 1;
++                TRACE("advertising ROSilicon fitting windowed mode %ux%ux%dbpp\n",
++                      devmodes[count].dmPelsWidth, devmodes[count].dmPelsHeight, default_bpp);
++                break;
++            }
++        }
++    }
++
+     for (i = 0; !modes_has_16bpp && i < count; i++)
+     {
+         /* We only synthesize modes from those having the default bpp. */
+         if (devmodes[i].dmBitsPerPel != default_bpp) continue;
+-        devmodes[count + synth_count] = devmodes[i];
+-        devmodes[count + synth_count].dmBitsPerPel = 16;
++        devmodes[count + fit_count + synth_count] = devmodes[i];
++        devmodes[count + fit_count + synth_count].dmBitsPerPel = 16;
+         synth_count++;
+     }
+ 
+@@ -869,13 +931,13 @@ static DEVMODEW *display_get_modes(CGDirectDisplayID display_id, int *modes_coun
+     {
+         /* We only synthesize modes from those having the default bpp. */
+         if (devmodes[i].dmBitsPerPel != default_bpp) continue;
+-        devmodes[count + synth_count] = devmodes[i];
+-        devmodes[count + synth_count].dmBitsPerPel = 8;
++        devmodes[count + fit_count + synth_count] = devmodes[i];
++        devmodes[count + fit_count + synth_count].dmBitsPerPel = 8;
+         synth_count++;
+     }
+ 
+     CFRelease(modes);
+-    *modes_count = count + synth_count;
++    *modes_count = count + fit_count + synth_count;
+     return devmodes;
+ }
+ 
+diff --git a/dlls/winemac.drv/macdrv_cocoa.h b/dlls/winemac.drv/macdrv_cocoa.h
+index 5fc7168..1cfcc95 100644
+--- a/dlls/winemac.drv/macdrv_cocoa.h
++++ b/dlls/winemac.drv/macdrv_cocoa.h
+@@ -284,6 +284,7 @@ static inline CGPoint cgpoint_win_from_mac(CGPoint point)
+ extern void macdrv_free_adapters(struct macdrv_adapter* adapters);
+ extern int macdrv_get_monitors(CGDirectDisplayID adapter_id, struct macdrv_monitor** monitors, int* count);
+ extern void macdrv_free_monitors(struct macdrv_monitor* monitors, int monitor_count);
++extern int macdrv_get_fitting_windowed_mode(CGDirectDisplayID display_id, CGSize *size);
+ 
+ 
+ /* event */

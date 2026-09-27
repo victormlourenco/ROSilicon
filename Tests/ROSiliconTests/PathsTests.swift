@@ -28,6 +28,12 @@ struct PathsTests {
         #expect(paths.dxvkLink != paths.legacyDXVKLink)
     }
 
+    @Test func setupSitsBesideTheGameExecutable() {
+        let paths = Paths(root: URL(filePath: "/test/root"))
+        #expect(paths.setup == paths.gameDir.appending(path: "Setup.exe"))
+        #expect(paths.setup.deletingLastPathComponent() == paths.ragexe.deletingLastPathComponent())
+    }
+
     /// Wine runs from inside the app bundle, so the launcher can live anywhere
     /// and nothing under the install folder is Wine's.
     @Test func wineIsReadFromTheBundleNotTheInstallFolder() {
@@ -117,6 +123,31 @@ struct PathsTests {
         #expect(FileManager.default.fileExists(atPath: root.appending(path: "marker").path))
     }
 
+    @Test func qaRootCreatesItsWineHomeInsideTheSameRemovableTree() throws {
+        let temp = try TemporaryDirectory()
+        let root = temp.url.appending(path: "ROSilicon QA")
+        let paths = Paths(root: root, isolatesWineHome: true)
+
+        #expect(paths.isolatedWineHome == root.appending(path: "host-home"))
+        #expect(try paths.createRoot() == root)
+        #expect(FileManager.default.fileExists(
+            atPath: root.appending(path: "host-home").path))
+    }
+
+    @Test func bundleDataDirectoryNameCannotEscapeApplicationSupport() {
+        let base = URL(filePath: "/Users/test/Library/Application Support")
+        #expect(Paths.defaultInstallRoot(
+            applicationSupport: base, configuredName: "ROSilicon QA").path
+            == "/Users/test/Library/Application Support/ROSilicon QA")
+
+        for invalid in [nil, "", ".", "..", "../Elsewhere", "nested/name",
+                        #"nested\name"#, "disk:name"] as [String?] {
+            #expect(Paths.defaultInstallRoot(
+                applicationSupport: base, configuredName: invalid).path
+                == "/Users/test/Library/Application Support/ROSilicon")
+        }
+    }
+
     // MARK: - The Wine environment
 
     @Test func wineEnvironmentPointsEveryWineVariableAtThisInstall() {
@@ -125,6 +156,14 @@ struct PathsTests {
         #expect(environment["WINEPREFIX"] == paths.prefix.path)
         #expect(environment["WINELOADER"] == paths.wine.path)
         #expect(environment["WINESERVER"] == paths.wineserver.path)
+    }
+
+    @Test func qaWineEnvironmentOverridesHomeWithoutChangingTheProcess() {
+        let paths = Paths(
+            root: URL(filePath: "/test/ROSilicon QA"), isolatesWineHome: true)
+        let environment = paths.wineEnvironment()
+        #expect(environment["HOME"] == "/test/ROSilicon QA/host-home")
+        #expect(ProcessInfo.processInfo.environment["HOME"] != environment["HOME"])
     }
 
     /// The bundle's own libraries go first, and anything the process inherited

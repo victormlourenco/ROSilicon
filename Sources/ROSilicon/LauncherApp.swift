@@ -6,8 +6,12 @@ struct ROSiliconApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @StateObject private var model = LauncherModel()
 
+    private static let displayName =
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
+        ?? "ROSilicon"
+
     var body: some Scene {
-        Window("ROSilicon", id: "launcher") {
+        Window(Self.displayName, id: "launcher") {
             ContentView()
                 .environmentObject(model)
         }

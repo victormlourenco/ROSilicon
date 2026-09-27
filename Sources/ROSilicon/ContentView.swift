@@ -200,6 +200,14 @@ struct ContentView: View {
             Toggle(Strings.menuDiscordPresence, isOn: $model.discordPresence)
                 .help(Strings.discordPresenceHelp)
             Divider()
+            Toggle(
+                Strings.resolutionAdvertiseUsableScreen,
+                isOn: $model.advertiseUsableScreenResolution)
+                .disabled(model.phase.isBusy)
+                .help(Strings.resolutionHelp)
+            Button(Strings.resolutionOpenSetup) { model.openGameSetup() }
+                .disabled(!model.canOpenGameSetup)
+            Divider()
             Button(Strings.menuReinstallClient) { confirmReinstall = true }
                 .disabled(model.phase.isBusy)
             if modifiers.optionHeld {

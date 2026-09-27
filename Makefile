@@ -35,7 +35,7 @@ D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
 export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
 
 .DEFAULT_GOAL := app
-.PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
+.PHONY: app app-no-wine qa-app dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
         validate_d9vk d9vk d9vk-toolchain
@@ -50,6 +50,17 @@ app: $(STEAM_STUB_EXE)
 # UI, but the app it builds cannot install.
 app-no-wine: $(STEAM_STUB_EXE)
 	./build.sh --no-dmg --no-wine
+
+# A second, machine-local integration-test app. Requiring APP_OUT keeps a QA
+# build out of the repository and away from /Applications until it has been
+# inspected, signed and deliberately installed.
+qa-app: $(STEAM_STUB_EXE)
+	@test -n "$(APP_OUT)" || (echo "error: qa-app requires APP_OUT" >&2; exit 2)
+	APP_NAME="ROSilicon QA" \
+	BUNDLE_ID="com.rosilicon.launcher.qa" \
+	DATA_ROOT_NAME="ROSilicon QA" \
+	ISOLATE_WINE_HOME=1 \
+	./build.sh --no-dmg
 
 # The .app and the .dmg to hand to someone else, named after VERSION.
 dmg: $(STEAM_STUB_EXE)
@@ -86,6 +97,7 @@ help:
 	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
 	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
+	@echo "make qa-app      build an isolated ROSilicon QA.app — requires APP_OUT"
 	@echo "make clean       remove the build products"
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."

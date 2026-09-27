@@ -20,16 +20,31 @@ enum BundledToolsError: LocalizedError {
 /// DXVK, x87sidecar and the Steam stub, so the launcher downloads nothing but
 /// the game client and can live anywhere, /Applications included.
 struct Paths: Sendable {
+    static let dataDirectoryInfoKey = "ROSiliconDataDirectoryName"
+    static let isolatedWineHomeInfoKey = "ROSiliconIsolatedWineHome"
+    static let defaultDataDirectoryName = "ROSilicon"
+
     static let defaultClientURL = URL(string:
         "https://ro1patch.gnjoylatam.com/LIVE/client/LATAM_RO1_Live_20260601_091136.tar")!
 
     let root: URL
     /// Whose prefix `prefix`, `driveC` and the game folder are.
     let profile: Profile
+    /// QA bundles keep Wine's Unix-facing home beside their prefix. This is
+    /// false for production so existing installs retain their current layout.
+    let isolatesWineHome: Bool
 
-    init(root: URL, profile: Profile = .default) {
+    init(root: URL, profile: Profile = .default, isolatesWineHome: Bool = false) {
         self.root = root
         self.profile = profile
+        self.isolatesWineHome = isolatesWineHome
+    }
+
+    /// WineAndAqua creates the Windows user's directory under `$HOME/Wine`.
+    /// For a QA bundle, put that host home under the QA root so the test
+    /// installation neither reads nor leaves data in the production ~/Wine.
+    var isolatedWineHome: URL? {
+        isolatesWineHome ? root.appending(path: "host-home") : nil
     }
 
     /// Wine runs where it lies, inside the app bundle. Nothing writes to it, so
@@ -47,6 +62,7 @@ struct Paths: Sendable {
     var driveC: URL { prefix.appending(path: "drive_c") }
     var gameDir: URL { driveC.appending(path: "Gravity/Ragnarok") }
     var ragexe: URL { gameDir.appending(path: "Ragexe.exe") }
+    var setup: URL { gameDir.appending(path: "Setup.exe") }
 
     /// Wine's folder for 32-bit system DLLs, where a 32-bit program looks for
     /// d3d9.dll once its own folder holds none.
@@ -164,6 +180,7 @@ struct Paths: Sendable {
     /// for the game and Wine's tools ever asks for anything but the default.
     func wineEnvironment(x87: X87Backend = .default) -> [String: String] {
         var env = ProcessInfo.processInfo.environment
+        if let isolatedWineHome { env["HOME"] = isolatedWineHome.path }
         env["WINEPREFIX"] = prefix.path
         env["WINELOADER"] = wine.path
         env["WINESERVER"] = wineserver.path
@@ -192,6 +209,19 @@ struct Paths: Sendable {
 
     /// Where the launcher installs, by default
     /// ~/Library/Application Support/ROSilicon. `RO_ROOT` overrides it.
+    static func dataDirectoryName(_ configured: String?) -> String {
+        guard let configured, !configured.isEmpty,
+              configured != ".", configured != "..",
+              !configured.contains("/"), !configured.contains(":"),
+              !configured.contains("\\")
+        else { return defaultDataDirectoryName }
+        return configured
+    }
+
+    static func defaultInstallRoot(applicationSupport: URL, configuredName: String?) -> URL {
+        applicationSupport.appending(path: dataDirectoryName(configuredName))
+    }
+
     static var installRoot: URL {
         if let override = ProcessInfo.processInfo.environment["RO_ROOT"] {
             return URL(filePath: override).standardizedFileURL
@@ -199,11 +229,14 @@ struct Paths: Sendable {
         let base = FileManager.default.urls(
             for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? URL(filePath: NSHomeDirectory()).appending(path: "Library/Application Support")
-        return base.appending(path: "ROSilicon")
+        let configured = Bundle.main.object(forInfoDictionaryKey: dataDirectoryInfoKey) as? String
+        return defaultInstallRoot(applicationSupport: base, configuredName: configured)
     }
 
     static func locateRoot(profile: Profile = .default) -> Paths {
-        Paths(root: installRoot, profile: profile)
+        let isolatesWineHome = Bundle.main.object(
+            forInfoDictionaryKey: isolatedWineHomeInfoKey) as? Bool ?? false
+        return Paths(root: installRoot, profile: profile, isolatesWineHome: isolatesWineHome)
     }
 
     /// Creates the install folder. Called before installing and before showing
@@ -211,6 +244,10 @@ struct Paths: Sendable {
     @discardableResult
     func createRoot() throws -> URL {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        if let isolatedWineHome {
+            try FileManager.default.createDirectory(
+                at: isolatedWineHome, withIntermediateDirectories: true)
+        }
         return root
     }
 

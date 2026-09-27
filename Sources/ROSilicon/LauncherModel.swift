@@ -49,6 +49,16 @@ final class LauncherModel: ObservableObject {
             GameKeyboardSettings(commandShortcuts: commandShortcuts).save(to: .standard)
         }
     }
+    /// Saving this only records the choice. The prefix-local Wine value is
+    /// applied during Install/Repair, before Play, and before opening Setup.
+    @Published var advertiseUsableScreenResolution = GameResolutionSettings.load(
+        from: .standard).advertiseUsableScreenResolution {
+        didSet {
+            GameResolutionSettings(
+                advertiseUsableScreenResolution: advertiseUsableScreenResolution
+            ).save(to: .standard)
+        }
+    }
     /// Holds the Mac's top row on F1–F12 while a client is open, for the
     /// game's hotkey bars. Off unless asked for: it is a setting for the whole
     /// Mac, not just the game, so it is not one to take without being told to.
@@ -206,10 +216,14 @@ final class LauncherModel: ObservableObject {
         guard !phase.isBusy else { return }
         let paths = self.paths
         let keyboard = GameKeyboardSettings(commandShortcuts: commandShortcuts)
+        let resolution = GameResolutionSettings(
+            advertiseUsableScreenResolution: advertiseUsableScreenResolution)
         let url = URL(string: clientURLText.trimmingCharacters(in: .whitespaces))
             ?? Paths.defaultClientURL
         start(.working) { [reporter] in
-            try await Installer(paths: paths, reporter: reporter, keyboard: keyboard)
+            try await Installer(
+                paths: paths, reporter: reporter, keyboard: keyboard,
+                resolution: resolution)
                 .installEverything(clientURL: url, reinstallClient: reinstallClient)
         }
     }
@@ -220,7 +234,10 @@ final class LauncherModel: ObservableObject {
         guard canPlay else { return }
         let runner = GameRunner(
             paths: paths, reporter: reporter, metalHUD: metalHUD, options: launchOptions,
-            keyboard: GameKeyboardSettings(commandShortcuts: commandShortcuts), x87: x87Backend)
+            keyboard: GameKeyboardSettings(commandShortcuts: commandShortcuts),
+            resolution: GameResolutionSettings(
+                advertiseUsableScreenResolution: advertiseUsableScreenResolution),
+            x87: x87Backend)
         let id = UUID()
         if games.isEmpty {
             failure = nil
@@ -262,6 +279,20 @@ final class LauncherModel: ObservableObject {
     /// underneath them. A running game is fine — that is when looking at the
     /// prefix is most useful.
     var canOpenWineTools: Bool { status.wineReady && phase != .working }
+
+    /// Runs Setup as a foreground maintenance job: it must not overlap a game
+    /// or installation, and the launcher remains busy until Setup closes.
+    func openGameSetup() {
+        guard canOpenGameSetup else { return }
+        let runner = GameRunner(
+            paths: paths, reporter: reporter, options: launchOptions,
+            resolution: GameResolutionSettings(
+                advertiseUsableScreenResolution: advertiseUsableScreenResolution),
+            x87: x87Backend)
+        start(.working) { try await runner.openSetup() }
+    }
+
+    var canOpenGameSetup: Bool { status.canPlay && phase == .idle }
 
     /// Moves the install folder to the Trash. Only offered behind a
     /// confirmation, and refused while Wine is running.
@@ -467,7 +498,8 @@ final class LauncherModel: ObservableObject {
 
     /// Points everything at `profile`, and remembers it for the next launch.
     private func use(_ profile: Profile) {
-        paths = Paths(root: paths.root, profile: profile)
+        paths = Paths(
+            root: paths.root, profile: profile, isolatesWineHome: paths.isolatesWineHome)
         UserDefaults.standard.set(profile.rawValue, forKey: Self.profileKey)
     }
 
