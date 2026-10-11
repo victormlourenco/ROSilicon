@@ -22,6 +22,19 @@ be pushed), and pins it in `artifact-lock.json`. Committing that lock is what
 points `make restore`, and the next build, at it. A new runtime gets a new
 `runtimeRevision` in `runtime-lock.json` before it is built.
 
+`make restore` fetches whichever revision `artifact-lock.json` pins, and so
+lands in one of two states. When that is the revision `runtime-lock.json` asks
+for, the restored tree *is* the runtime this checkout ships, and it is checked
+against the lock. When the lock is ahead — which is every branch between
+bumping `runtimeRevision` and releasing the tree, r18 published while the lock
+says r19 — the restored tree can only be the base `make runtime` builds the new
+revision on. It is not one to ship and only r19 can match the lock, so restore
+says which revisions are in play and leaves the check out rather than running
+one that cannot pass. `make bundle` is where that gap surfaces if it is
+forgotten: `validate_wine_runtime` names both revisions and sends you to
+`make runtime`. The destination has to be absent either way, so a tree built
+and not yet released is never silently replaced by a download.
+
 Everything below the launcher is x86_64, but Homebrew stopped building Intel
 bottles in September 2026, so the runtime is built on Apple Silicon under
 Rosetta 2: Xcode's clang compiles the host side for x86_64 against headers from

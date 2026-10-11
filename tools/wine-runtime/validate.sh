@@ -44,8 +44,23 @@ embedded_manifest="$runtime/share/wowsilicon/runtime-lock.json"
   exit 1
 }
 
+# Byte for byte, so an overlay added or a checksum changed counts as a different
+# runtime even at the same revision. The revisions are named because the gap is
+# nearly always the whole story: a tree a revision behind this checkout is one
+# restored as a build base, and `make runtime` is what turns it into the
+# runtime the lock describes.
 cmp -s "$manifest" "$embedded_manifest" || {
+  embedded_revision="$(jq -r '.runtimeRevision' "$embedded_manifest")"
+  manifest_revision="$(jq -r '.runtimeRevision' "$manifest")"
   echo "Embedded runtime lock does not match the repository lock." >&2
+  echo "  $runtime is r$embedded_revision" >&2
+  echo "  runtime-lock.json asks for r$manifest_revision" >&2
+  if [[ "$embedded_revision" != "$manifest_revision" ]]; then
+    echo "Run 'make runtime' to build r$manifest_revision on the restored base." >&2
+  else
+    echo "Same revision, different contents: an overlay or a checksum has changed" >&2
+    echo "since this tree was built, so rebuild it with 'make runtime'." >&2
+  fi
   exit 1
 }
 
