@@ -75,7 +75,8 @@ hidden.
 ## Building it
 
 ```sh
-make d9mt-toolchain     # once: mingw-w64, glslang, spirv-cross, cmake, ninja, llvm@15
+make d9mt-toolchain     # once: bash, mingw-w64, glslang, spirv-cross, cmake,
+                        #       ninja, llvm@15, and Xcode's Metal toolchain
 make d9mt               # -> .d9mt, built from the pinned sources and validated
 make                    # the app, with d9mt in it
 ```
@@ -129,13 +130,36 @@ day, which made two stagings of one d9mt commit different drivers. The script
 clones the pinned commit first and hands `fetch-deps.sh` the result, which it
 accepts because it only clones when the folder is not already a checkout.
 
-Two LLVMs are required, for different sides, which is the prerequisite nobody
-guesses: `build-llvm-unixside.sh` builds LLVM 15 as **x86_64 static libs** for
+### The four prerequisites that are not obvious
+
+**Two LLVMs, for different sides.** `build-llvm-unixside.sh` builds LLVM 15 as **x86_64 static libs** for
 the AIR emitter on Wine's unix side, with `LLVM_BUILD_TOOLS=Off` and therefore
 no `llvm-config` — while `build-air-compiler.sh`, which `build-bridge.sh` runs
 for its smoke test, needs a **host** `llvm-config` and looks for Homebrew's
 `llvm@15` by absolute path. Another version will not do; the AIR compiler
 includes LLVM 15's headers.
+
+**A bash newer than the one macOS ships.** `build-d9mtair.sh` declares a
+`local -n` nameref, which is bash 4.3; macOS ships 3.2, so the system bash
+dies on `local: -n: invalid option`. Finding a modern one is not enough
+either, since `build-bridge.sh` runs `build-d9mtair.sh` itself with a plain
+`bash` — so build.sh puts the modern one on `PATH` ahead of `/bin` rather than
+only naming it.
+
+**Xcode's Metal compiler, which is a download.** From Xcode 26 `metal` is a
+separately downloaded component: the binary is always on disk as a stub that
+says `cannot execute tool 'metal' due to missing Metal Toolchain`. The gate
+therefore *runs* it rather than locating it, since the driver compiles the
+fixed-function ubershaders and the meta-blit to `metallib` and there is no
+building it without one. `make d9mt-toolchain` fetches it
+(`xcodebuild -downloadComponent MetalToolchain`, ~840 MB).
+
+**A submodule two levels down.** `dxbc-spirv` carries SPIRV-Headers as
+`submodules/spirv_headers` and includes it by relative path, but
+`fetch-deps.sh` inits `dxbc-spirv` without recursing — so the folder arrives
+as an empty stub and the failure lands much later, in the smoke test at the
+end of the bridge build, as a missing `spirv.hpp`. build.sh inits it in the
+DXVK clone before `fetch-deps.sh` copies the tree.
 
 ### Staging a checkout you built yourself
 
@@ -180,15 +204,23 @@ been run.
 
 ## What was checked
 
-The launcher side, end to end, against a **stand-in** staging — real binaries
-of each of the three machines, standing in for d9mt's own:
+**`make d9mt` builds and stages d9mt, from nothing.** All seven products, out
+of the four pinned sources, validated: `d3d9.dll` links with all 20 of
+`d3d9.def`'s exports, and the bridge's PE halves come out marked as Wine
+builtins, which is what says `$ROOT` resolved to v1 as it has to.
 
-- `make d9mt D9MT_SOURCE=…` refuses a checkout that is not at the locked
-  commit, and one that has not been built, naming the missing products.
-- `make d9mt`'s toolchain gate catches a missing `llvm@15`, and its pinned
-  checkouts were exercised against GitHub: a shallow fetch of a non-tip
-  commit, an idempotent second run, and a refusal when something that is not
-  a checkout is in the way. The build itself has not been run end to end.
+```
+d3d9.dll                          PE32 i386        75 MB, 20 exports
+wine/i386-windows/winemetal.dll   PE32 i386
+wine/i386-windows/d9mtair.dll     PE32 i386
+wine/x86_64-windows/…             PE32+ x86-64     the same two
+wine/x86_64-unix/winemetal.so     Mach-O x86_64    13 MB
+wine/x86_64-unix/d9mtair.so       Mach-O x86_64    11 MB, LLVM and all
+```
+
+The launcher side was checked end to end earlier, against a stand-in staging
+(real binaries of each of the three machines) and now against the real one:
+
 - `validate.sh` rejects a DXVK `d3d9.dll` staged as d9mt, since no DXVK
   imports `winemetal.dll`, and rejects a piece built for the wrong machine.
 - `build.sh` stages the driver into `Resources/d9mt/` and overlays the six
@@ -196,6 +228,11 @@ of each of the three machines, standing in for d9mt's own:
   verifies — which was the open question, the tree being sealed.
 - An app built without a staging ships without d9mt, and the picker is hidden
   rather than offering a backend that is not there.
+- `make d9mt D9MT_SOURCE=…` refuses a checkout that is not at the locked
+  commit, and one that has not been built, naming the missing products.
+- The pinned checkouts were exercised against GitHub: a shallow fetch of a
+  non-tip commit, an idempotent second run, and a refusal when something that
+  is not a checkout is in the way.
 
-Not checked, because no d9mt was built: the hour-long build as a whole, and
-anything d9mt itself does. No client has been launched on it.
+Not checked: anything d9mt itself does. **No client has been launched on it**,
+and the licensing blocker above is untouched by any of this.

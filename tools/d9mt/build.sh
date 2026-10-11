@@ -100,20 +100,61 @@ done
 # build-llvm-unixside.sh builds its x86_64 LLVM with LLVM_BUILD_TOOLS=Off and
 # so produces none. Both LLVMs are required, for different sides.
 if [[ "$INSTALL" == 1 ]]; then
-    brew install mingw-w64 glslang spirv-cross cmake ninja llvm@15
+    brew install bash mingw-w64 glslang spirv-cross cmake ninja llvm@15
+    # The Metal compiler comes from Xcode rather than Homebrew, and from
+    # Xcode 26 it is a component to download rather than part of the install.
+    if ! xcrun -sdk macosx metal --version >/dev/null 2>&1; then
+        echo "==> downloading the Metal toolchain (an Xcode component, GBs)"
+        xcodebuild -downloadComponent MetalToolchain || {
+            echo "warning: downloading the Metal toolchain failed — run it" >&2
+            echo "         yourself, it may want an admin password:" >&2
+            echo "         xcodebuild -downloadComponent MetalToolchain" >&2
+        }
+    fi
     if [[ "$TOOLCHAIN_ONLY" == 1 ]]; then
         echo "==> toolchain installed; run 'make d9mt' to build"
         exit 0
     fi
 fi
 
+# Upstream's build-d9mtair.sh declares a `local -n` nameref, which is bash
+# 4.3, and macOS ships bash 3.2 — so running its scripts with the system bash
+# dies on "local: -n: invalid option" after the LLVM build, an hour in.
+#
+# Finding one is not enough, either: build-bridge.sh runs build-d9mtair.sh
+# itself with a plain `bash`, so the modern one goes on PATH ahead of /bin for
+# the steps below rather than only being named here.
+bash_is_modern() {
+    local version major minor
+    version="$("$1" -c 'printf "%s %s" "${BASH_VERSINFO[0]}" "${BASH_VERSINFO[1]}"' 2>/dev/null)" \
+        || return 1
+    major="${version%% *}"; minor="${version##* }"
+    [[ -n "$major" && -n "$minor" ]] || return 1
+    (( major > 4 || (major == 4 && minor >= 3) ))
+}
+
+MODERN_BASH=""
+for candidate in "${D9MT_BASH:-}" /opt/homebrew/bin/bash /usr/local/bin/bash \
+                 "$(command -v bash || true)"; do
+    [[ -n "$candidate" && -x "$candidate" ]] || continue
+    if bash_is_modern "$candidate"; then MODERN_BASH="$candidate"; break; fi
+done
+
 missing=()
+[[ -n "$MODERN_BASH" ]] || missing+=("bash 4.3+ (brew install bash; macOS ships 3.2)")
 for tool in git python3 cmake ninja glslangValidator spirv-cross \
             i686-w64-mingw32-g++ i686-w64-mingw32-gcc i686-w64-mingw32-dlltool \
             x86_64-w64-mingw32-gcc x86_64-w64-mingw32-dlltool; do
     command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
 done
-xcrun -sdk macosx -f metal >/dev/null 2>&1 || missing+=("xcrun metal (Xcode)")
+# Run it, do not merely find it. From Xcode 26 the Metal compiler is a
+# separately downloaded component, so the binary is always on disk and sitting
+# there as a stub that says "cannot execute tool 'metal' due to missing Metal
+# Toolchain" — which a `-f metal` check passes and the driver build, dead last,
+# does not. The driver compiles the fixed-function ubershaders and the meta-blit
+# to metallib, so there is no building it without this.
+xcrun -sdk macosx metal --version >/dev/null 2>&1 \
+    || missing+=("a working 'metal' (xcodebuild -downloadComponent MetalToolchain)")
 # Not on PATH and not interchangeable with another version: the AIR compiler
 # includes LLVM 15's headers, so llvm@23 in its place is a page of errors.
 LLVM15_CONFIG="${LLVM_CONFIG:-/opt/homebrew/opt/llvm@15/bin/llvm-config}"
@@ -133,6 +174,11 @@ CROSSOVER="${CROSSOVER:-/Applications/CrossOver.app/Contents/SharedSupport/Cross
     echo "       refuses without it. See docs/d9mt.md." >&2
     exit 1
 }
+
+# Ahead of /bin, so a `bash` spelled inside one of upstream's scripts is this
+# one too. Its folder rather than a symlink, so everything beside it travels.
+PATH="$(dirname "$MODERN_BASH"):$PATH"
+export PATH
 
 [[ -f "$LOCK" ]] || { echo "error: no source lock at $LOCK" >&2; exit 1; }
 
@@ -181,6 +227,7 @@ pin_checkout() {
 }
 
 echo "==> work folder $WORK"
+echo "    bash: $MODERN_BASH ($("$MODERN_BASH" -c 'echo $BASH_VERSION'))"
 mkdir -p "$WORK"
 # v1 first: it is the folder v2 goes inside, so the order is not a free choice.
 pin_checkout "d9mt (v1, \$ROOT)" "$ROOT_DIR" "$ROOT_REPO" "$ROOT_COMMIT"
@@ -194,6 +241,12 @@ pin_checkout "dxvk (extraction source)" "$DXVK_DIR" "$DXVK_REPO" "$DXVK_COMMIT"
 echo "==> dxvk submodules (dxbc-spirv, vulkan, spirv headers)"
 git -C "$DXVK_DIR" submodule update --quiet --init --depth 1 \
     subprojects/dxbc-spirv include/vulkan include/spirv
+# And dxbc-spirv's own, one level further down: it carries SPIRV-Headers as
+# submodules/spirv_headers, and its spirv_types.h includes that by relative
+# path. fetch-deps.sh inits dxbc-spirv but does not recurse, so the folder
+# arrives as an empty stub and the failure lands much later, in the smoke test
+# at the end of the bridge build, as a missing spirv.hpp.
+git -C "$DXVK_DIR/subprojects/dxbc-spirv" submodule update --quiet --init --depth 1
 
 # Each step says what it is before it runs, since the long ones look hung
 # otherwise, and `step` is also where --keep-going is honoured.
@@ -218,7 +271,7 @@ step() {
 # instead of a fresh one of main. It vendors the d3d9 frontend, util/spirv/wsi
 # and dxbc-spirv into the v2 tree, all of it gitignored there.
 step "vendoring the DXVK frontend" \
-    bash "$V2_DIR/scripts/fetch-deps.sh" "$DXVK_DIR"
+    "$MODERN_BASH" "$V2_DIR/scripts/fetch-deps.sh" "$DXVK_DIR"
 
 # The expensive one, and the reason the work folder is worth keeping: an LLVM
 # 15 as x86_64 static libs, for the AIR emitter that runs on Wine's unix side.
@@ -227,12 +280,12 @@ if [[ -f "$V2_DIR/toolchains/llvm-x86_64/lib/libLLVMBitWriter.a" ]]; then
     echo "    LLVM: already built in $V2_DIR/toolchains/llvm-x86_64"
 else
     echo "    LLVM 15 as x86_64 static libs — tens of minutes, around 3 GB"
-    step "building LLVM" bash "$V2_DIR/scripts/build-llvm-unixside.sh"
+    step "building LLVM" "$MODERN_BASH" "$V2_DIR/scripts/build-llvm-unixside.sh"
 fi
 
-step "building the AIR emitter (d9mtair)" bash "$V2_DIR/scripts/build-d9mtair.sh"
-step "building the bridge (winemetal)" bash "$V2_DIR/scripts/build-bridge.sh"
-step "building the driver (d3d9.dll)" bash "$V2_DIR/scripts/build-driver.sh"
+step "building the AIR emitter (d9mtair)" "$MODERN_BASH" "$V2_DIR/scripts/build-d9mtair.sh"
+step "building the bridge (winemetal)" "$MODERN_BASH" "$V2_DIR/scripts/build-bridge.sh"
+step "building the driver (d3d9.dll)" "$MODERN_BASH" "$V2_DIR/scripts/build-driver.sh"
 
 if [[ ${#failed[@]} -gt 0 ]]; then
     echo "warning: these steps failed and the staging below is incomplete:" >&2
