@@ -19,10 +19,14 @@
 # falls back to the copy checked in under Resources/d9vk
 /.d9vk/
 
-# The d9mt tools/d9mt/stage.sh stages (make d9mt D9MT_SOURCE=<checkout>). It is
-# not built here and has no checked-in fallback: without one the app ships
-# without d9mt
+# The d9mt tools/d9mt/build.sh builds and stages (make d9mt). No checked-in
+# fallback: without one the app ships without d9mt
 /.d9mt/
+
+# d9mt's four checkouts and its x86_64 LLVM (make d9mt). Outside .build and not
+# removed by `make clean` on purpose: it is an hour of LLVM, and a clean while
+# the build runs corrupts the clone rather than just discarding it
+/.d9mt-build/
 
 # The Vulkan loader and KosmicKrisp tools/kosmickrisp/build.sh produces
 # (make kosmickrisp), which make runtime takes until a published runtime has them

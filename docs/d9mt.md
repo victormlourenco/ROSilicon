@@ -80,10 +80,14 @@ make d9mt               # -> .d9mt, built from the pinned sources and validated
 make                    # the app, with d9mt in it
 ```
 
-Most of an hour the first time, nearly all of it LLVM. The work folder is kept,
-so a second `make d9mt` is only d9mt's own three build scripts — a couple of
-minutes. `D9MT_WORK=<dir>` puts it outside `.build`, where `make clean` will
-not take the LLVM with it.
+Most of an hour the first time, nearly all of it LLVM. The work folder —
+`.d9mt-build`, or wherever `D9MT_WORK` names — is kept, so a second
+`make d9mt` is only d9mt's own three build scripts, a couple of minutes.
+
+It sits outside `.build` and `make clean` leaves it alone, which is not
+tidiness but damage control: a clean while this is running deletes the pack
+git is writing and the LLVM clone dies with `invalid index-pack output`, which
+reads like a network fault and is not one. Remove it by hand for the space.
 
 It also needs **CrossOver installed**, which Homebrew cannot supply:
 `build-bridge.sh` links the unix side against

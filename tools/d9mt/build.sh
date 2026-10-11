@@ -4,6 +4,13 @@
 #     build.sh                 build into .d9mt
 #     build.sh --output PATH   stage somewhere else
 #     build.sh --work PATH     keep the checkouts and LLVM somewhere else
+#
+# The work folder defaults to .d9mt-build and deliberately sits outside
+# .build: that one is SwiftPM's and is what `make clean` removes, and an hour
+# of LLVM does not belong anywhere a clean can reach. Worse than losing it is
+# racing it — a `make clean` while this is running deletes the pack git is
+# writing and the clone fails with "invalid index-pack output", which looks
+# like a network fault and is not one.
 #     build.sh --lock PATH     read another source lock
 #     build.sh --install       install the toolchain with Homebrew first
 #     build.sh --toolchain     install the toolchain and stop
@@ -59,7 +66,7 @@ REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 LOCK="$REPO_ROOT/Packaging/D9MT/source-lock.json"
 
 OUTPUT="$REPO_ROOT/.d9mt"
-WORK="$REPO_ROOT/.build/d9mt"
+WORK="$REPO_ROOT/.d9mt-build"
 INSTALL=0
 TOOLCHAIN_ONLY=0
 KEEP_GOING=0

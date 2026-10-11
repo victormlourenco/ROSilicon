@@ -36,9 +36,11 @@ KOSMICKRISP  ?= $(CURDIR)/.kosmickrisp
 # A built d9mt-v2 checkout to stage from, which makes `make d9mt` skip the
 # build entirely. Unset, it builds from the pinned sources.
 D9MT_SOURCE  ?=
-# Where that build keeps its four checkouts and its LLVM. Under .build, so
-# `make clean` takes it — name it elsewhere to keep the LLVM across cleans.
-D9MT_WORK    ?= $(CURDIR)/.build/d9mt
+# Where that build keeps its four checkouts and its LLVM. Outside .build and
+# left alone by `make clean`: it holds an hour of LLVM, and a clean while the
+# build is running does not merely discard it, it deletes the pack git is
+# writing. Remove it by hand when you want the space back.
+D9MT_WORK    ?= $(CURDIR)/.d9mt-build
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
@@ -96,6 +98,8 @@ test:
 # the runtime back takes `make restore` or `make runtime`, both slow, and so
 # does `make d9vk`. Only this folder's copies go: a WINE_RUNTIME, STEAM_STUB or
 # D9VK pointed elsewhere is left alone.
+#
+# .d9mt-build is deliberately not in here — see D9MT_WORK above.
 clean:
 	rm -rf .build .wine-runtime .steam-stub .d9vk .d9mt .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
@@ -117,7 +121,7 @@ help:
 	@echo "make d9mt        build d9mt from the pinned sources into .d9mt (slow)"
 	@echo "make d9mt-toolchain  install the toolchain d9mt needs"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
-	@echo "make clean       remove the build products"
+	@echo "make clean       remove the build products (not .d9mt-build; see D9MT_WORK)"
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
@@ -125,6 +129,7 @@ help:
 	@echo "D9VK=<dir>         ships d3d9.dll (and kosmickrisp/d3d9.dll) other than .d9vk's."
 	@echo "D9MT=<dir>         ships a d9mt staged somewhere other than .d9mt."
 	@echo "D9MT_SOURCE=<dir>  stages that built d9mt-v2 checkout instead of building."
+	@echo "D9MT_WORK=<dir>    keeps d9mt's checkouts and LLVM somewhere other than .d9mt-build."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
