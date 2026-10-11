@@ -11,9 +11,9 @@ make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
 make d9vk           # -> .d9vk, DXVK's d3d9.dll built from source (see below)
 make kosmickrisp    # -> .kosmickrisp, the Vulkan loader and driver for the
                     #    runtime, built from source (see kosmickrisp.md)
-make d9mt D9MT_SOURCE=<dir>
-                    # -> .d9mt, a d9mt built elsewhere staged into the app;
-                    #    optional, and not built here at all (see d9mt.md)
+make d9mt           # -> .d9mt, D3D9-on-Metal instead of DXVK, from the
+                    #    pinned sources; optional, and most of an hour the
+                    #    first time — needs CrossOver too (see d9mt.md)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
 make bundle         # -> checks the runtime, builds and checks the stub and

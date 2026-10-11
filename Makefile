@@ -19,10 +19,11 @@
 # builds and checks its own either way.
 #
 # D9MT points at a staged d9mt — Direct3D 9 straight onto Metal, offered
-# instead of DXVK behind ⌥. It is the other way round from everything above:
-# optional, with no fallback and no build rule, because it is not built from
-# this repository. `make d9mt D9MT_SOURCE=<checkout>` stages one somebody has
-# already built; without it the app ships without d9mt. See docs/d9mt.md.
+# instead of DXVK behind ⌥. It is optional and has no checked-in fallback:
+# without a staging the app simply ships without d9mt and hides its picker.
+# `make d9mt` builds it from the pinned sources, which is the longest build
+# here by a wide margin; D9MT_SOURCE=<checkout> stages a build you already
+# have instead. See docs/d9mt.md.
 
 APP_NAME := ROSilicon
 OUT      := $(or $(APP_OUT),.)
@@ -32,8 +33,12 @@ D9VK         ?= $(CURDIR)/.d9vk
 D9MT         ?= $(CURDIR)/.d9mt
 KOSMICKRISP  ?= $(CURDIR)/.kosmickrisp
 
-# The d9mt-v2 checkout `make d9mt` stages from, built with its own scripts.
+# A built d9mt-v2 checkout to stage from, which makes `make d9mt` skip the
+# build entirely. Unset, it builds from the pinned sources.
 D9MT_SOURCE  ?=
+# Where that build keeps its four checkouts and its LLVM. Under .build, so
+# `make clean` takes it — name it elsewhere to keep the LLVM across cleans.
+D9MT_WORK    ?= $(CURDIR)/.build/d9mt
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
@@ -60,7 +65,7 @@ export APP_OUT WINE_RUNTIME STEAM_STUB D9VK D9MT
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
         validate_d9vk d9vk d9vk-toolchain kosmickrisp kosmickrisp-toolchain \
-        d9mt validate_d9mt
+        d9mt d9mt-toolchain validate_d9mt
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -109,7 +114,8 @@ help:
 	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
 	@echo "make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
 	@echo "make kosmickrisp-toolchain  install the toolchain KosmicKrisp needs"
-	@echo "make d9mt D9MT_SOURCE=<dir>  stage a built d9mt-v2 into .d9mt"
+	@echo "make d9mt        build d9mt from the pinned sources into .d9mt (slow)"
+	@echo "make d9mt-toolchain  install the toolchain d9mt needs"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
 	@echo "make clean       remove the build products"
 	@echo
@@ -118,6 +124,7 @@ help:
 	@echo "STEAM_STUB=<dir>   ships a Steam stub other than .steam-stub."
 	@echo "D9VK=<dir>         ships d3d9.dll (and kosmickrisp/d3d9.dll) other than .d9vk's."
 	@echo "D9MT=<dir>         ships a d9mt staged somewhere other than .d9mt."
+	@echo "D9MT_SOURCE=<dir>  stages that built d9mt-v2 checkout instead of building."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
@@ -186,19 +193,29 @@ validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)/kosmickrisp"
 
-# Stages a d9mt somebody has already built — the seven products out of a
-# d9mt-v2 checkout, in the layout build.sh overlays onto the app and its Wine.
-# Nothing here builds d9mt: that takes its own five scripts, an LLVM 15 built
-# for x86_64 and a clone of upstream DXVK 3.0, all against CrossOver's wine
-# tree. docs/d9mt.md says how, and what is still in the way of shipping it.
+# d9mt, built from the four sources the lock pins and staged into .d9mt.
+#
+# Most of an hour the first time, nearly all of it an LLVM 15 built as x86_64
+# static libs; the work folder is kept, so a second run is minutes. It is also
+# the one build here that needs CrossOver installed — build-bridge.sh links
+# the unix side against that tree's ntdll.so — which build.sh says up front
+# rather than after the hour. docs/d9mt.md has the rest.
+#
+# D9MT_SOURCE skips all of that and stages a checkout you have already built,
+# which is what to use while working on d9mt itself.
 d9mt:
-	@test -n "$(D9MT_SOURCE)" || { \
-	    echo "error: name the built d9mt-v2 checkout to stage from" >&2; \
-	    echo "       make d9mt D9MT_SOURCE=~/src/d9mt-v2" >&2; \
-	    echo "       see docs/d9mt.md" >&2; \
-	    exit 1; }
-	@tools/d9mt/stage.sh --src "$(D9MT_SOURCE)" --output "$(D9MT)"
-	@tools/d9mt/validate.sh --d9mt "$(D9MT)"
+	@if [ -n "$(D9MT_SOURCE)" ]; then \
+	    tools/d9mt/stage.sh --src "$(D9MT_SOURCE)" --output "$(D9MT)" && \
+	    tools/d9mt/validate.sh --d9mt "$(D9MT)"; \
+	else \
+	    tools/d9mt/build.sh --output "$(D9MT)" --work "$(D9MT_WORK)"; \
+	fi
+
+# Installs mingw-w64, glslang, spirv-cross, cmake, ninja and llvm@15 with
+# Homebrew, then stops — unlike d9vk-toolchain, which goes on to build. An
+# hour is too long to start on the back of a `brew install`.
+d9mt-toolchain:
+	@tools/d9mt/build.sh --toolchain
 
 # Optional, unlike the rest of what `bundle` checks: an app without d9mt is a
 # supported build, so this passes quietly when nothing has been staged and

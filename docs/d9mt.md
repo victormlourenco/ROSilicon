@@ -72,41 +72,81 @@ by nobody.
 dies on its first draw. One half present is not a backend, so the picker stays
 hidden.
 
-## Getting a build
-
-d9mt is **not built from this repository**, the only shipped piece that is
-not. `make d9mt` stages one that already exists:
+## Building it
 
 ```sh
-make d9mt D9MT_SOURCE=~/src/d9mt-v2     # -> .d9mt, then validated
-make                                    # the app, with d9mt in it
+make d9mt-toolchain     # once: mingw-w64, glslang, spirv-cross, cmake, ninja, llvm@15
+make d9mt               # -> .d9mt, built from the pinned sources and validated
+make                    # the app, with d9mt in it
 ```
 
-`tools/d9mt/stage.sh` copies the seven products out of that checkout into
-`.d9mt`, in the layout above, and checks the checkout is at the commit
-[Packaging/D9MT/source-lock.json](../Packaging/D9MT/source-lock.json) pins.
-That check is load-bearing: the tree carries no version string of its own, so
-a staged `d3d9.dll` says nothing about which d9mt it is and the lock is the
-only record. `--any-commit` is for working on d9mt itself.
+Most of an hour the first time, nearly all of it LLVM. The work folder is kept,
+so a second `make d9mt` is only d9mt's own three build scripts — a couple of
+minutes. `D9MT_WORK=<dir>` puts it outside `.build`, where `make clean` will
+not take the LLVM with it.
 
-Building the checkout is upstream's own five scripts, in order:
+It also needs **CrossOver installed**, which Homebrew cannot supply:
+`build-bridge.sh` links the unix side against
+`/Applications/CrossOver.app`'s `ntdll.so` and refuses without it.
+`tools/d9mt/build.sh` checks for it before the hour rather than after.
+
+### Why a script was needed
+
+d9mt builds with its own five scripts, and they resolve `$ROOT` as the parent
+of the checkout — v2 was extracted out of d9mt **v1** and kept the references.
+So a bare `git clone` of d9mt-v2 cannot build. It wants v1 around it, a
+[dxmt](https://github.com/3Shain/dxmt) checkout beside that, and a DXVK clone
+*inside* it that none of its own scripts creates, though `build-driver.sh`'s
+link reads `d3d9.def` out of it:
+
+```
+<work>/d9mt/                      v1 — $ROOT: tools/, vendor/, prebuilt/
+<work>/d9mt/v2/                   the d9mt-v2 checkout, at the locked commit
+<work>/d9mt/v2/DXVK-3.0-uptsream  the extraction source (upstream's spelling)
+<work>/d9mt/v2/toolchains/        the x86_64 LLVM, built once and kept
+<work>/dxmt/                      for -I src/airconv
+```
+
+Getting that wrong is worse than failing. `tools/make-builtin.py` — v1's, and
+what marks the PE DLLs as Wine builtins — is read behind an `if [ -f ]`, so a
+v2 checkout in the wrong place builds, stages and ships, and then the builtins
+never load. That is the trap the script exists to close.
+
+All four sources are pinned by commit in
+[Packaging/D9MT/source-lock.json](../Packaging/D9MT/source-lock.json), the DXVK
+clone included: `fetch-deps.sh` would otherwise clone whatever `main` was that
+day, which made two stagings of one d9mt commit different drivers. The script
+clones the pinned commit first and hands `fetch-deps.sh` the result, which it
+accepts because it only clones when the folder is not already a checkout.
+
+Two LLVMs are required, for different sides, which is the prerequisite nobody
+guesses: `build-llvm-unixside.sh` builds LLVM 15 as **x86_64 static libs** for
+the AIR emitter on Wine's unix side, with `LLVM_BUILD_TOOLS=Off` and therefore
+no `llvm-config` — while `build-air-compiler.sh`, which `build-bridge.sh` runs
+for its smoke test, needs a **host** `llvm-config` and looks for Homebrew's
+`llvm@15` by absolute path. Another version will not do; the AIR compiler
+includes LLVM 15's headers.
+
+### Staging a checkout you built yourself
+
+`D9MT_SOURCE` skips the build and stages a checkout whose own scripts have
+already run, which is what to use while working on d9mt itself:
 
 ```sh
-scripts/fetch-deps.sh            # vendors upstream DXVK's d3d9 frontend + dxbc-spirv
-scripts/build-llvm-unixside.sh   # LLVM 15.0.7 as x86_64 static libs — the long one
-scripts/build-d9mtair.sh         # the AIR emitter: d9mtair.so + its PE dlls
-scripts/build-bridge.sh          # winemetal.so + its PE dlls, and the import lib
-scripts/build-driver.sh          # d3d9.dll
+make d9mt D9MT_SOURCE=~/projects/d9mt/v2
 ```
 
-It needs the mingw-w64 cross-compilers for both 32- and 64-bit, `glslang`,
-`spirv-cross`, the Metal toolchain from Xcode, cmake and ninja. The LLVM build
-is tens of minutes on its own.
+`tools/d9mt/stage.sh` copies the seven products out into `.d9mt` in the layout
+above, and checks the checkout is at the locked commit. That check is
+load-bearing: the tree carries no version string of its own, so a staged
+`d3d9.dll` says nothing about which d9mt it is and the lock is the only record.
+`--any-commit` stages one that is not.
 
 ## What is in the way
 
-Four things, none of them in the launcher, all of them between a staged d9mt
-and a release:
+Three things, none of them in the launcher, all of them between a staged d9mt
+and a release. (A fourth, `fetch-deps.sh` cloning DXVK's `main` unpinned, is
+now worked around: `tools/d9mt/build.sh` clones the pinned commit itself.)
 
 **No license.** The repository declares none. Its `driver/` is extracted
 DXVK 3.0, which is zlib, and its `bridge/` is vendored winemetal from DXMT,
@@ -123,11 +163,6 @@ compiled for is CrossOver's, and the runtime here is Wine 11.18.
 convention, and a disagreement is a crash inside `__wine_unix_call`, not a
 diagnostic. Retargeting the bridge build onto `.wine-runtime` is the real fix.
 
-**The DXVK clone is not pinned.** `fetch-deps.sh` does a `--depth 1` clone of
-`doitsujin/dxvk`'s `main`, so two stagings of the same d9mt commit are not the
-same driver. The locked d9mt commit is only half a pin until that is fixed
-upstream or worked around here.
-
 **It is young.** Upstream's own notes describe the `d3d9.dll` link as having
 become non-fatal only recently, and its `SA2-LAUNCH.md` reads like a driver
 under active diagnosis. The client is the test that counts, and it has not
@@ -138,8 +173,12 @@ been run.
 The launcher side, end to end, against a **stand-in** staging — real binaries
 of each of the three machines, standing in for d9mt's own:
 
-- `make d9mt` refuses a checkout that is not at the locked commit, and one
-  that has not been built, naming the missing products.
+- `make d9mt D9MT_SOURCE=…` refuses a checkout that is not at the locked
+  commit, and one that has not been built, naming the missing products.
+- `make d9mt`'s toolchain gate catches a missing `llvm@15`, and its pinned
+  checkouts were exercised against GitHub: a shallow fetch of a non-tip
+  commit, an idempotent second run, and a refusal when something that is not
+  a checkout is in the way. The build itself has not been run end to end.
 - `validate.sh` rejects a DXVK `d3d9.dll` staged as d9mt, since no DXVK
   imports `winemetal.dll`, and rejects a piece built for the wrong machine.
 - `build.sh` stages the driver into `Resources/d9mt/` and overlays the six
@@ -148,5 +187,5 @@ of each of the three machines, standing in for d9mt's own:
 - An app built without a staging ships without d9mt, and the picker is hidden
   rather than offering a backend that is not there.
 
-Not checked, because no d9mt was built: anything d9mt itself does. No client
-has been launched on it.
+Not checked, because no d9mt was built: the hour-long build as a whole, and
+anything d9mt itself does. No client has been launched on it.

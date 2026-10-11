@@ -1,17 +1,60 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "repository": "https://github.com/neo773/d9mt-v2",
   "branch": "main",
   "commit": "b78566165efc1f9a11b00a974f37d1764b6df830",
   "notes": [
     "d9mt is D3D9 straight onto Metal: it replaces DXVK and the Vulkan driver",
-    "under it, not just one of them. tools/d9mt/stage.sh does not build it —",
-    "it stages the products of a d9mt-v2 checkout built with its own scripts",
-    "and checks that checkout is at `commit` here. See docs/d9mt.md.",
+    "under it, not just one of them. See docs/d9mt.md.",
     "Upstream declares no license. Its driver/ is extracted DXVK 3.0 (zlib)",
     "and its bridge/ is vendored winemetal from DXMT, but the tree itself says",
     "nothing, so nothing from it may be redistributed in a release until it does."
   ],
+  "sources": {
+    "root": {
+      "repository": "https://github.com/neo773/d9mt",
+      "commit": "237e2935e58355d1ee41fda097e1af272d5f62f0",
+      "why": [
+        "d9mt v1, which the v2 scripts resolve as $ROOT — v2 was extracted out",
+        "of it and kept the references. They read tools/make-builtin.py, which",
+        "marks the PE dlls as Wine builtins (behind an `if [ -f ]`, so a v2",
+        "checkout outside it silently skips the marking and the builtins then",
+        "do not load), and vendor/spirv-cross, which the AIR compiler includes.",
+        "So the v2 checkout goes at <root>/v2, not anywhere else."
+      ]
+    },
+    "dxmt": {
+      "repository": "https://github.com/3Shain/dxmt",
+      "commit": "e94c312f5c054263acf261cfa109edf13e757587",
+      "why": "build-bridge.sh includes src/airconv from $ROOT/../dxmt."
+    },
+    "dxvkReference": {
+      "repository": "https://github.com/doitsujin/dxvk",
+      "commit": "2c94c5f25cf75c313ef2a55b2e0c9276d67c28d6",
+      "nominalTag": "v3.0.2",
+      "why": [
+        "The extraction source, cloned to v2/DXVK-3.0-uptsream. Two jobs:",
+        "build-driver.sh links against its src/d3d9/d3d9.def for the exports,",
+        "and fetch-deps.sh vendors its d3d9 frontend, util/spirv/wsi and the",
+        "dxbc-spirv submodule out of it.",
+        "fetch-deps.sh would clone whatever main is that day, which left two",
+        "stagings of the same d9mt commit different drivers; tools/d9mt/build.sh",
+        "clones this commit first and hands fetch-deps.sh the result, so the",
+        "clone is pinned. v3.0.2 is the nominal base, but upstream vendors from",
+        "main, so main's commit is what is pinned here."
+      ]
+    },
+    "llvm": {
+      "repository": "https://github.com/llvm/llvm-project",
+      "tag": "llvmorg-15.0.7",
+      "why": [
+        "Built as x86_64 static libs by build-llvm-unixside.sh, for the AIR",
+        "emitter on Wine's unix side. Pinned by the upstream script, not here.",
+        "Separate from Homebrew's llvm@15, which build-air-compiler.sh needs",
+        "for its host-side llvm-config — both are required."
+      ]
+    }
+  },
   "build": {
     "scripts": [
       "scripts/fetch-deps.sh",
@@ -20,18 +63,12 @@
       "scripts/build-bridge.sh",
       "scripts/build-driver.sh"
     ],
-    "unpinnedDependencies": [
-      "fetch-deps.sh clones doitsujin/dxvk at --depth 1 of whatever main is",
-      "that day, so two stagings of the same d9mt commit are not the same",
-      "driver. llvmorg-15.0.7 and the dxbc-spirv submodule are pinned.",
-      "Pinning the DXVK clone is a prerequisite for shipping this."
-    ],
-    "wineTree": [
-      "Its scripts link the bridge against /Applications/CrossOver.app's wine",
-      "tree and install the builtins into it. The unix side is built with",
-      "-undefined dynamic_lookup, so the link does not bind to that tree — but",
-      "the unixlib ABI it was compiled for is CrossOver's, and the runtime here",
-      "is Wine 11.18. Nothing checks that the two agree."
+    "crossOver": [
+      "build-bridge.sh refuses without /Applications/CrossOver.app, and links",
+      "the unix side against that tree's ntdll.so. The link is -undefined",
+      "dynamic_lookup, so nothing binds to those files — but the Wine unixlib",
+      "ABI the bridge was compiled for is CrossOver's, and the runtime here is",
+      "Wine 11.18. Nothing checks that the two agree."
     ]
   },
   "products": {

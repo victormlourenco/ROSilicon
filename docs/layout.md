@@ -15,7 +15,7 @@ tools/wine-runtime/      build, assemble, validate, package and restore the runt
 tools/steam-stub/        the Steam stub's source, and the scripts around it
 tools/d9vk/              build and validate DXVK's d3d9.dll
 tools/kosmickrisp/       build the x86_64 Vulkan loader and KosmicKrisp
-tools/d9mt/              stage and validate a d9mt built elsewhere
+tools/d9mt/              build, stage and validate d9mt
 tools/publish-wiki.sh    copies wiki/ to the GitHub wiki
 wiki/                    the wiki's pages, as files; see wiki/README.md
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
@@ -23,8 +23,8 @@ wiki/                    the wiki's pages, as files; see wiki/README.md
 .d9vk/                   the built d3d9.dll, and kosmickrisp/d3d9.dll (gitignored, `make d9vk`)
 .kosmickrisp/            the built loader and driver (gitignored, `make kosmickrisp`)
 .d9mt/                   a staged d9mt: d3d9.dll and the Wine builtins it needs
-                         (gitignored, `make d9mt D9MT_SOURCE=<checkout>`; optional,
-                         and there is no checked-in fallback)
+                         (gitignored, `make d9mt`; optional, and there is no
+                         checked-in fallback)
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, the fallback when .d9vk is empty
   d9vk/kosmickrisp/      the same for KosmicKrisp, built from DXVK master

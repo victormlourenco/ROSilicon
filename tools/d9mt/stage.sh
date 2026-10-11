@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # Stage a built d9mt into .d9mt, in the layout build.sh copies into the app.
 #
-# Unlike DXVK, d9mt is not built here. Building it takes a checkout of
-# https://github.com/neo773/d9mt-v2, its own five scripts in order, an LLVM 15
-# built as x86_64 static libs, and a clone of upstream DXVK 3.0 that its
-# fetch-deps.sh vendors — and every one of those scripts links against
-# CrossOver's wine tree rather than ours. So this script takes a checkout
-# somebody has already built and copies the seven products out of it:
+# The copying half of the d9mt build: given a checkout whose own scripts have
+# run, it copies the seven products out into the layout the app expects.
+# build.sh beside this is what assembles the checkouts and runs those scripts,
+# and it finishes by calling this; on its own this is the way to stage a
+# checkout you are working in by hand.
 #
 #     stage.sh --src PATH          stage from that d9mt-v2 checkout
 #     stage.sh --output PATH       stage somewhere other than .d9mt
@@ -65,7 +64,8 @@ done
 
 if [[ -z "$SRC" ]]; then
     echo "error: --src must name a built d9mt-v2 checkout" >&2
-    echo "       see docs/d9mt.md for how one is built" >&2
+    echo "       tools/d9mt/build.sh builds one from the pinned sources and" >&2
+    echo "       calls this itself; see docs/d9mt.md" >&2
     exit 1
 fi
 SRC="$(cd "$SRC" 2>/dev/null && pwd)" || {
@@ -124,7 +124,8 @@ done
 if [[ ${#missing[@]} -gt 0 ]]; then
     echo "error: $SRC has not been built — missing:" >&2
     printf '       %s\n' "${missing[@]}" >&2
-    echo "       see docs/d9mt.md for the five scripts, in order" >&2
+    echo "       'make d9mt' without D9MT_SOURCE builds it from the pinned" >&2
+    echo "       sources instead; docs/d9mt.md has what each step needs" >&2
     exit 1
 fi
 
