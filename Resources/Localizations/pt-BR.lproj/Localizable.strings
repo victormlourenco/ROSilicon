@@ -17,6 +17,10 @@
 "menu.reinstall_client" = "Reinstalar cliente do jogo…";
 "menu.client_url" = "URL do cliente…";
 "menu.metal_hud" = "Mostrar medidor de FPS do Metal";
+"menu.d3d9_backend" = "Motor do Direct3D 9";
+"menu.d3d9_backend.dxvk" = "DXVK (padrão)";
+"menu.d3d9_backend.d9mt" = "d9mt (experimental)";
+"help.d3d9_backend" = "O que converte o Direct3D 9 do jogo em Metal. O DXVK passa pelo Vulkan; o d9mt vai direto ao Metal e é experimental. Vale a partir da próxima vez que você clicar em Jogar.";
 "menu.vulkan_driver" = "Driver Vulkan";
 "menu.vulkan_driver.kosmickrisp" = "KosmicKrisp";
 "menu.vulkan_driver.moltenvk" = "MoltenVK (padrão)";
@@ -148,6 +152,7 @@
 "log.removed" = "(removido)";
 "log.launching" = "Iniciando o cliente…";
 "log.metal_hud" = "Medidor de FPS do Metal ligado.";
+"log.d3d9_backend" = "Motor do Direct3D 9: %@.";
 "log.vulkan_driver" = "Driver Vulkan: %@.";
 "log.rosettax87_jit" = "O código x87 roda com o rosettax87_jit — o macOS pede sua senha para deixá-lo se conectar ao jogo.";
 "log.x87_disabled" = "Sem tradução x87 acelerada: o código x87 do cliente roda no Rosetta padrão, mais lento.";

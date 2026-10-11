@@ -10,16 +10,21 @@ Packaging/WineRuntime/   the runtime and artifact locks, and the Wine patches
 Packaging/RosettaX87JIT/ the hashes of the bundled rosettax87_jit
 Packaging/D9VK/          the DXVK source locks, one per Vulkan driver, and their patches
 Packaging/KosmicKrisp/   the Mesa and Vulkan loader source lock
+Packaging/D9MT/          the d9mt source lock: the commit a staging must come from
 tools/wine-runtime/      build, assemble, validate, package and restore the runtime
 tools/steam-stub/        the Steam stub's source, and the scripts around it
 tools/d9vk/              build and validate DXVK's d3d9.dll
 tools/kosmickrisp/       build the x86_64 Vulkan loader and KosmicKrisp
+tools/d9mt/              stage and validate a d9mt built elsewhere
 tools/publish-wiki.sh    copies wiki/ to the GitHub wiki
 wiki/                    the wiki's pages, as files; see wiki/README.md
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
 .d9vk/                   the built d3d9.dll, and kosmickrisp/d3d9.dll (gitignored, `make d9vk`)
 .kosmickrisp/            the built loader and driver (gitignored, `make kosmickrisp`)
+.d9mt/                   a staged d9mt: d3d9.dll and the Wine builtins it needs
+                         (gitignored, `make d9mt D9MT_SOURCE=<checkout>`; optional,
+                         and there is no checked-in fallback)
 Resources/
   d9vk/d3d9.dll          Direct3D 9 to Vulkan, the fallback when .d9vk is empty
   d9vk/kosmickrisp/      the same for KosmicKrisp, built from DXVK master
@@ -39,6 +44,7 @@ Sources/ROSilicon/
   LaunchOptions.swift    WINEDEBUG and the extra variables, as typed
   X87Backend.swift       the choice between the two x87 hooks
   VulkanDriver.swift     KosmicKrisp or MoltenVK, by macOS version
+  D3D9Backend.swift      DXVK or d9mt, by what the build carries
   DiscordPresence.swift  the game's activity in the Discord app, over its local socket
   Status.swift           what is installed right now
   LauncherModel.swift    state and actions behind the window

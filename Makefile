@@ -17,13 +17,23 @@
 # cross-compiler and several minutes, so an ordinary `make` uses
 # Resources/d9vk/d3d9.dll unless a build is sitting in .d9vk. `make bundle`
 # builds and checks its own either way.
+#
+# D9MT points at a staged d9mt — Direct3D 9 straight onto Metal, offered
+# instead of DXVK behind ⌥. It is the other way round from everything above:
+# optional, with no fallback and no build rule, because it is not built from
+# this repository. `make d9mt D9MT_SOURCE=<checkout>` stages one somebody has
+# already built; without it the app ships without d9mt. See docs/d9mt.md.
 
 APP_NAME := ROSilicon
 OUT      := $(or $(APP_OUT),.)
 WINE_RUNTIME ?= $(CURDIR)/.wine-runtime
 STEAM_STUB   ?= $(CURDIR)/.steam-stub
 D9VK         ?= $(CURDIR)/.d9vk
+D9MT         ?= $(CURDIR)/.d9mt
 KOSMICKRISP  ?= $(CURDIR)/.kosmickrisp
+
+# The d9mt-v2 checkout `make d9mt` stages from, built with its own scripts.
+D9MT_SOURCE  ?=
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
@@ -43,13 +53,14 @@ KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-loc
                      $(wildcard Packaging/KosmicKrisp/patches/*.patch)
 
 # build.sh reads these out of the environment; unset and empty both mean "here".
-export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
+export APP_OUT WINE_RUNTIME STEAM_STUB D9VK D9MT
 
 .DEFAULT_GOAL := app
 .PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
-        validate_d9vk d9vk d9vk-toolchain kosmickrisp kosmickrisp-toolchain
+        validate_d9vk d9vk d9vk-toolchain kosmickrisp kosmickrisp-toolchain \
+        d9mt validate_d9mt
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -81,7 +92,7 @@ test:
 # does `make d9vk`. Only this folder's copies go: a WINE_RUNTIME, STEAM_STUB or
 # D9VK pointed elsewhere is left alone.
 clean:
-	rm -rf .build .wine-runtime .steam-stub .d9vk .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
+	rm -rf .build .wine-runtime .steam-stub .d9vk .d9mt .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
 	@echo "make             build $(APP_NAME).app — the fast one"
@@ -98,6 +109,7 @@ help:
 	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
 	@echo "make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
 	@echo "make kosmickrisp-toolchain  install the toolchain KosmicKrisp needs"
+	@echo "make d9mt D9MT_SOURCE=<dir>  stage a built d9mt-v2 into .d9mt"
 	@echo "make app-no-wine build without the Wine runtime — UI work only"
 	@echo "make clean       remove the build products"
 	@echo
@@ -105,6 +117,7 @@ help:
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
 	@echo "STEAM_STUB=<dir>   ships a Steam stub other than .steam-stub."
 	@echo "D9VK=<dir>         ships d3d9.dll (and kosmickrisp/d3d9.dll) other than .d9vk's."
+	@echo "D9MT=<dir>         ships a d9mt staged somewhere other than .d9mt."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
@@ -173,6 +186,30 @@ validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)/kosmickrisp"
 
+# Stages a d9mt somebody has already built — the seven products out of a
+# d9mt-v2 checkout, in the layout build.sh overlays onto the app and its Wine.
+# Nothing here builds d9mt: that takes its own five scripts, an LLVM 15 built
+# for x86_64 and a clone of upstream DXVK 3.0, all against CrossOver's wine
+# tree. docs/d9mt.md says how, and what is still in the way of shipping it.
+d9mt:
+	@test -n "$(D9MT_SOURCE)" || { \
+	    echo "error: name the built d9mt-v2 checkout to stage from" >&2; \
+	    echo "       make d9mt D9MT_SOURCE=~/src/d9mt-v2" >&2; \
+	    echo "       see docs/d9mt.md" >&2; \
+	    exit 1; }
+	@tools/d9mt/stage.sh --src "$(D9MT_SOURCE)" --output "$(D9MT)"
+	@tools/d9mt/validate.sh --d9mt "$(D9MT)"
+
+# Optional, unlike the rest of what `bundle` checks: an app without d9mt is a
+# supported build, so this passes quietly when nothing has been staged and
+# checks it over when something has.
+validate_d9mt:
+	@if [ -d "$(D9MT)" ]; then \
+	    tools/d9mt/validate.sh --d9mt "$(D9MT)"; \
+	else \
+	    echo "No d9mt staged in $(D9MT); the app will ship without it."; \
+	fi
+
 # The Vulkan loader and KosmicKrisp, x86_64, from the Mesa and Khronos sources
 # Packaging/KosmicKrisp/source-lock.json pins. They are runtime inputs rather
 # than something build.sh copies: `make runtime` takes them from here the first
@@ -194,4 +231,4 @@ kosmickrisp-toolchain:
 # them rather than failing on their absence. Building DXVK here is what keeps a
 # release off the checked-in fallback that an ordinary `make` is allowed to use.
 bundle: validate_wine_runtime $(STEAM_STUB_EXE) validate_steam_stub \
-        $(D9VK_DLL) $(D9VK_KK_DLL) validate_d9vk dmg
+        $(D9VK_DLL) $(D9VK_KK_DLL) validate_d9vk validate_d9mt dmg

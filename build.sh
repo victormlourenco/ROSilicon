@@ -8,7 +8,9 @@
 # Set APP_OUT to build somewhere other than this folder and WINE_RUNTIME to take
 # the Wine tree from somewhere other than .wine-runtime. D9VK points at a folder
 # holding a d3d9.dll built by tools/d9vk/build.sh, which is used in preference
-# to the checked-in one. Pass --no-dmg to build only the .app, and --no-wine to
+# to the checked-in one. D9MT points at a d9mt staged by tools/d9mt/stage.sh,
+# which is optional: without one the app ships without d9mt and its picker
+# hides itself. Pass --no-dmg to build only the .app, and --no-wine to
 # leave the Wine runtime out — quick for working on the UI, but the resulting
 # app cannot install.
 set -euo pipefail
@@ -115,6 +117,18 @@ else
     DXVK_KK="$PKG/Resources/d9vk/kosmickrisp/d3d9.dll"
     DXVK_KK_ORIGIN="checked in"
 fi
+# d9mt — Direct3D 9 straight onto Metal, offered instead of DXVK behind ⌥. The
+# one piece with no checked-in fallback and no build rule here: it is not built
+# from this repository at all (see docs/d9mt.md), so an app ships with it only
+# when D9MT points at a staging and ships without it otherwise. D3D9Backend
+# hides the picker when it is absent, so a build without it is a build that
+# simply has one backend.
+D9MT="${D9MT:-$PKG/.d9mt}"
+if [[ -f "$D9MT/d3d9.dll" ]]; then
+    HAVE_D9MT=1
+else
+    HAVE_D9MT=0
+fi
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 # rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥. Its
 # loader reads libRuntimeRosettax87 from its own folder, so the two go in
@@ -138,6 +152,11 @@ echo "    d3d9.dll ($DXVK_ORIGIN): $DXVK"
 mkdir -p "$APP/Contents/Resources/kosmickrisp"
 cp "$DXVK_KK" "$APP/Contents/Resources/kosmickrisp/d3d9.dll"
 echo "    kosmickrisp/d3d9.dll ($DXVK_KK_ORIGIN): $DXVK_KK"
+if [[ "$HAVE_D9MT" == 1 ]]; then
+    mkdir -p "$APP/Contents/Resources/d9mt"
+    cp "$D9MT/d3d9.dll" "$APP/Contents/Resources/d9mt/d3d9.dll"
+    echo "    d9mt/d3d9.dll: $D9MT/d3d9.dll"
+fi
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 # Copied, not re-signed: the loader's own ad-hoc signature carries the debugger
@@ -162,6 +181,32 @@ if [[ "$COPY_WINE" == 1 ]]; then
     # codesign seals every file under Resources/; the Finder's leftovers have no
     # business in the signature.
     find "$APP/Contents/Resources/Wine" -name .DS_Store -delete
+    # d9mt's d3d9.dll reaches Metal through two Wine builtins — winemetal and
+    # its shader compiler d9mtair, each a PE/unixlib pair. They have to lie in
+    # the tree's own lib/wine, where Wine loads builtins from, and they have to
+    # go in here: this is the last moment anything may write to that tree, since
+    # the signature below seals it and the installer copies it out as it is.
+    #
+    # .d9mt/wine mirrors lib/wine, so this is a plain overlay. Nothing in the
+    # tree is replaced — no Wine carries a winemetal — and leaving them out
+    # entirely is what an app without d9mt does.
+    if [[ "$HAVE_D9MT" == 1 && -d "$D9MT/wine" ]]; then
+        echo "==> overlaying the d9mt bridge onto the bundled Wine"
+        ditto "$D9MT/wine" "$APP/Contents/Resources/Wine/lib/wine"
+        for builtin in i386-windows/winemetal.dll i386-windows/d9mtair.dll \
+                       x86_64-windows/winemetal.dll x86_64-windows/d9mtair.dll \
+                       x86_64-unix/winemetal.so x86_64-unix/d9mtair.so; do
+            echo "    lib/wine/$builtin"
+        done
+    elif [[ "$HAVE_D9MT" == 1 ]]; then
+        # A d3d9.dll with no bridge beside it is the one combination that would
+        # ship a backend the picker offers and the client cannot draw through.
+        echo "error: $D9MT holds a d3d9.dll but no wine/ bridge to go with it" >&2
+        echo "       re-stage it: make d9mt D9MT_SOURCE=<d9mt-v2 checkout>" >&2
+        exit 1
+    fi
+elif [[ "$HAVE_D9MT" == 1 ]]; then
+    echo "==> skipping the Wine runtime (--no-wine); d9mt has no bridge to load"
 else
     echo "==> skipping the Wine runtime (--no-wine)"
 fi

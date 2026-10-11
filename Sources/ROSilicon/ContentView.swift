@@ -206,11 +206,23 @@ struct ContentView: View {
                 Button(Strings.menuClientURL) { editor = .clientURL }
                 Divider()
                 Toggle(Strings.menuMetalHUD, isOn: $model.metalHUD)
+                // Shown only in an app that was actually built with d9mt,
+                // and never over RO_D3D9_BACKEND: an empty choice is worse
+                // than no choice.
+                if D3D9Backend.isD9MTBundled, D3D9Backend.override == nil {
+                    Picker(Strings.menuD3D9Backend, selection: $model.d3d9Backend) {
+                        ForEach(D3D9Backend.allCases) { Text($0.menuLabel).tag($0) }
+                    }
+                    .pickerStyle(.menu)
+                    .help(Strings.d3d9BackendHelp)
+                }
                 // Hidden where it cannot decide anything, for the same reason
                 // the hook's picker is: before macOS 26 only MoltenVK runs,
                 // and RO_VULKAN_DRIVER, when it names one, is ahead of the
-                // menu.
-                if VulkanDriver.isKosmicKrispSupportedHere, VulkanDriver.override == nil {
+                // menu. d9mt rules it out too — it loads no Vulkan driver at
+                // all, so the choice would sit there deciding nothing.
+                if VulkanDriver.isKosmicKrispSupportedHere, VulkanDriver.override == nil,
+                   model.d3d9Backend.asShipped.usesVulkan {
                     Picker(Strings.menuVulkanDriver, selection: $model.vulkanDriver) {
                         ForEach(VulkanDriver.allCases) { Text($0.menuLabel).tag($0) }
                     }

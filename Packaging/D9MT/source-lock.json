@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/neo773/d9mt-v2",
+  "branch": "main",
+  "commit": "b78566165efc1f9a11b00a974f37d1764b6df830",
+  "notes": [
+    "d9mt is D3D9 straight onto Metal: it replaces DXVK and the Vulkan driver",
+    "under it, not just one of them. tools/d9mt/stage.sh does not build it —",
+    "it stages the products of a d9mt-v2 checkout built with its own scripts",
+    "and checks that checkout is at `commit` here. See docs/d9mt.md.",
+    "Upstream declares no license. Its driver/ is extracted DXVK 3.0 (zlib)",
+    "and its bridge/ is vendored winemetal from DXMT, but the tree itself says",
+    "nothing, so nothing from it may be redistributed in a release until it does."
+  ],
+  "build": {
+    "scripts": [
+      "scripts/fetch-deps.sh",
+      "scripts/build-llvm-unixside.sh",
+      "scripts/build-d9mtair.sh",
+      "scripts/build-bridge.sh",
+      "scripts/build-driver.sh"
+    ],
+    "unpinnedDependencies": [
+      "fetch-deps.sh clones doitsujin/dxvk at --depth 1 of whatever main is",
+      "that day, so two stagings of the same d9mt commit are not the same",
+      "driver. llvmorg-15.0.7 and the dxbc-spirv submodule are pinned.",
+      "Pinning the DXVK clone is a prerequisite for shipping this."
+    ],
+    "wineTree": [
+      "Its scripts link the bridge against /Applications/CrossOver.app's wine",
+      "tree and install the builtins into it. The unix side is built with",
+      "-undefined dynamic_lookup, so the link does not bind to that tree — but",
+      "the unixlib ABI it was compiled for is CrossOver's, and the runtime here",
+      "is Wine 11.18. Nothing checks that the two agree."
+    ]
+  },
+  "products": {
+    "d3d9.dll": "build/driver/d3d9.dll",
+    "wine/i386-windows/winemetal.dll": "build/bridge/winemetal32.dll",
+    "wine/x86_64-windows/winemetal.dll": "build/bridge/winemetal64.dll",
+    "wine/x86_64-unix/winemetal.so": "build/bridge/winemetal.so",
+    "wine/i386-windows/d9mtair.dll": "build/airlib/d9mtair32.dll",
+    "wine/x86_64-windows/d9mtair.dll": "build/airlib/d9mtair64.dll",
+    "wine/x86_64-unix/d9mtair.so": "build/airlib/d9mtair.so"
+  }
+}

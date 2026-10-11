@@ -35,6 +35,10 @@ enum Strings {
     static var menuReinstallClient: String { t("menu.reinstall_client") }
     static var menuClientURL: String { t("menu.client_url") }
     static var menuMetalHUD: String { t("menu.metal_hud") }
+    static var menuD3D9Backend: String { t("menu.d3d9_backend") }
+    static var menuD3D9BackendDXVK: String { t("menu.d3d9_backend.dxvk") }
+    static var menuD3D9BackendD9MT: String { t("menu.d3d9_backend.d9mt") }
+    static var d3d9BackendHelp: String { t("help.d3d9_backend") }
     static var menuVulkanDriver: String { t("menu.vulkan_driver") }
     static var menuVulkanKosmicKrisp: String { t("menu.vulkan_driver.kosmickrisp") }
     static var menuVulkanMoltenVK: String { t("menu.vulkan_driver.moltenvk") }
@@ -196,6 +200,7 @@ enum Strings {
     static var logRemoved: String { t("log.removed") }
     static var logLaunching: String { t("log.launching") }
     static var logMetalHUD: String { t("log.metal_hud") }
+    static func logD3D9Backend(_ name: String) -> String { t("log.d3d9_backend", name) }
     static func logVulkanDriver(_ name: String) -> String { t("log.vulkan_driver", name) }
     static var logRosettaX87JIT: String { t("log.rosettax87_jit") }
     static var logX87Disabled: String { t("log.x87_disabled") }

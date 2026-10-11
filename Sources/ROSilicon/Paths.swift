@@ -52,9 +52,10 @@ struct Paths: Sendable {
     /// d3d9.dll once its own folder holds none.
     var syswow64: URL { driveC.appending(path: "windows/syswow64") }
 
-    /// Where DXVK is linked into the prefix: the system folder rather than the
-    /// game's, so it is not something a reinstall of the client can drop and
-    /// every 32-bit program in the prefix sees the same Direct3D 9.
+    /// Where the run's Direct3D 9 is linked into the prefix — DXVK's d3d9.dll
+    /// or d9mt's, whichever the backend named: the system folder rather than
+    /// the game's, so it is not something a reinstall of the client can drop
+    /// and every 32-bit program in the prefix sees the same Direct3D 9.
     var dxvkLink: URL { syswow64.appending(path: "d3d9.dll") }
 
     /// Where versions up to 0.2.0 put that link, beside Ragexe.exe. Windows
@@ -114,6 +115,31 @@ struct Paths: Sendable {
         switch driver {
         case .kosmicKrisp: bundledTools.appending(path: "kosmickrisp/d3d9.dll")
         case .moltenVK: bundledTools.appending(path: "d3d9.dll")
+        }
+    }
+
+    /// Where `build.sh` stages d9mt, when it was given one to stage.
+    static var d9mtFolder: URL { bundledTools.appending(path: "d9mt") }
+
+    /// d9mt's own `d3d9.dll` — the whole Direct3D 9 implementation, Metal
+    /// backend included, so it replaces DXVK rather than sitting beside it.
+    static var d9mtDLL: URL { d9mtFolder.appending(path: "d3d9.dll") }
+
+    /// The `winemetal` unixlib inside the bundled Wine tree, which is how
+    /// d9mt's PE side reaches Metal. Staged into the tree by `build.sh`
+    /// before the bundle is signed, since nothing may write to it after.
+    /// Its presence is what says the tree carries the bridge at all.
+    static var bundledWineMetal: URL {
+        bundledWineRoot.appending(path: "lib/wine/x86_64-unix/winemetal.so")
+    }
+
+    /// The `d3d9.dll` a run links into the prefix: d9mt's when the menu asks
+    /// for it and the app was built with it, and otherwise the DXVK built for
+    /// `driver`.
+    static func d3d9DLL(for backend: D3D9Backend, vulkan driver: VulkanDriver) -> URL {
+        switch backend {
+        case .dxvk: dxvkDLL(for: driver)
+        case .d9mt: d9mtDLL
         }
     }
 

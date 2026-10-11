@@ -49,6 +49,14 @@ final class LauncherModel: ObservableObject {
     ) ?? .default {
         didSet { UserDefaults.standard.set(vulkanDriver.rawValue, forKey: Self.vulkanDriverKey) }
     }
+    /// What turns the client's Direct3D 9 into Metal, from the ⌥ menu —
+    /// DXVK, or d9mt where the app was built with it. Remembered and applied
+    /// on the next launch, like the driver above it.
+    @Published var d3d9Backend = D3D9Backend(
+        rawValue: UserDefaults.standard.string(forKey: LauncherModel.d3d9BackendKey) ?? ""
+    ) ?? .default {
+        didSet { UserDefaults.standard.set(d3d9Backend.rawValue, forKey: Self.d3d9BackendKey) }
+    }
     /// Saved immediately, applied on the next Install/Repair or Play. Changing
     /// a preference must not start Wine or initialize a prefix on its own.
     @Published var commandShortcuts = GameKeyboardSettings.load(
@@ -110,6 +118,7 @@ final class LauncherModel: ObservableObject {
     private static let metalHUDKey = "metalHUD"
     private static let x87BackendKey = "x87Backend"
     private static let vulkanDriverKey = "vulkanDriver"
+    private static let d3d9BackendKey = "d3d9Backend"
     private static let wineDebugKey = "wineDebug"
     private static let extraEnvironmentKey = "extraEnvironment"
     private static let profileKey = "profile"
@@ -230,7 +239,7 @@ final class LauncherModel: ObservableObject {
         let runner = GameRunner(
             paths: paths, reporter: reporter, metalHUD: metalHUD, options: launchOptions,
             keyboard: GameKeyboardSettings(commandShortcuts: commandShortcuts), x87: x87Backend,
-            vulkan: vulkanDriver)
+            vulkan: vulkanDriver, d3d9: d3d9Backend)
         let id = UUID()
         if games.isEmpty {
             failure = nil
