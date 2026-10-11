@@ -100,12 +100,18 @@ So a bare `git clone` of d9mt-v2 cannot build. It wants v1 around it, a
 link reads `d3d9.def` out of it:
 
 ```
-<work>/d9mt/                      v1 — $ROOT: tools/, vendor/, prebuilt/
-<work>/d9mt/v2/                   the d9mt-v2 checkout, at the locked commit
-<work>/d9mt/v2/DXVK-3.0-uptsream  the extraction source (upstream's spelling)
-<work>/d9mt/v2/toolchains/        the x86_64 LLVM, built once and kept
-<work>/dxmt/                      for -I src/airconv
+<work>/d9mt/                           v1 — $ROOT: tools/, vendor/, prebuilt/
+<work>/d9mt/d9mt-v2/                   the d9mt-v2 checkout, at the locked commit
+<work>/d9mt/d9mt-v2/DXVK-3.0-uptsream  the extraction source (upstream's spelling)
+<work>/d9mt/d9mt-v2/toolchains/        the x86_64 LLVM, built once and kept
+<work>/dxmt/                           for -I src/airconv
 ```
+
+Beside v1 rather than *at* `<work>/d9mt/v2`, which is the trap: v1 carries a
+tracked `v2/` of its own — an older in-repo version of the same thing, the one
+the stale `scripts/build.sh` still targets — and the standalone repository is
+what replaced it. Only the checkout's parent matters to its scripts, so the
+folder is named after the repository and v1's `v2/` is left where it is.
 
 Getting that wrong is worse than failing. `tools/make-builtin.py` — v1's, and
 what marks the PE DLLs as Wine builtins — is read behind an `if [ -f ]`, so a
@@ -133,7 +139,7 @@ includes LLVM 15's headers.
 already run, which is what to use while working on d9mt itself:
 
 ```sh
-make d9mt D9MT_SOURCE=~/projects/d9mt/v2
+make d9mt D9MT_SOURCE=~/projects/d9mt/d9mt-v2
 ```
 
 `tools/d9mt/stage.sh` copies the seven products out into `.d9mt` in the layout

@@ -33,11 +33,18 @@
 #
 # So the layout is what this script mostly is:
 #
-#     <work>/d9mt/                     v1 — $ROOT: tools/, vendor/, prebuilt/
-#     <work>/d9mt/v2/                  the d9mt-v2 checkout, at the locked commit
-#     <work>/d9mt/v2/DXVK-3.0-uptsream the extraction source (upstream's spelling)
-#     <work>/d9mt/v2/toolchains/       the x86_64 LLVM, built once and kept
-#     <work>/dxmt/                     for -I src/airconv
+#     <work>/d9mt/                          v1 — $ROOT: tools/, vendor/, prebuilt/
+#     <work>/d9mt/d9mt-v2/                  the d9mt-v2 checkout, at the locked commit
+#     <work>/d9mt/d9mt-v2/DXVK-3.0-uptsream the extraction source (upstream's spelling)
+#     <work>/d9mt/d9mt-v2/toolchains/       the x86_64 LLVM, built once and kept
+#     <work>/dxmt/                          for -I src/airconv
+#
+# Beside v1 but NOT at <work>/d9mt/v2: v1 carries a tracked v2/ of its own, an
+# older in-repo version of the same thing — the one the stale scripts/build.sh
+# still targets — and the standalone repository is what replaced it. Only the
+# checkout's *parent* matters to its scripts ($V2 is wherever they live, $ROOT
+# is one above), so the folder is named after the repository and v1's own v2/
+# is left alone.
 #
 # Each of the four is pinned by commit in the source lock, the DXVK clone
 # included — fetch-deps.sh would otherwise clone whatever main was that day,
@@ -134,7 +141,7 @@ print(lock["repository"], lock["commit"],
 ' "$LOCK")
 
 ROOT_DIR="$WORK/d9mt"
-V2_DIR="$ROOT_DIR/v2"
+V2_DIR="$ROOT_DIR/d9mt-v2"
 DXMT_DIR="$WORK/dxmt"
 DXVK_DIR="$V2_DIR/DXVK-3.0-uptsream"
 
