@@ -15,6 +15,12 @@
 #     build.sh --install       install the toolchain with Homebrew first
 #     build.sh --toolchain     install the toolchain and stop
 #     build.sh --keep-going    carry on to staging even if a step fails
+#     build.sh --no-patch      leave the checkout as it is, patches and all
+#
+# The checkout is reset to the locked commit and the lock's patches reapplied
+# on every build, so what it builds is always commit + patches and never a
+# half-remembered edit. Work on the patches, not on the tree; --no-patch is
+# the escape hatch while iterating on a fix by hand, before it becomes one.
 #
 # --toolchain exists where tools/d9vk has no equivalent — `make d9vk-toolchain`
 # installs and then builds, which is fine for a few minutes and not for this.
@@ -70,6 +76,7 @@ WORK="$REPO_ROOT/.d9mt-build"
 INSTALL=0
 TOOLCHAIN_ONLY=0
 KEEP_GOING=0
+PATCH=1
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -85,9 +92,10 @@ while [[ $# -gt 0 ]]; do
         --install) INSTALL=1; shift ;;
         --toolchain) INSTALL=1; TOOLCHAIN_ONLY=1; shift ;;
         --keep-going) KEEP_GOING=1; shift ;;
+        --no-patch) PATCH=0; shift ;;
         *)
             echo "usage: $(basename "$0") [--output PATH] [--work PATH] [--lock PATH]" >&2
-            echo "       [--install] [--toolchain] [--keep-going]" >&2
+            echo "       [--install] [--toolchain] [--keep-going] [--no-patch]" >&2
             exit 2 ;;
     esac
 done
@@ -193,6 +201,19 @@ print(lock["repository"], lock["commit"],
       sources["dxvkReference"]["repository"], sources["dxvkReference"]["commit"])
 ' "$LOCK")
 
+# One per line, resolved against the lock's own folder, in the order listed —
+# which is the order they are numbered. An empty list is a build of the commit
+# as it is.
+PATCHES=()
+while IFS= read -r patch; do
+    [[ -n "$patch" ]] && PATCHES+=("$patch")
+done < <(python3 -c '
+import json, os, sys
+lock = json.load(open(sys.argv[1]))
+for patch in lock.get("patches", []):
+    print(os.path.join(os.path.dirname(os.path.abspath(sys.argv[1])), patch))
+' "$LOCK")
+
 ROOT_DIR="$WORK/d9mt"
 V2_DIR="$ROOT_DIR/d9mt-v2"
 DXMT_DIR="$WORK/dxmt"
@@ -241,6 +262,33 @@ pin_checkout "dxvk (extraction source)" "$DXVK_DIR" "$DXVK_REPO" "$DXVK_COMMIT"
 echo "==> dxvk submodules (dxbc-spirv, vulkan, spirv headers)"
 git -C "$DXVK_DIR" submodule update --quiet --init --depth 1 \
     subprojects/dxbc-spirv include/vulkan include/spirv
+# Back to the locked commit, then the patches on top. The restore is what
+# makes a rebuild mean anything: pin_checkout leaves a checkout already at the
+# right commit alone, so without this an edit made by hand last time would
+# still be in the tree and the build would quietly not be commit + patches.
+#
+# Only tracked files are restored. The vendored DXVK frontend, the LLVM
+# toolchain, the DXVK clone and build/ are all gitignored in this tree, so an
+# hour of LLVM is not what gets thrown away here.
+if [[ "$PATCH" == 1 ]]; then
+    git -C "$V2_DIR" checkout --quiet -- .
+    # The restore also reverts the two generated metallib headers that are
+    # committed upstream, and build-driver.sh decides to regenerate them by
+    # mtime — against its own, among others. Restored, they are newer than
+    # every source, so it would skip the regeneration and quietly build the
+    # shaders upstream committed rather than the ones this Mac's Metal
+    # toolchain produces. Touching the generator puts them back in front.
+    touch "$V2_DIR/scripts/build-driver.sh"
+    for patch in ${PATCHES[@]+"${PATCHES[@]}"}; do
+        [[ -f "$patch" ]] || { echo "error: no patch at $patch" >&2; exit 1; }
+        echo "==> applying $(basename "$patch")"
+        git -C "$V2_DIR" apply "$patch" \
+            || { echo "error: $(basename "$patch") does not apply" >&2; exit 1; }
+    done
+elif [[ ${#PATCHES[@]} -gt 0 ]]; then
+    echo "    --no-patch: building the tree as it stands, not commit + patches"
+fi
+
 # And dxbc-spirv's own, one level further down: it carries SPIRV-Headers as
 # submodules/spirv_headers, and its spirv_types.h includes that by relative
 # path. fetch-deps.sh inits dxbc-spirv but does not recurse, so the folder

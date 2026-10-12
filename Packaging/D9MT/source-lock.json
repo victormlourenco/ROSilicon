@@ -3,6 +3,22 @@
   "repository": "https://github.com/neo773/d9mt-v2",
   "branch": "main",
   "commit": "b78566165efc1f9a11b00a974f37d1764b6df830",
+  "patches": [
+    "patches/0001-d3d9-rotate-the-4444-texture-channels.patch"
+  ],
+  "patchNotes": [
+    "0001 rotates the channels of the 4444 texture formats. Metal has no",
+    "ARGB4444, so DXMT's bridge carries a corrected constant for it —",
+    "WMTPixelFormatBGRA4Unorm = GBARSwizzle | ABGR4Unorm — but the driver's",
+    "own MtlFormat enum has only the bare ABGR4Unorm and so can never ask",
+    "for the correction. A4R4G4B4 and X4R4G4B4 therefore sampled with their",
+    "channels rotated, and alpha taken from blue: every texel with blue in",
+    "it came out opaque, so the transparent parts of sprite quads rendered",
+    "as solid boxes, and the lightmap — colour black, intensity in alpha —",
+    "sampled as (intensity, 0, 0), which MODULATE2X turned into the",
+    "saturated red ground. X1R5G5B5 beside them already carries a swizzle,",
+    "so this is an omission rather than a decision. Not upstream yet."
+  ],
   "notes": [
     "d9mt is D3D9 straight onto Metal: it replaces DXVK and the Vulkan driver",
     "under it, not just one of them. See docs/d9mt.md.",
@@ -20,7 +36,7 @@
         "marks the PE dlls as Wine builtins (behind an `if [ -f ]`, so a v2",
         "checkout outside it silently skips the marking and the builtins then",
         "do not load), and vendor/spirv-cross, which the AIR compiler includes.",
-        "So the v2 checkout goes at <root>/v2, not anywhere else."
+        "So the v2 checkout goes inside it — but beside v1's own tracked v2/, which is an older in-repo version, not at it."
       ]
     },
     "dxmt": {

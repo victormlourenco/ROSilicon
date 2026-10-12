@@ -161,6 +161,39 @@ as an empty stub and the failure lands much later, in the smoke test at the
 end of the bridge build, as a missing `spirv.hpp`. build.sh inits it in the
 DXVK clone before `fetch-deps.sh` copies the tree.
 
+### The patch it carries
+
+One, ours, in
+[Packaging/D9MT/patches/](../Packaging/D9MT/patches/) and listed in the lock.
+
+Metal has no ARGB4444, so DXMT's bridge carries a corrected constant for it —
+`WMTPixelFormatBGRA4Unorm = GBARSwizzle | ABGR4Unorm` — but the driver's own
+`MtlFormat` enum holds only the bare `ABGR4Unorm`, so it can never ask for the
+correction. `A4R4G4B4` and `X4R4G4B4` therefore sampled with their channels
+rotated: red took alpha's value, green took red's, blue took green's, and
+**alpha took blue's**. Anything with blue in it came out opaque.
+
+That is two visible bugs from one line. The transparent parts of sprite quads
+turned into solid boxes, tinted toward cyan because red carried alpha, which is
+zero where a sprite is transparent. And the ground lightmap — colour black,
+intensity in alpha — sampled as `(intensity, 0, 0)`, which the ground pass's
+`MODULATE2X` turned into a saturated red that erased the cobblestone entirely.
+Turning the lightmap off in the client with `/lightmap` was what separated the
+two and made the format the suspect.
+
+`X1R5G5B5` directly beside them already carries a swizzle, so this is an
+omission rather than a decision. It is not upstream yet and is worth sending.
+
+The checkout is reset to the locked commit and the patches reapplied on every
+build, so what it builds is always commit + patches rather than a
+half-remembered edit — work on the patches, not on the tree. `--no-patch` is
+the escape hatch while iterating on a fix by hand, before it becomes one. The
+reset also reverts the two generated metallib headers that are committed
+upstream, and `build-driver.sh` decides to regenerate them by mtime, so
+build.sh touches that script to keep the shaders the ones this Mac's Metal
+toolchain produces. Those metallibs embed a per-compile hash, which is why two
+builds of the same source give the same `d3d9.dll` size and different bytes.
+
 ### Staging a checkout you built yourself
 
 `D9MT_SOURCE` skips the build and stages a checkout whose own scripts have
@@ -234,5 +267,11 @@ The launcher side was checked end to end earlier, against a stand-in staging
   non-tip commit, an idempotent second run, and a refusal when something that
   is not a checkout is in the way.
 
-Not checked: anything d9mt itself does. **No client has been launched on it**,
-and the licensing blocker above is untouched by any of this.
+**The client runs on it, and renders.** Ragnarok reaches the login screen and
+plays, which is as far as anyone has taken it here. What that first run showed
+was the 4444 channel rotation above, now patched and confirmed fixed in the
+client; `make d9mt` reproduces it from the lock.
+
+Not checked: how far the client gets beyond that, and how fast. No comparison
+against DXVK has been made, and the licensing blocker above is untouched by any
+of this.
