@@ -59,12 +59,12 @@ for the driver the run uses into the prefix on every launch, so the ⌥ menu's
 **Vulkan Driver** picker — and `RO_VULKAN_DRIVER` ahead of it — switches the
 DXVK along with the driver.
 
-`make d9vk` clones each commit, patches it where its lock lists patches,
+`make dxvk` clones each commit, patches it where its lock lists patches,
 cross-compiles a 32-bit `d3d9.dll` into `.d9vk` (and `.d9vk/kosmickrisp`) and
 strips it. It needs more than the Steam stub does:
 
 ```sh
-make d9vk-toolchain   # brew install mingw-w64 meson ninja glslang
+make dxvk-toolchain   # brew install mingw-w64 meson ninja glslang
 ```
 
 DXVK is the one build product with a checked-in fallback. A clone and several

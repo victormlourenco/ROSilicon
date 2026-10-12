@@ -20,7 +20,7 @@ tools/publish-wiki.sh    copies wiki/ to the GitHub wiki
 wiki/                    the wiki's pages, as files; see wiki/README.md
 .wine-runtime/           the Wine tree the app ships (gitignored, `make restore`)
 .steam-stub/             the built Steam stub (gitignored, `make steam-stub`)
-.d9vk/                   the built d3d9.dll, and kosmickrisp/d3d9.dll (gitignored, `make d9vk`)
+.d9vk/                   the built d3d9.dll, and kosmickrisp/d3d9.dll (gitignored, `make dxvk`)
 .kosmickrisp/            the built loader and driver (gitignored, `make kosmickrisp`)
 .d9mt/                   a staged d9mt: d3d9.dll and the Wine builtins it needs
                          (gitignored, `make d9mt`; optional, and there is no

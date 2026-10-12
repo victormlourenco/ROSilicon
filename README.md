@@ -144,7 +144,7 @@ lives in **[docs/](docs/)**:
   `Packaging/KosmicKrisp/source-lock.json`. MoltenVK is the driver the game
   gets unless the ⌥ menu asks for KosmicKrisp.
 - **DXVK / D9VK** — [K0bin/dxvk](https://github.com/K0bin/dxvk): under
-  MoltenVK, branch `moltenvk-version`, which `make d9vk` builds from the commit
+  MoltenVK, branch `moltenvk-version`, which `make dxvk` builds from the commit
   `Packaging/D9VK/source-lock.json` pins, with our patches on top; under
   KosmicKrisp, `master` from `Packaging/D9VK/kosmickrisp/source-lock.json`,
   with patches of its own — the first for the Vulkan features KosmicKrisp

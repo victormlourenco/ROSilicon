@@ -12,6 +12,9 @@
 # STEAM_STUB points at the folder holding the built steam_stub.exe, which
 # build.sh copies into ROSilicon.app/Contents/Resources.
 #
+# The folders and locks still say D9VK, which is what this repository has always
+# called its DXVK build; the target is `make dxvk`, and `make d9vk` still works.
+#
 # D9VK points at the folder holding the built d3d9.dll. It is the one build
 # product with a checked-in fallback: building DXVK needs a Windows
 # cross-compiler and several minutes, so an ordinary `make` uses
@@ -63,11 +66,32 @@ KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-loc
 export APP_OUT WINE_RUNTIME STEAM_STUB D9VK D9MT
 
 .DEFAULT_GOAL := app
-.PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
+.PHONY: all app app-no-wine dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
-        validate_d9vk d9vk d9vk-toolchain kosmickrisp kosmickrisp-toolchain \
+        validate_d9vk dxvk dxvk-toolchain d9vk d9vk-toolchain \
+        kosmickrisp kosmickrisp-toolchain \
         d9mt d9mt-toolchain validate_d9mt
+
+# Everything the app can ship, then the app and the disk image holding it.
+#
+# Written out as recursive make rather than prerequisites so the order holds
+# under `make -j`: KosmicKrisp has to be built before the runtime, which takes
+# its two dylibs from .kosmickrisp the first time, and the runtime has to exist
+# before `bundle` validates it. The pieces are each cached or skipped when they
+# are already there, so a second `make all` is only the app.
+#
+# The runtime is the one that cannot simply be re-run: build-runtime.sh refuses
+# a WINE_RUNTIME that already exists, so it is a file target here and make
+# leaves it alone once there is one. That also means `all` will not replace an
+# r18 restored from a release with the r19 this checkout locks — `bundle` then
+# stops and says so. Move .wine-runtime aside and `make runtime` for that.
+all:
+	$(MAKE) dxvk
+	$(MAKE) kosmickrisp
+	$(MAKE) d9mt
+	$(MAKE) $(WINE_RUNTIME)/bin/wine
+	$(MAKE) bundle
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -104,24 +128,28 @@ clean:
 	rm -rf .build .wine-runtime .steam-stub .d9vk .d9mt .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
-	@echo "make             build $(APP_NAME).app — the fast one"
-	@echo "make dmg         build the .app and the .dmg"
-	@echo "make run         build the .app and open it"
-	@echo "make test        run the test suite"
-	@echo "make bundle      check the runtime, build and check the stub and DXVK, then the .app and the .dmg"
-	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
-	@echo "make runtime     build the Wine runtime from source into .wine-runtime"
-	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
-	@echo "make steam-stub  build the Steam stub into .steam-stub"
-	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
-	@echo "make d9vk        build DXVK's d3d9.dll, one per Vulkan driver, into .d9vk"
-	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
-	@echo "make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
-	@echo "make kosmickrisp-toolchain  install the toolchain KosmicKrisp needs"
-	@echo "make d9mt        build d9mt from the pinned sources into .d9mt (slow)"
-	@echo "make d9mt-toolchain  install the toolchain d9mt needs"
-	@echo "make app-no-wine build without the Wine runtime — UI work only"
-	@echo "make clean       remove the build products (not .d9mt-build; see D9MT_WORK)"
+	@echo "The main ones"
+	@echo "  make all         build everything shippable, then the .app and the .dmg"
+	@echo "  make bundle      check what is built, then the .app and the .dmg"
+	@echo "  make dxvk        build DXVK's d3d9.dll, one per Vulkan driver, into .d9vk"
+	@echo "  make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
+	@echo "  make runtime     build the Wine runtime from source into .wine-runtime"
+	@echo "  make d9mt        build d9mt from the pinned sources into .d9mt (slow)"
+	@echo "  make clean       remove the build products (not .d9mt-build; see D9MT_WORK)"
+	@echo
+	@echo "Working on the app"
+	@echo "  make             build $(APP_NAME).app — the fast one"
+	@echo "  make run         build the .app and open it"
+	@echo "  make app-no-wine build without the Wine runtime — UI work only"
+	@echo "  make dmg         build the .app and the .dmg, checking nothing first"
+	@echo "  make test        run the test suite"
+	@echo
+	@echo "The rest"
+	@echo "  make restore     fetch the pinned Wine runtime into .wine-runtime"
+	@echo "  make release-runtime  publish .wine-runtime as a GitHub release"
+	@echo "  make steam-stub  build the Steam stub into .steam-stub"
+	@echo "  make <name>-toolchain  install what that build needs, with Homebrew"
+	@echo "                   (steam-stub, dxvk, kosmickrisp, d9mt)"
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
@@ -145,6 +173,13 @@ restore:
 # Builds the Wine runtime from source into WINE_RUNTIME, which must not exist
 # yet: several minutes on Apple Silicon, under Rosetta 2. See docs/wine-runtime.md.
 runtime:
+	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
+
+# The same build, named by what it produces, so `make all` asks for a runtime
+# rather than for a build of one and make skips it when there already is one.
+# Nothing else depends on this: `make runtime` stays the way to say "build it",
+# and it still refuses a WINE_RUNTIME that exists.
+$(WINE_RUNTIME)/bin/wine:
 	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
 
 # Publishes WINE_RUNTIME as the GitHub release runtime-lock.json names, and
@@ -186,13 +221,19 @@ $(D9VK_DLL): $(D9VK_SRC)
 $(D9VK_KK_DLL): $(D9VK_KK_SRC)
 	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$@"
 
-d9vk: $(D9VK_DLL) $(D9VK_KK_DLL)
+dxvk: $(D9VK_DLL) $(D9VK_KK_DLL)
+
+# What this target was called before, kept so older notes and muscle memory
+# still work.
+d9vk: dxvk
 
 # Installs the cross-compiler, meson, ninja and glslang with Homebrew, then
 # builds — separate from the build rule for the same reason the stub's is.
-d9vk-toolchain:
+dxvk-toolchain:
 	@tools/d9vk/build.sh --install --output "$(D9VK_DLL)"
 	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$(D9VK_KK_DLL)"
+
+d9vk-toolchain: dxvk-toolchain
 
 validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
