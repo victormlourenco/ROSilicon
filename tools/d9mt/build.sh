@@ -224,8 +224,13 @@ DXVK_DIR="$V2_DIR/DXVK-3.0-uptsream"
 # init + fetch --depth 1 <sha> rather than clone + checkout: the commits pinned
 # here are not branch tips, and GitHub serves a shallow fetch of any reachable
 # sha, so this takes one commit of each repository instead of the history.
+# A fifth argument, "force", lets the move to a new commit discard edits to
+# tracked files instead of refusing over them. That is for d9mt-v2, whose
+# tree carries the last build's patches: a lock that moves the commit, or
+# drops a patch upstream took, would otherwise stop at git's "local changes
+# would be overwritten" before the restore below ever ran.
 pin_checkout() {
-    local name="$1" dir="$2" repo="$3" commit="$4"
+    local name="$1" dir="$2" repo="$3" commit="$4" force="${5:-}"
     if [[ -d "$dir/.git" ]]; then
         if [[ "$(git -C "$dir" rev-parse HEAD)" == "$commit" ]]; then
             echo "    $name: already at ${commit:0:12}"
@@ -244,7 +249,7 @@ pin_checkout() {
         git -C "$dir" remote add origin "$repo"
         git -C "$dir" fetch --quiet --depth 1 origin "$commit"
     fi
-    git -C "$dir" checkout --quiet --detach FETCH_HEAD
+    git -C "$dir" checkout --quiet ${force:+--force} --detach FETCH_HEAD
 }
 
 echo "==> work folder $WORK"
@@ -252,7 +257,10 @@ echo "    bash: $MODERN_BASH ($("$MODERN_BASH" -c 'echo $BASH_VERSION'))"
 mkdir -p "$WORK"
 # v1 first: it is the folder v2 goes inside, so the order is not a free choice.
 pin_checkout "d9mt (v1, \$ROOT)" "$ROOT_DIR" "$ROOT_REPO" "$ROOT_COMMIT"
-pin_checkout "d9mt-v2" "$V2_DIR" "$V2_REPO" "$V2_COMMIT"
+# Only when patching: --no-patch means the tree as it stands is wanted, so a
+# move that would lose hand edits should still refuse.
+pin_checkout "d9mt-v2" "$V2_DIR" "$V2_REPO" "$V2_COMMIT" \
+    "$([[ "$PATCH" == 1 ]] && echo force)"
 pin_checkout "dxmt" "$DXMT_DIR" "$DXMT_REPO" "$DXMT_COMMIT"
 pin_checkout "dxvk (extraction source)" "$DXVK_DIR" "$DXVK_REPO" "$DXVK_COMMIT"
 
