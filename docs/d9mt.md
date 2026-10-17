@@ -161,10 +161,11 @@ as an empty stub and the failure lands much later, in the smoke test at the
 end of the bridge build, as a missing `spirv.hpp`. build.sh inits it in the
 DXVK clone before `fetch-deps.sh` copies the tree.
 
-### The patch it carries
+### The 4444 fix, now upstream
 
-One, ours, in
-[Packaging/D9MT/patches/](../Packaging/D9MT/patches/) and listed in the lock.
+None at the moment. The one it carried, ours, was merged upstream as
+[neo773/d9mt-v2#2](https://github.com/neo773/d9mt-v2/pull/2), and the lock now
+pins that merge, so `patches` is empty. What it fixed, for the record:
 
 Metal has no ARGB4444, so DXMT's bridge carries a corrected constant for it —
 `WMTPixelFormatBGRA4Unorm = GBARSwizzle | ABGR4Unorm` — but the driver's own
@@ -182,8 +183,9 @@ Turning the lightmap off in the client with `/lightmap` was what separated the
 two and made the format the suspect.
 
 `X1R5G5B5` directly beside them already carries a swizzle, so this is an
-omission rather than a decision. It is not upstream yet and is worth sending.
+omission rather than a decision.
 
+Any future patch goes in `Packaging/D9MT/patches/` and the lock's `patches`.
 The checkout is reset to the locked commit and the patches reapplied on every
 build, so what it builds is always commit + patches rather than a
 half-remembered edit — work on the patches, not on the tree. `--no-patch` is
@@ -269,8 +271,8 @@ The launcher side was checked end to end earlier, against a stand-in staging
 
 **The client runs on it, and renders.** Ragnarok reaches the login screen and
 plays, which is as far as anyone has taken it here. What that first run showed
-was the 4444 channel rotation above, now patched and confirmed fixed in the
-client; `make d9mt` reproduces it from the lock.
+was the 4444 channel rotation above, confirmed fixed in the client and since
+merged upstream; `make d9mt` builds the fixed commit from the lock.
 
 Not checked: how far the client gets beyond that, and how fast. No comparison
 against DXVK has been made, and the licensing blocker above is untouched by any
