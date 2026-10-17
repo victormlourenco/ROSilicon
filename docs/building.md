@@ -5,16 +5,31 @@ only need the disk image from the [releases page](https://github.com/victormlour
 — see the [README](../README.md).
 
 ```sh
+make all            # -> everything below that ships, then the app and the .dmg
 make restore        # -> .wine-runtime, the pinned Wine tree (once)
 make runtime        # -> .wine-runtime built from source instead (see below)
 make steam-stub     # -> .steam-stub, the cross-compiled Steam stub (once)
-make d9vk           # -> .d9vk, DXVK's d3d9.dll built from source (see below)
+make dxvk           # -> .d9vk, DXVK's d3d9.dll built from source (see below)
+make kosmickrisp    # -> .kosmickrisp, the Vulkan loader and driver for the
+                    #    runtime, built from source (see kosmickrisp.md)
+make d9mt           # -> .d9mt, D3D9-on-Metal instead of DXVK, from the
+                    #    pinned sources; optional, and most of an hour the
+                    #    first time — needs CrossOver too (see d9mt.md)
 make                # -> ROSilicon.app in this folder
 make dmg            # -> the app and ROSilicon-<VERSION>.dmg
 make bundle         # -> checks the runtime, builds and checks the stub and
                     #    DXVK, then the app and the .dmg
 make app-no-wine    # -> the app without Wine: UI work only, cannot install
 ```
+
+`make all` is those in the order they depend on each other — DXVK, KosmicKrisp
+and d9mt, then the Wine runtime, then `bundle`. Each is cached or skipped when
+it is already built, so a second run is only the app. The runtime is the one
+exception: `build-runtime.sh` refuses a `.wine-runtime` that already exists, so
+`all` asks for the tree rather than for a build of one and leaves a restored
+tree alone. That means it will not replace an r18 fetched from a release with
+the r19 this checkout locks — `bundle` then stops and names both revisions.
+Move `.wine-runtime` aside and run `make runtime` for that.
 
 Needs Xcode 26 or newer — the interface is built on Liquid Glass, which only
 exists from the macOS 26 SDK — and mingw-w64 once for the

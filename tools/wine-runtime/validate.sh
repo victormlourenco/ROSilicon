@@ -44,8 +44,23 @@ embedded_manifest="$runtime/share/wowsilicon/runtime-lock.json"
   exit 1
 }
 
+# Byte for byte, so an overlay added or a checksum changed counts as a different
+# runtime even at the same revision. The revisions are named because the gap is
+# nearly always the whole story: a tree a revision behind this checkout is one
+# restored as a build base, and `make runtime` is what turns it into the
+# runtime the lock describes.
 cmp -s "$manifest" "$embedded_manifest" || {
+  embedded_revision="$(jq -r '.runtimeRevision' "$embedded_manifest")"
+  manifest_revision="$(jq -r '.runtimeRevision' "$manifest")"
   echo "Embedded runtime lock does not match the repository lock." >&2
+  echo "  $runtime is r$embedded_revision" >&2
+  echo "  runtime-lock.json asks for r$manifest_revision" >&2
+  if [[ "$embedded_revision" != "$manifest_revision" ]]; then
+    echo "Run 'make runtime' to build r$manifest_revision on the restored base." >&2
+  else
+    echo "Same revision, different contents: an overlay or a checksum has changed" >&2
+    echo "since this tree was built, so rebuild it with 'make runtime'." >&2
+  fi
   exit 1
 }
 
@@ -178,6 +193,25 @@ strings -a "$secur32" | grep 'gnutls_global_init' >/dev/null || {
   echo "Wine secur32 was built without GnuTLS; HTTPS will not work." >&2
   exit 1
 }
+
+# Wine reaches Vulkan through the Khronos loader, and the loader a driver
+# through the manifest the app names in VK_DRIVER_FILES; see assemble.sh.
+vulkan_link="$runtime/lib/wine/x86_64-unix/libvulkan.1.dylib"
+[[ "$(readlink "$vulkan_link")" == "../../external/libvulkan.1.dylib" && -f "$vulkan_link" ]] || {
+  echo "Wine's libvulkan.1.dylib does not lead to the Vulkan loader: $vulkan_link" >&2
+  exit 1
+}
+for icd in kosmickrisp_icd.json moltenvk_icd.json; do
+  manifest_path="$runtime/share/vulkan/icd.d/$icd"
+  library="$(jq -er '.ICD.library_path' "$manifest_path" 2>/dev/null)" || {
+    echo "Vulkan driver manifest is missing or unreadable: $manifest_path" >&2
+    exit 1
+  }
+  [[ -f "$(dirname "$manifest_path")/$library" ]] || {
+    echo "Vulkan driver manifest names a missing library: $manifest_path -> $library" >&2
+    exit 1
+  }
+done
 
 # Wine's application menu is titled after the Info.plist embedded in the
 # loader (0013-loader-name-the-app-rosilicon.patch): a tree built without it

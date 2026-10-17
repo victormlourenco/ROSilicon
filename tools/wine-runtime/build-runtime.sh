@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-Usage: build-runtime.sh [--output PATH] [--work PATH] [--jobs COUNT]
+Usage: build-runtime.sh [--output PATH] [--work PATH] [--jobs COUNT] [--vulkan PATH]
 
 Builds the runtime Packaging/WineRuntime/runtime-lock.json describes, from
 source, on this Mac: restores the runtime artifact-lock.json pins as the base,
@@ -15,6 +15,11 @@ last.
 
 --work holds the base, the source and the build (default
 .build/wine-runtime), and is cleared first.
+
+--vulkan names a folder holding the Vulkan loader and KosmicKrisp, as
+tools/kosmickrisp/build.sh leaves them (default .kosmickrisp). They take the
+place of the base's copies when --vulkan is given, and otherwise only fill in
+for a base that has none — a base published before the runtime carried them.
 EOF
   exit 1
 }
@@ -25,6 +30,8 @@ manifest="$repo_root/Packaging/WineRuntime/runtime-lock.json"
 output="$repo_root/.wine-runtime"
 work="$repo_root/.build/wine-runtime"
 jobs=()
+vulkan="$repo_root/.kosmickrisp"
+vulkan_given=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -36,6 +43,12 @@ while [[ $# -gt 0 ]]; do
     --work)
       [[ $# -ge 2 ]] || usage
       work="$2"
+      shift 2
+      ;;
+    --vulkan)
+      [[ $# -ge 2 ]] || usage
+      vulkan="$2"
+      vulkan_given=1
       shift 2
       ;;
     --jobs)
@@ -60,6 +73,19 @@ rm -rf "$work"
 mkdir -p "$work"
 
 "$script_dir/restore.sh" --no-validate --runtime "$work/base"
+
+# assemble.sh checks every external library against runtime-lock.json, so one
+# taken from here that is not the pinned build stops the build there.
+for library in libvulkan.1.dylib libvulkan_kosmickrisp.dylib; do
+  if [[ "$vulkan_given" == 1 || ! -f "$work/base/lib/external/$library" ]]; then
+    [[ -f "$vulkan/$library" ]] || {
+      echo "No $library in $vulkan: run 'make kosmickrisp' first." >&2
+      exit 1
+    }
+    cp -pX "$vulkan/$library" "$work/base/lib/external/$library"
+  fi
+done
+
 "$script_dir/fetch-source.sh" --output "$work/source"
 "$script_dir/build.sh" \
   --source "$work/source" \

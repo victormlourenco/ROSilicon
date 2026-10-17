@@ -1,0 +1,21 @@
+diff --git a/src/d3d9/d3d9_device.cpp b/src/d3d9/d3d9_device.cpp
+index 093e9eae..8b7b864b 100644
+--- a/src/d3d9/d3d9_device.cpp
++++ b/src/d3d9/d3d9_device.cpp
+@@ -4739,7 +4739,15 @@ namespace dxvk {
+       m_apiStats.transformChanges += !(m_state.transforms[idx] == ConvertMatrix(pMatrix));
+     }
+ 
+-    m_state.transforms[idx] = ConvertMatrix(pMatrix);
++    // Games commonly set the same matrix again before every draw. Dirtying
++    // the fixed function data for that uploads the whole constant block and
++    // rebinds its descriptors for nothing, once per draw.
++    const Matrix4 matrix = ConvertMatrix(pMatrix);
++
++    if (m_state.transforms[idx] == matrix)
++      return D3D_OK;
++
++    m_state.transforms[idx] = matrix;
+ 
+     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
+ 

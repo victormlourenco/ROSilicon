@@ -1,0 +1,145 @@
+diff --git a/src/dxvk/dxvk_context.cpp b/src/dxvk/dxvk_context.cpp
+index 7c6a4c8a..886ce4a7 100644
+--- a/src/dxvk/dxvk_context.cpp
++++ b/src/dxvk/dxvk_context.cpp
+@@ -2870,29 +2870,73 @@ namespace dxvk {
+     const DxvkVertexInput*     attributes,
+           uint32_t             bindingCount,
+     const DxvkVertexInput*     bindings) {
++    // Fixed function front-ends pass a long attribute list and switch between
++    // a handful of layouts, so reuse the packed result of a recent call with
++    // the same inputs rather than unpacking and repacking every attribute.
++    for (const auto& entry : m_inputLayoutCache) {
++      if (entry.attributeCount == attributeCount
++       && entry.bindingCount == bindingCount
++       && !std::memcmp(entry.attributes.data(), attributes, attributeCount * sizeof(*attributes))
++       && !std::memcmp(entry.bindings.data(), bindings, bindingCount * sizeof(*bindings))) {
++        applyInputLayout(entry);
++        return;
++      }
++    }
++
++    auto& entry = m_inputLayoutCache[m_inputLayoutCacheNext++ % m_inputLayoutCache.size()];
++    entry.attributeCount = attributeCount;
++    entry.bindingCount = bindingCount;
++
++    for (uint32_t i = 0; i < attributeCount; i++) {
++      auto attribute = attributes[i].attribute();
++
++      entry.attributes[i] = attributes[i];
++      entry.ilAttributes[i] = DxvkIlAttribute(
++        attribute.location, attribute.binding,
++        attribute.format,   attribute.offset);
++    }
++
++    for (uint32_t i = 0; i < bindingCount; i++) {
++      auto binding = bindings[i].binding();
++
++      entry.bindings[i] = bindings[i];
++      entry.ilBindings[i] = DxvkIlBinding(
++        binding.binding, 0, binding.inputRate,
++        binding.divisor);
++      entry.extents[i] = binding.extent;
++    }
++
++    applyInputLayout(entry);
++  }
++
++
++  void DxvkContext::applyInputLayout(
++    const InputLayoutCacheEntry&  entry) {
++    const uint32_t attributeCount = entry.attributeCount;
++    const uint32_t bindingCount = entry.bindingCount;
++
+     // Avoiding redundant input layout setups from the front-end can be
+     // hard, but at least avoid rebinding the pipeline redundantly.
+     bool dirty = m_state.gp.state.il.attributeCount() != attributeCount
+               || m_state.gp.state.il.bindingCount() != bindingCount;
+ 
+     for (uint32_t i = 0; i < bindingCount; i++) {
+-      auto newBinding = bindings[i].binding();
++      const auto& newBinding = entry.ilBindings[i];
+ 
++      // The stride is not part of the layout: it is either dynamic or
++      // applied to the state separately, so leave it out of the comparison.
+       if (!dirty) {
+-        auto oldExtent = m_state.vi.vertexExtents[i];
+         auto oldBinding = m_state.gp.state.ilBindings[i];
+ 
+-        dirty = oldBinding.binding() != newBinding.binding
+-             || oldBinding.inputRate() != newBinding.inputRate
+-             || oldBinding.divisor() != newBinding.divisor
+-             || oldExtent != newBinding.extent;
++        dirty = oldBinding.binding() != newBinding.binding()
++             || oldBinding.inputRate() != newBinding.inputRate()
++             || oldBinding.divisor() != newBinding.divisor()
++             || m_state.vi.vertexExtents[i] != entry.extents[i];
+       }
+ 
+       if (dirty) {
+-        m_state.gp.state.ilBindings[i] = DxvkIlBinding(
+-          newBinding.binding, 0, newBinding.inputRate,
+-          newBinding.divisor);
+-        m_state.vi.vertexExtents[i] = newBinding.extent;
++        m_state.gp.state.ilBindings[i] = newBinding;
++        m_state.vi.vertexExtents[i] = entry.extents[i];
+       }
+     }
+ 
+@@ -2902,22 +2946,13 @@ namespace dxvk {
+     }
+ 
+     for (uint32_t i = 0; i < attributeCount; i++) {
+-      auto newAttribute = attributes[i].attribute();
+-
+       if (!dirty) {
+-        auto oldAttribute = m_state.gp.state.ilAttributes[i];
+-
+-        dirty = oldAttribute.location() != newAttribute.location
+-             || oldAttribute.binding() != newAttribute.binding
+-             || oldAttribute.format() != newAttribute.format
+-             || oldAttribute.offset() != newAttribute.offset;
++        dirty = std::memcmp(&m_state.gp.state.ilAttributes[i],
++          &entry.ilAttributes[i], sizeof(entry.ilAttributes[i]));
+       }
+ 
+-      if (dirty) {
+-        m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
+-          newAttribute.location, newAttribute.binding,
+-          newAttribute.format,   newAttribute.offset);
+-      }
++      if (dirty)
++        m_state.gp.state.ilAttributes[i] = entry.ilAttributes[i];
+     }
+ 
+     for (uint32_t i = attributeCount; i < m_state.gp.state.il.attributeCount(); i++)
+diff --git a/src/dxvk/dxvk_context.h b/src/dxvk/dxvk_context.h
+index 9eca7ac5..8cdc6b4b 100644
+--- a/src/dxvk/dxvk_context.h
++++ b/src/dxvk/dxvk_context.h
+@@ -1399,6 +1399,25 @@ namespace dxvk {
+       std::vector<DxvkLegacyDescriptor> infos;
+     } m_legacyDescriptors;
+ 
++    // Recently set input layouts, as passed in and as packed into the
++    // pipeline state, so that switching back to one does not unpack and
++    // repack every attribute again. See setInputLayout.
++    struct InputLayoutCacheEntry {
++      uint32_t attributeCount = 0u;
++      uint32_t bindingCount   = ~0u;
++      std::array<DxvkVertexInput, DxvkLimits::MaxNumVertexAttributes> attributes = { };
++      std::array<DxvkVertexInput, DxvkLimits::MaxNumVertexBindings>   bindings   = { };
++      std::array<DxvkIlAttribute, DxvkLimits::MaxNumVertexAttributes> ilAttributes = { };
++      std::array<DxvkIlBinding,   DxvkLimits::MaxNumVertexBindings>   ilBindings   = { };
++      std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings>   extents      = { };
++    };
++
++    std::array<InputLayoutCacheEntry, 4> m_inputLayoutCache = { };
++    uint32_t                             m_inputLayoutCacheNext = 0u;
++
++    void applyInputLayout(
++      const InputLayoutCacheEntry&  entry);
++
+     std::array<Rc<DxvkSampler>, MaxNumSamplerSlots> m_samplers;
+     std::array<DxvkBufferSlice, MaxNumUniformBufferSlots> m_uniformBuffers;
+     std::array<DxvkViewPair, MaxNumResourceSlots> m_resources;

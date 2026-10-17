@@ -1,11 +1,11 @@
 diff --git a/dlls/winecoreaudio.drv/coreaudio.c b/dlls/winecoreaudio.drv/coreaudio.c
-index c7e0dc2..f9a6f0d 100644
+index 0ec10fe..39e5774 100644
 --- a/dlls/winecoreaudio.drv/coreaudio.c
 +++ b/dlls/winecoreaudio.drv/coreaudio.c
-@@ -75,13 +75,36 @@
-
+@@ -76,13 +76,36 @@
+ 
  WINE_DEFAULT_DEBUG_CHANNEL(coreaudio);
-
+ 
 +enum spatial_audio_mode
 +{
 +    SPATIAL_AUDIO_OFF,
@@ -36,13 +36,13 @@ index c7e0dc2..f9a6f0d 100644
 +    AudioDeviceID verify_system_device;
 +    unsigned int verify_system_device_count;
 +    BOOL clear_system_device_pulse;
-
+ 
      EDataFlow flow;
      DWORD flags;
-@@ -367,6 +390,97 @@ static void silence_buffer(struct coreaudio_stream *stream, BYTE *buffer, UINT32
+@@ -365,6 +388,97 @@ static void silence_buffer(struct coreaudio_stream *stream, BYTE *buffer, UINT32
          memset(buffer, 0, frames * stream->fmt->nBlockAlign);
  }
-
+ 
 +enum night_sample_kind
 +{
 +    NIGHT_SAMPLE_UNSUPPORTED,
@@ -137,20 +137,20 @@ index c7e0dc2..f9a6f0d 100644
  /* CA is pulling data from us */
  static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags,
          const AudioTimeStamp *ts, UInt32 bus, UInt32 nframes,
-@@ -399,6 +513,9 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags,
+@@ -397,6 +511,9 @@ static OSStatus ca_render_cb(void *user, AudioUnitRenderActionFlags *flags,
      if(nframes > to_copy_frames)
          silence_buffer(stream, ((BYTE *)data->mBuffers[0].mData) + to_copy_bytes, nframes - to_copy_frames);
-
+ 
 +    if (stream->normalize_audio)
 +        process_normalize_audio(stream, data->mBuffers[0].mData, nframes);
 +
      os_unfair_lock_unlock(&stream->lock);
-
+ 
      return noErr;
-@@ -533,6 +650,33 @@ static AudioComponentInstance get_audiounit(EDataFlow dataflow, AudioDeviceID ad
+@@ -531,6 +648,33 @@ static AudioComponentInstance get_audiounit(EDataFlow dataflow, AudioDeviceID ad
      return unit;
  }
-
+ 
 +static AudioComponentInstance get_spatial_audiounit(void)
 +{
 +    AudioComponentDescription desc = {0};
@@ -181,10 +181,10 @@ index c7e0dc2..f9a6f0d 100644
  static void dump_adesc(const char *aux, AudioStreamBasicDescription *desc)
  {
      TRACE("%s: mSampleRate: %f\n", aux, desc->mSampleRate);
-@@ -669,6 +813,260 @@ static HRESULT ca_setup_audiounit(EDataFlow dataflow, AudioComponentInstance uni
+@@ -667,6 +811,260 @@ static HRESULT ca_setup_audiounit(EDataFlow dataflow, AudioComponentInstance uni
      return S_OK;
  }
-
+ 
 +static enum spatial_audio_mode parse_spatial_audio_mode(const char *value,
 +                                                        enum spatial_audio_mode fallback)
 +{
@@ -442,10 +442,10 @@ index c7e0dc2..f9a6f0d 100644
  static AudioDeviceID dev_id_from_device(const char *device)
  {
      AudioDeviceID id;
-@@ -698,6 +1086,99 @@ static AudioDeviceID dev_id_from_device(const char *device)
-     return id;
+@@ -786,6 +1184,99 @@ static HRESULT get_device_sample_rate(AudioDeviceID dev_id, EDataFlow flow,
+     return S_OK;
  }
-
+ 
 +static AudioDeviceID get_default_device_id(EDataFlow flow)
 +{
 +    AudioObjectPropertyAddress addr =
@@ -542,10 +542,10 @@ index c7e0dc2..f9a6f0d 100644
  static NTSTATUS unix_create_stream(void *args)
  {
      struct create_stream_params *params = args;
-@@ -728,10 +1209,16 @@ static NTSTATUS unix_create_stream(void *args)
+@@ -815,10 +1306,16 @@ static NTSTATUS unix_create_stream(void *args)
          goto end;
      }
-
+ 
 -    stream->dev_id = dev_id_from_device(params->device);
      stream->flow = params->flow;
      stream->flags = params->flags;
@@ -557,10 +557,10 @@ index c7e0dc2..f9a6f0d 100644
 +    if (stream->dev_id == kAudioObjectUnknown)
 +        stream->dev_id = dev_id_from_device(params->device);
 +    if (stream->flow == eRender) ca_setup_normalize_audio(stream);
-
-     stream->bufsize_frames = muldiv(params->duration, stream->fmt->nSamplesPerSec, 10000000);
-     if(params->share == AUDCLNT_SHAREMODE_EXCLUSIVE)
-@@ -751,7 +1238,7 @@ static NTSTATUS unix_create_stream(void *args)
+ 
+     if (FAILED(params->result = get_device_period_frame_range(stream->dev_id, stream->flow,
+                                                               &min_period_frames,
+@@ -848,7 +1345,7 @@ static NTSTATUS unix_create_stream(void *args)
          sc = AudioUnitSetProperty(stream->unit, kAudioOutputUnitProperty_SetInputCallback,
                                    kAudioUnitScope_Output, 1, &input, sizeof(input));
      }else{
@@ -569,7 +569,7 @@ index c7e0dc2..f9a6f0d 100644
          sc = AudioUnitSetProperty(stream->unit, kAudioUnitProperty_SetRenderCallback,
                                    kAudioUnitScope_Input, 0, &input, sizeof(input));
      }
-@@ -794,7 +1281,10 @@ static NTSTATUS unix_create_stream(void *args)
+@@ -891,7 +1388,10 @@ static NTSTATUS unix_create_stream(void *args)
  end:
      if(FAILED(params->result)){
          if(stream->converter) AudioConverterDispose(stream->converter);
@@ -580,10 +580,10 @@ index c7e0dc2..f9a6f0d 100644
          free(stream->fmt);
          free(stream);
      } else {
-@@ -822,6 +1312,10 @@ static NTSTATUS unix_release_stream( void *args )
+@@ -919,6 +1419,10 @@ static NTSTATUS unix_release_stream( void *args )
          AudioComponentInstanceDispose(stream->unit);
      }
-
+ 
 +    if(stream->spatial_unit) AudioComponentInstanceDispose(stream->spatial_unit);
 +    free(stream->spatial_control_path);
 +    free(stream->normalize_control_path);
@@ -591,10 +591,10 @@ index c7e0dc2..f9a6f0d 100644
      if(stream->converter) AudioConverterDispose(stream->converter);
      free(stream->resamp_buffer);
      free(stream->wrap_buffer);
-@@ -1342,6 +1836,161 @@ static NTSTATUS unix_get_current_padding(void *args)
+@@ -1453,6 +1957,161 @@ static NTSTATUS unix_get_current_padding(void *args)
      return STATUS_SUCCESS;
  }
-
+ 
 +static void ca_follow_system_device(struct coreaudio_stream *stream)
 +{
 +    AudioStreamBasicDescription new_desc, old_desc;
@@ -753,9 +753,9 @@ index c7e0dc2..f9a6f0d 100644
  static void unix_timer_loop(void *args)
  {
      struct coreaudio_stream *stream = args;
-@@ -1353,6 +2002,28 @@ static void unix_timer_loop(void *args)
+@@ -1464,6 +2123,28 @@ static void unix_timer_loop(void *args)
      next.QuadPart = last.QuadPart + stream->period;
-
+ 
      while(!stream->please_quit){
 +        if (stream->follow_system_device &&
 +            ++stream->follow_system_device_poll_count >= max(1, 2500000 / stream->period))

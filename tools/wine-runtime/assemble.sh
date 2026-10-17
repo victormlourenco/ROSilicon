@@ -132,10 +132,32 @@ relocate_group "winerosetta"
 relocate_group "mtld3d"
 relocate_group "external"
 
-if [[ -f "$output/lib/external/libMoltenVK.dylib" ]]; then
-  mkdir -p "$output/lib/wine/x86_64-unix"
-  ln -sf "../../external/libMoltenVK.dylib" "$output/lib/wine/x86_64-unix/libvulkan.1.dylib"
-fi
+# Wine loads Vulkan as libvulkan.1.dylib from its own module folder. That is
+# the Khronos loader, which takes the driver VK_DRIVER_FILES names — one of the
+# manifests below, chosen per launch by the app: KosmicKrisp on macOS 26 and
+# later, MoltenVK before it. Each manifest names its driver relative to itself.
+external="$output/lib/external"
+[[ -f "$external/libvulkan.1.dylib" ]] || {
+  echo "The Vulkan loader is missing from $external" >&2
+  exit 1
+}
+mkdir -p "$output/lib/wine/x86_64-unix"
+ln -sf "../../external/libvulkan.1.dylib" "$output/lib/wine/x86_64-unix/libvulkan.1.dylib"
+
+icd_dir="$output/share/vulkan/icd.d"
+mkdir -p "$icd_dir"
+write_icd() {
+  local manifest="$1" library="$2" api_version="$3"
+  [[ -f "$external/$library" ]] || {
+    echo "Vulkan driver is missing: $external/$library" >&2
+    exit 1
+  }
+  jq -n --arg library "../../../lib/external/$library" --arg api "$api_version" \
+    '{file_format_version: "1.0.1", ICD: {library_path: $library, api_version: $api}}' \
+    > "$icd_dir/$manifest"
+}
+write_icd kosmickrisp_icd.json libvulkan_kosmickrisp.dylib 1.4.0
+write_icd moltenvk_icd.json libMoltenVK.dylib 1.4.0
 
 mkdir -p "$output/share/wowsilicon"
 cp -X "$manifest" "$output/share/wowsilicon/runtime-lock.json"

@@ -8,7 +8,9 @@
 # Set APP_OUT to build somewhere other than this folder and WINE_RUNTIME to take
 # the Wine tree from somewhere other than .wine-runtime. D9VK points at a folder
 # holding a d3d9.dll built by tools/d9vk/build.sh, which is used in preference
-# to the checked-in one. Pass --no-dmg to build only the .app, and --no-wine to
+# to the checked-in one. D9MT points at a d9mt staged by tools/d9mt/stage.sh,
+# which is optional: without one the app ships without d9mt and its picker
+# hides itself. Pass --no-dmg to build only the .app, and --no-wine to
 # leave the Wine runtime out — quick for working on the UI, but the resulting
 # app cannot install.
 set -euo pipefail
@@ -97,6 +99,9 @@ BIN="$(swift build -c release --package-path "$PKG" --show-bin-path)/$EXECUTABLE
 # for builds that have neither: if `make d9vk` has produced one, that is what
 # ships, and otherwise the checked-in copy does. `make bundle` always builds and
 # validates its own, so a release never goes out on the fallback by accident.
+#
+# There are two, one per Vulkan driver, and each falls back on its own:
+# d3d9.dll for MoltenVK and kosmickrisp/d3d9.dll for KosmicKrisp.
 D9VK="${D9VK:-$PKG/.d9vk}"
 if [[ -f "$D9VK/d3d9.dll" ]]; then
     DXVK="$D9VK/d3d9.dll"
@@ -104,6 +109,25 @@ if [[ -f "$D9VK/d3d9.dll" ]]; then
 else
     DXVK="$PKG/Resources/d9vk/d3d9.dll"
     DXVK_ORIGIN="checked in"
+fi
+if [[ -f "$D9VK/kosmickrisp/d3d9.dll" ]]; then
+    DXVK_KK="$D9VK/kosmickrisp/d3d9.dll"
+    DXVK_KK_ORIGIN="built"
+else
+    DXVK_KK="$PKG/Resources/d9vk/kosmickrisp/d3d9.dll"
+    DXVK_KK_ORIGIN="checked in"
+fi
+# d9mt — Direct3D 9 straight onto Metal, offered instead of DXVK behind ⌥. The
+# one piece with no checked-in fallback and no build rule here: it is not built
+# from this repository at all (see docs/d9mt.md), so an app ships with it only
+# when D9MT points at a staging and ships without it otherwise. D3D9Backend
+# hides the picker when it is absent, so a build without it is a build that
+# simply has one backend.
+D9MT="${D9MT:-$PKG/.d9mt}"
+if [[ -f "$D9MT/d3d9.dll" ]]; then
+    HAVE_D9MT=1
+else
+    HAVE_D9MT=0
 fi
 X87_SIDECAR="$PKG/Resources/x87sidecar/x87sidecar"
 # rosettax87_jit, the x87 hook offered instead of x87sidecar behind ⌥. Its
@@ -113,7 +137,7 @@ ROSETTAX87_JIT="$PKG/Resources/rosettax87_jit"
 # The icon, as Icon Composer saves it. Both icons are built from it: macOS 26
 # reads it compiled, older macOS reads the .icns drawn from the same layer.
 ICON_DOCUMENT="$PKG/$APP_NAME.icon"
-for f in "$DXVK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
+for f in "$DXVK" "$DXVK_KK" "$X87_SIDECAR" "$ROSETTAX87_JIT/runtime_loader" \
          "$ROSETTAX87_JIT/libRuntimeRosettax87" "$ROSETTAX87_JIT/LICENSE" \
          "$ICON_DOCUMENT/icon.json"; do
     [[ -f "$f" ]] || { echo "error: $f not found" >&2; exit 1; }
@@ -125,6 +149,14 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/$EXECUTABLE"
 cp "$DXVK" "$APP/Contents/Resources/d3d9.dll"
 echo "    d3d9.dll ($DXVK_ORIGIN): $DXVK"
+mkdir -p "$APP/Contents/Resources/kosmickrisp"
+cp "$DXVK_KK" "$APP/Contents/Resources/kosmickrisp/d3d9.dll"
+echo "    kosmickrisp/d3d9.dll ($DXVK_KK_ORIGIN): $DXVK_KK"
+if [[ "$HAVE_D9MT" == 1 ]]; then
+    mkdir -p "$APP/Contents/Resources/d9mt"
+    cp "$D9MT/d3d9.dll" "$APP/Contents/Resources/d9mt/d3d9.dll"
+    echo "    d9mt/d3d9.dll: $D9MT/d3d9.dll"
+fi
 cp "$STEAM_STUB_EXE" "$APP/Contents/Resources/steam_stub.exe"
 install -m 0755 "$X87_SIDECAR" "$APP/Contents/Resources/x87sidecar"
 # Copied, not re-signed: the loader's own ad-hoc signature carries the debugger
@@ -149,6 +181,32 @@ if [[ "$COPY_WINE" == 1 ]]; then
     # codesign seals every file under Resources/; the Finder's leftovers have no
     # business in the signature.
     find "$APP/Contents/Resources/Wine" -name .DS_Store -delete
+    # d9mt's d3d9.dll reaches Metal through two Wine builtins — winemetal and
+    # its shader compiler d9mtair, each a PE/unixlib pair. They have to lie in
+    # the tree's own lib/wine, where Wine loads builtins from, and they have to
+    # go in here: this is the last moment anything may write to that tree, since
+    # the signature below seals it and the installer copies it out as it is.
+    #
+    # .d9mt/wine mirrors lib/wine, so this is a plain overlay. Nothing in the
+    # tree is replaced — no Wine carries a winemetal — and leaving them out
+    # entirely is what an app without d9mt does.
+    if [[ "$HAVE_D9MT" == 1 && -d "$D9MT/wine" ]]; then
+        echo "==> overlaying the d9mt bridge onto the bundled Wine"
+        ditto "$D9MT/wine" "$APP/Contents/Resources/Wine/lib/wine"
+        for builtin in i386-windows/winemetal.dll i386-windows/d9mtair.dll \
+                       x86_64-windows/winemetal.dll x86_64-windows/d9mtair.dll \
+                       x86_64-unix/winemetal.so x86_64-unix/d9mtair.so; do
+            echo "    lib/wine/$builtin"
+        done
+    elif [[ "$HAVE_D9MT" == 1 ]]; then
+        # A d3d9.dll with no bridge beside it is the one combination that would
+        # ship a backend the picker offers and the client cannot draw through.
+        echo "error: $D9MT holds a d3d9.dll but no wine/ bridge to go with it" >&2
+        echo "       re-stage it: make d9mt D9MT_SOURCE=<d9mt-v2 checkout>" >&2
+        exit 1
+    fi
+elif [[ "$HAVE_D9MT" == 1 ]]; then
+    echo "==> skipping the Wine runtime (--no-wine); d9mt has no bridge to load"
 else
     echo "==> skipping the Wine runtime (--no-wine)"
 fi

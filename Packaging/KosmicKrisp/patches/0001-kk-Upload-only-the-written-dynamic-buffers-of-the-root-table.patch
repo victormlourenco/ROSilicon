@@ -1,0 +1,57 @@
+diff --git a/src/kosmickrisp/vulkan/kk_cmd_buffer.c b/src/kosmickrisp/vulkan/kk_cmd_buffer.c
+index 22f4bf7..422377c 100644
+--- a/src/kosmickrisp/vulkan/kk_cmd_buffer.c
++++ b/src/kosmickrisp/vulkan/kk_cmd_buffer.c
+@@ -551,6 +551,9 @@ kk_bind_descriptor_sets(struct kk_descriptor_state *desc,
+    assert(dyn_buffer_start <= KK_MAX_DYNAMIC_BUFFERS);
+    assert(next_dyn_offset <= info->dynamicOffsetCount);
+ 
++   desc->root_dynamic_buffer_count =
++      MAX2(desc->root_dynamic_buffer_count, dyn_buffer_start);
++
+    desc->root_dirty = true;
+ }
+ 
+@@ -773,7 +776,24 @@ kk_upload_descriptor_root(struct kk_cmd_buffer *cmd,
+ 
+    root->addr = root_ptr.gpu;
+ 
+-   memcpy(root_ptr.cpu, root, sizeof(*root));
++   /* The table is uploaded on every draw that changes anything in it, which
++    * with per-draw descriptor set or push constant changes is nearly every
++    * draw, and almost half of it is the dynamic buffer array, which a layout
++    * without dynamic descriptors never reads. Copying only the entries a bind
++    * has written, and the per-set start indices after them, measurably speeds
++    * up such draws. The allocation keeps its full size, so every offset
++    * shaders use stays valid.
++    */
++   const size_t dyn_offset =
++      offsetof(struct kk_root_descriptor_table, dynamic_buffers);
++   const size_t tail_offset =
++      offsetof(struct kk_root_descriptor_table, set_dynamic_buffer_start);
++
++   memcpy(root_ptr.cpu, root,
++          dyn_offset + desc->root_dynamic_buffer_count *
++                          sizeof(root->dynamic_buffers[0]));
++   memcpy((uint8_t *)root_ptr.cpu + tail_offset,
++          (const uint8_t *)root + tail_offset, sizeof(*root) - tail_offset);
+    desc->root_dirty = false;
+ 
+    return root_ptr.gpu;
+diff --git a/src/kosmickrisp/vulkan/kk_cmd_buffer.h b/src/kosmickrisp/vulkan/kk_cmd_buffer.h
+index 46dfa33..fc80988 100644
+--- a/src/kosmickrisp/vulkan/kk_cmd_buffer.h
++++ b/src/kosmickrisp/vulkan/kk_cmd_buffer.h
+@@ -71,6 +71,12 @@ struct kk_descriptor_state {
+ 
+    uint32_t push_dirty;
+    struct kk_push_descriptor_set *push[KK_MAX_SETS];
++
++   /* Highest number of root.dynamic_buffers entries any bind has written.
++    * Only these can be read by a shader, so the root upload copies them and
++    * skips the rest of the array. It only ever grows, which is always safe.
++    */
++   uint32_t root_dynamic_buffer_count;
+ };
+ 
+ struct kk_per_draw_data {

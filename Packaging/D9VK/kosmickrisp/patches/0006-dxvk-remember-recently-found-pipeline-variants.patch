@@ -1,0 +1,47 @@
+diff --git a/src/dxvk/dxvk_graphics_state.h b/src/dxvk/dxvk_graphics_state.h
+index 06d5c103..e5f8e45a 100644
+--- a/src/dxvk/dxvk_graphics_state.h
++++ b/src/dxvk/dxvk_graphics_state.h
+@@ -805,6 +805,18 @@ namespace dxvk {
+           return nullptr;
+       }
+ 
++      // A draw loop that alternates between a few states, such as a fixed
++      // function game switching vertex formats between sprites, looks the
++      // same variants up over and over. Comparing against the last ones
++      // found is cheaper than hashing the whole state again. Entries live as
++      // long as the table, so a stale pointer here is still a valid entry.
++      for (const auto& recent : m_recent) {
++        Entry* e = recent.load(std::memory_order_acquire);
++
++        if (e && e->key.eq(k))
++          return &e->value;
++      }
++
+       // Compute hash and traverse entries
+       size_t hash = k.hash();
+       size_t shift = 0u;
+@@ -829,8 +841,11 @@ namespace dxvk {
+ 
+         // Scan entries with the same hash
+         while (e) {
+-          if (e->key.eq(k))
++          if (e->key.eq(k)) {
++            uint32_t slot = m_recentNext.fetch_add(1u, std::memory_order_relaxed) % m_recent.size();
++            m_recent[slot].store(e, std::memory_order_release);
+             return &e->value;
++          }
+ 
+           e = e->next.load(std::memory_order_acquire);
+         }
+@@ -920,6 +935,10 @@ namespace dxvk {
+ 
+     Table m_table;
+ 
++    // Entries last found on the hash path, see find().
++    mutable std::array<std::atomic<Entry*>, 2> m_recent = { };
++    mutable std::atomic<uint32_t> m_recentNext = { 0u };
++
+     template<typename Fn>
+     static void iter(const Table& table, const Fn& fn) {
+       uint32_t mask = table.mask.load(std::memory_order_acquire);

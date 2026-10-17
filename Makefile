@@ -12,17 +12,38 @@
 # STEAM_STUB points at the folder holding the built steam_stub.exe, which
 # build.sh copies into ROSilicon.app/Contents/Resources.
 #
+# The folders and locks still say D9VK, which is what this repository has always
+# called its DXVK build; the target is `make dxvk`, and `make d9vk` still works.
+#
 # D9VK points at the folder holding the built d3d9.dll. It is the one build
 # product with a checked-in fallback: building DXVK needs a Windows
 # cross-compiler and several minutes, so an ordinary `make` uses
 # Resources/d9vk/d3d9.dll unless a build is sitting in .d9vk. `make bundle`
 # builds and checks its own either way.
+#
+# D9MT points at a staged d9mt — Direct3D 9 straight onto Metal, offered
+# instead of DXVK behind ⌥. It is optional and has no checked-in fallback:
+# without a staging the app simply ships without d9mt and hides its picker.
+# `make d9mt` builds it from the pinned sources, which is the longest build
+# here by a wide margin; D9MT_SOURCE=<checkout> stages a build you already
+# have instead. See docs/d9mt.md.
 
 APP_NAME := ROSilicon
 OUT      := $(or $(APP_OUT),.)
 WINE_RUNTIME ?= $(CURDIR)/.wine-runtime
 STEAM_STUB   ?= $(CURDIR)/.steam-stub
 D9VK         ?= $(CURDIR)/.d9vk
+D9MT         ?= $(CURDIR)/.d9mt
+KOSMICKRISP  ?= $(CURDIR)/.kosmickrisp
+
+# A built d9mt-v2 checkout to stage from, which makes `make d9mt` skip the
+# build entirely. Unset, it builds from the pinned sources.
+D9MT_SOURCE  ?=
+# Where that build keeps its four checkouts and its LLVM. Outside .build and
+# left alone by `make clean`: it holds an hour of LLVM, and a clean while the
+# build is running does not merely discard it, it deletes the pack git is
+# writing. Remove it by hand when you want the space back.
+D9MT_WORK    ?= $(CURDIR)/.d9mt-build
 
 STEAM_STUB_EXE := $(STEAM_STUB)/steam_stub.exe
 STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
@@ -30,15 +51,47 @@ STEAM_STUB_SRC := tools/steam-stub/steam_stub.c tools/steam-stub/build.sh
 D9VK_DLL := $(D9VK)/d3d9.dll
 D9VK_SRC := tools/d9vk/build.sh Packaging/D9VK/source-lock.json \
             $(wildcard Packaging/D9VK/patches/*.patch)
+# The build KosmicKrisp gets: K0bin's master, with the patch that lets it run
+# without the features KosmicKrisp lacks, and the rest for speed.
+D9VK_KK_LOCK := Packaging/D9VK/kosmickrisp/source-lock.json
+D9VK_KK_DLL  := $(D9VK)/kosmickrisp/d3d9.dll
+D9VK_KK_SRC  := tools/d9vk/build.sh $(D9VK_KK_LOCK) \
+                $(wildcard Packaging/D9VK/kosmickrisp/patches/*.patch)
+
+KOSMICKRISP_DYLIB := $(KOSMICKRISP)/libvulkan_kosmickrisp.dylib
+KOSMICKRISP_SRC   := tools/kosmickrisp/build.sh Packaging/KosmicKrisp/source-lock.json \
+                     $(wildcard Packaging/KosmicKrisp/patches/*.patch)
 
 # build.sh reads these out of the environment; unset and empty both mean "here".
-export APP_OUT WINE_RUNTIME STEAM_STUB D9VK
+export APP_OUT WINE_RUNTIME STEAM_STUB D9VK D9MT
 
 .DEFAULT_GOAL := app
-.PHONY: app app-no-wine dmg run test clean help validate_wine_runtime \
+.PHONY: all app app-no-wine dmg run test clean help validate_wine_runtime \
         validate_steam_stub update-mtld3d update-x87sidecar restore runtime \
         release-runtime bundle steam-stub steam-stub-toolchain \
-        validate_d9vk d9vk d9vk-toolchain
+        validate_d9vk dxvk dxvk-toolchain d9vk d9vk-toolchain \
+        kosmickrisp kosmickrisp-toolchain \
+        d9mt d9mt-toolchain validate_d9mt
+
+# Everything the app can ship, then the app and the disk image holding it.
+#
+# Written out as recursive make rather than prerequisites so the order holds
+# under `make -j`: KosmicKrisp has to be built before the runtime, which takes
+# its two dylibs from .kosmickrisp the first time, and the runtime has to exist
+# before `bundle` validates it. The pieces are each cached or skipped when they
+# are already there, so a second `make all` is only the app.
+#
+# The runtime is the one that cannot simply be re-run: build-runtime.sh refuses
+# a WINE_RUNTIME that already exists, so it is a file target here and make
+# leaves it alone once there is one. That also means `all` will not replace an
+# r18 restored from a release with the r19 this checkout locks — `bundle` then
+# stops and says so. Move .wine-runtime aside and `make runtime` for that.
+all:
+	$(MAKE) dxvk
+	$(MAKE) kosmickrisp
+	$(MAKE) d9mt
+	$(MAKE) $(WINE_RUNTIME)/bin/wine
+	$(MAKE) bundle
 
 # Note this is not what ./build.sh on its own does — that packs a .dmg too.
 # Laying the disk image out drives the Finder and takes a while, so the bare
@@ -69,29 +122,42 @@ test:
 # the runtime back takes `make restore` or `make runtime`, both slow, and so
 # does `make d9vk`. Only this folder's copies go: a WINE_RUNTIME, STEAM_STUB or
 # D9VK pointed elsewhere is left alone.
+#
+# .d9mt-build is deliberately not in here — see D9MT_WORK above.
 clean:
-	rm -rf .build .wine-runtime .steam-stub .d9vk "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
+	rm -rf .build .wine-runtime .steam-stub .d9vk .d9mt .kosmickrisp "$(OUT)/$(APP_NAME).app" "$(OUT)"/$(APP_NAME)-*.dmg
 
 help:
-	@echo "make             build $(APP_NAME).app — the fast one"
-	@echo "make dmg         build the .app and the .dmg"
-	@echo "make run         build the .app and open it"
-	@echo "make test        run the test suite"
-	@echo "make bundle      check the runtime, build and check the stub and DXVK, then the .app and the .dmg"
-	@echo "make restore     fetch the pinned Wine runtime into .wine-runtime"
-	@echo "make runtime     build the Wine runtime from source into .wine-runtime"
-	@echo "make release-runtime  publish .wine-runtime as a GitHub release"
-	@echo "make steam-stub  build the Steam stub into .steam-stub"
-	@echo "make steam-stub-toolchain  install the Windows cross-compiler"
-	@echo "make d9vk        build DXVK's d3d9.dll into .d9vk"
-	@echo "make d9vk-toolchain  install the toolchain DXVK needs"
-	@echo "make app-no-wine build without the Wine runtime — UI work only"
-	@echo "make clean       remove the build products"
+	@echo "The main ones"
+	@echo "  make all         build everything shippable, then the .app and the .dmg"
+	@echo "  make bundle      check what is built, then the .app and the .dmg"
+	@echo "  make dxvk        build DXVK's d3d9.dll, one per Vulkan driver, into .d9vk"
+	@echo "  make kosmickrisp build the Vulkan loader and KosmicKrisp into .kosmickrisp"
+	@echo "  make runtime     build the Wine runtime from source into .wine-runtime"
+	@echo "  make d9mt        build d9mt from the pinned sources into .d9mt (slow)"
+	@echo "  make clean       remove the build products (not .d9mt-build; see D9MT_WORK)"
+	@echo
+	@echo "Working on the app"
+	@echo "  make             build $(APP_NAME).app — the fast one"
+	@echo "  make run         build the .app and open it"
+	@echo "  make app-no-wine build without the Wine runtime — UI work only"
+	@echo "  make dmg         build the .app and the .dmg, checking nothing first"
+	@echo "  make test        run the test suite"
+	@echo
+	@echo "The rest"
+	@echo "  make restore     fetch the pinned Wine runtime into .wine-runtime"
+	@echo "  make release-runtime  publish .wine-runtime as a GitHub release"
+	@echo "  make steam-stub  build the Steam stub into .steam-stub"
+	@echo "  make <name>-toolchain  install what that build needs, with Homebrew"
+	@echo "                   (steam-stub, dxvk, kosmickrisp, d9mt)"
 	@echo
 	@echo "APP_OUT=<dir>      builds somewhere other than this folder."
 	@echo "WINE_RUNTIME=<dir> ships a Wine tree other than .wine-runtime."
 	@echo "STEAM_STUB=<dir>   ships a Steam stub other than .steam-stub."
-	@echo "D9VK=<dir>         ships a d3d9.dll other than .d9vk."
+	@echo "D9VK=<dir>         ships d3d9.dll (and kosmickrisp/d3d9.dll) other than .d9vk's."
+	@echo "D9MT=<dir>         ships a d9mt staged somewhere other than .d9mt."
+	@echo "D9MT_SOURCE=<dir>  stages that built d9mt-v2 checkout instead of building."
+	@echo "D9MT_WORK=<dir>    keeps d9mt's checkouts and LLVM somewhere other than .d9mt-build."
 	@echo "FILTER=<name>      runs only the matching tests."
 
 validate_wine_runtime:
@@ -107,6 +173,13 @@ restore:
 # Builds the Wine runtime from source into WINE_RUNTIME, which must not exist
 # yet: several minutes on Apple Silicon, under Rosetta 2. See docs/wine-runtime.md.
 runtime:
+	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
+
+# The same build, named by what it produces, so `make all` asks for a runtime
+# rather than for a build of one and make skips it when there already is one.
+# Nothing else depends on this: `make runtime` stays the way to say "build it",
+# and it still refuses a WINE_RUNTIME that exists.
+$(WINE_RUNTIME)/bin/wine:
 	@tools/wine-runtime/build-runtime.sh --output "$(WINE_RUNTIME)"
 
 # Publishes WINE_RUNTIME as the GitHub release runtime-lock.json names, and
@@ -140,19 +213,80 @@ validate_steam_stub:
 # top, and build.sh copies it from there. Unlike the stub this is a clone and
 # several minutes of compiling, so only `make d9vk` and `make bundle` ask for
 # it: make rebuilds it when a patch or the lock is newer and leaves it alone
-# otherwise.
+# otherwise. There are two, one per Vulkan driver: the patched moltenvk-version
+# build in .d9vk for MoltenVK, and master in .d9vk/kosmickrisp for KosmicKrisp.
 $(D9VK_DLL): $(D9VK_SRC)
 	@tools/d9vk/build.sh --output "$@"
 
-d9vk: $(D9VK_DLL)
+$(D9VK_KK_DLL): $(D9VK_KK_SRC)
+	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$@"
+
+dxvk: $(D9VK_DLL) $(D9VK_KK_DLL)
+
+# What this target was called before, kept so older notes and muscle memory
+# still work.
+d9vk: dxvk
 
 # Installs the cross-compiler, meson, ninja and glslang with Homebrew, then
 # builds — separate from the build rule for the same reason the stub's is.
-d9vk-toolchain:
+dxvk-toolchain:
 	@tools/d9vk/build.sh --install --output "$(D9VK_DLL)"
+	@tools/d9vk/build.sh --lock "$(D9VK_KK_LOCK)" --output "$(D9VK_KK_DLL)"
+
+d9vk-toolchain: dxvk-toolchain
 
 validate_d9vk:
 	@tools/d9vk/validate.sh --d9vk "$(D9VK)"
+	@tools/d9vk/validate.sh --d9vk "$(D9VK)/kosmickrisp"
+
+# d9mt, built from the four sources the lock pins and staged into .d9mt.
+#
+# Most of an hour the first time, nearly all of it an LLVM 15 built as x86_64
+# static libs; the work folder is kept, so a second run is minutes. It is also
+# the one build here that needs CrossOver installed — build-bridge.sh links
+# the unix side against that tree's ntdll.so — which build.sh says up front
+# rather than after the hour. docs/d9mt.md has the rest.
+#
+# D9MT_SOURCE skips all of that and stages a checkout you have already built,
+# which is what to use while working on d9mt itself.
+d9mt:
+	@if [ -n "$(D9MT_SOURCE)" ]; then \
+	    tools/d9mt/stage.sh --src "$(D9MT_SOURCE)" --output "$(D9MT)" && \
+	    tools/d9mt/validate.sh --d9mt "$(D9MT)"; \
+	else \
+	    tools/d9mt/build.sh --output "$(D9MT)" --work "$(D9MT_WORK)"; \
+	fi
+
+# Installs mingw-w64, glslang, spirv-cross, cmake, ninja and llvm@15 with
+# Homebrew, then stops — unlike d9vk-toolchain, which goes on to build. An
+# hour is too long to start on the back of a `brew install`.
+d9mt-toolchain:
+	@tools/d9mt/build.sh --toolchain
+
+# Optional, unlike the rest of what `bundle` checks: an app without d9mt is a
+# supported build, so this passes quietly when nothing has been staged and
+# checks it over when something has.
+validate_d9mt:
+	@if [ -d "$(D9MT)" ]; then \
+	    tools/d9mt/validate.sh --d9mt "$(D9MT)"; \
+	else \
+	    echo "No d9mt staged in $(D9MT); the app will ship without it."; \
+	fi
+
+# The Vulkan loader and KosmicKrisp, x86_64, from the Mesa and Khronos sources
+# Packaging/KosmicKrisp/source-lock.json pins. They are runtime inputs rather
+# than something build.sh copies: `make runtime` takes them from here the first
+# time, and from the published runtime it builds on after that — see
+# docs/kosmickrisp.md. A few minutes, most of them Mesa.
+$(KOSMICKRISP_DYLIB): $(KOSMICKRISP_SRC)
+	@tools/kosmickrisp/build.sh --output "$(KOSMICKRISP)"
+
+kosmickrisp: $(KOSMICKRISP_DYLIB)
+
+# Installs LLVM, libclc, SPIRV-LLVM-Translator, meson, cmake and uv with
+# Homebrew, then builds.
+kosmickrisp-toolchain:
+	@tools/kosmickrisp/build.sh --install --output "$(KOSMICKRISP)"
 
 # The whole thing to hand to someone else: the runtime checked against the lock,
 # the stub and DXVK built and checked over, then the .app and the .dmg holding
@@ -160,4 +294,4 @@ validate_d9vk:
 # them rather than failing on their absence. Building DXVK here is what keeps a
 # release off the checked-in fallback that an ordinary `make` is allowed to use.
 bundle: validate_wine_runtime $(STEAM_STUB_EXE) validate_steam_stub \
-        $(D9VK_DLL) validate_d9vk dmg
+        $(D9VK_DLL) $(D9VK_KK_DLL) validate_d9vk validate_d9mt dmg
