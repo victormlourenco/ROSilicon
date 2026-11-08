@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "version": "v1.7.0",
+  "version": "v1.9.1",
   "asset": "x87sidecar.tar.xz",
-  "assetSha256": "b768336e0ad556807156cecd533423285c8ec654f4fdb9c0623124d8b12c0865",
-  "binarySha256": "30c151a7f5b583ca2a2b51f57b1b52d5ad3a3ede7b87d782c27c950486e9a10f"
+  "assetSha256": "e18d1c2443f1440ae5a8e137dd0c85ec33e53506b67604675826094122106615",
+  "binarySha256": "b284e879b7bff3d10f152cbfff8f04abe13de59d63036c962e732ef4913e84f4"
 }
